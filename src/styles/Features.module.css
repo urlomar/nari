@@ -1,0 +1,5 @@
+.section { padding: 42px 0; }
+.wrap { max-width: var(--w); margin: 0 auto; padding: 0 8px; }
+.grid { list-style: none; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 16px 0 0; padding: 0; }
+.grid li { background: var(--panel); border: 1px solid #262626; border-radius: var(--radius); padding: 16px; }
+.grid h3 { margin: 0 0 6px; }

@@ -1,0 +1,12 @@
+.section { padding: 48px 0; }
+.wrap { max-width: var(--w); margin: 0 auto; padding: 0 8px; }
+.form { display: grid; gap: 12px; max-width: 560px; }
+.form label { display: grid; gap: 6px; }
+.form input, .form select, .form textarea {
+  background: #0e0f11; color: var(--text);
+  border: 1px solid #2a2a2d; border-radius: 12px; padding: 10px 12px;
+}
+.button { background: var(--brand); color: #0f0a18; border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+.code { background: #0b0c0e; border: 1px solid #242428; border-radius: 12px; padding: 14px; overflow: auto; }
+.pricing { list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); padding: 0; }
+.pricing li { background: var(--panel); border: 1px solid #262626; border-radius: var(--radius); padding: 16px; }

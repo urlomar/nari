@@ -1,0 +1,13 @@
+.skip {
+  position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;
+}
+.skip:focus { position: fixed; left: 16px; top: 16px; width: auto; height: auto; padding: 8px 12px; background:#fff; color:#000; border-radius:8px; }
+
+.header { position: sticky; top: 0; backdrop-filter: blur(8px); background: rgba(15,15,16,.6); border-bottom: 1px solid #222; z-index: 20; }
+.nav { max-width: var(--w); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 16px 8px; }
+.logo { font-weight: 800; letter-spacing: .5px; }
+.menu { list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; }
+.cta { padding: 8px 14px; border-radius: 999px; background: var(--brand); color: #100b1a; font-weight: 700; }
+.main { max-width: 100%; }
+.footer { border-top: 1px solid #222; margin-top: 64px; }
+.footer p { max-width: var(--w); margin: 0 auto; padding: 24px 8px; color: var(--muted); }
