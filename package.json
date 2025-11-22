@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest --globals --environment jsdom"
+    "test": "vitest --globals --environment jsdom",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "clsx": "^2.1.1",
