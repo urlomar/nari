@@ -6,23 +6,67 @@ import { track } from "@/lib/analytics";
 
 /**
  * Mailing-list CTA box with hover glow and dynamic interactions.
- * @remarks We light up on hover; we navigate on submit (not on hover) for accessibility.
+ * Captures first name, last name, and email, then POSTs to /api/subscribe.
  */
 export default function CTA() {
   const navigate = useNavigate();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const emailSchema = z.string().email();
+  const schema = z.object({
+    firstName: z.string().min(1, "First name is required."),
+    lastName: z.string().min(1, "Last name is required."),
+    email: z.string().email("Please enter a valid email address."),
+  });
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = emailSchema.safeParse(email).success;
-    if (!ok) return setMsg("Please enter a valid email.");
-    // Mock async subscribe
-    await new Promise((r) => setTimeout(r, 400));
-    track("join_waitlist", { email_hint: email.slice(0, 3) + "***" });
-    navigate("/contact?subscribed=1", { replace: false });
+    setMsg(null);
+
+    const parsed = schema.safeParse({ firstName, lastName, email });
+    if (!parsed.success) {
+      const errs = parsed.error.flatten().fieldErrors;
+      const firstError =
+        errs.firstName?.[0] ?? errs.lastName?.[0] ?? errs.email?.[0];
+      setMsg(firstError ?? "Please check your details and try again.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const endpoint = "/api/subscribe";
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ firstName, lastName, email }),
+      });
+
+      if (!res.ok) {
+        let errorMessage = "Something went wrong. Please try again.";
+        try {
+          const data = await res.json();
+          if (data?.error) errorMessage = data.error;
+        } catch {
+          // ignore JSON parse issues
+        }
+        setMsg(errorMessage);
+        return;
+      }
+
+      track("join_waitlist", { email_hint: email.slice(0, 3) + "***" });
+      navigate("/contact?subscribed=1", { replace: false });
+    } catch (err) {
+      console.error(err);
+      setMsg("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -34,7 +78,37 @@ export default function CTA() {
         </p>
 
         <form className={s.box} onSubmit={onSubmit} aria-describedby="cta-help">
-          <label className="sr-only" htmlFor="email">Email</label>
+          <label className="sr-only" htmlFor="firstName">
+            First name
+          </label>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            placeholder="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+            disabled={loading}
+          />
+
+          <label className="sr-only" htmlFor="lastName">
+            Last name
+          </label>
+          <input
+            id="lastName"
+            name="lastName"
+            type="text"
+            placeholder="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+            disabled={loading}
+          />
+
+          <label className="sr-only" htmlFor="email">
+            Email
+          </label>
           <input
             id="email"
             name="email"
@@ -44,14 +118,27 @@ export default function CTA() {
             onChange={(e) => setEmail(e.target.value)}
             required
             aria-invalid={msg ? "true" : "false"}
+            disabled={loading}
           />
-          <button type="submit" className={s.button} aria-label="Join the mailing list">
-            Join waitlist
+
+          <button
+            type="submit"
+            className={s.button}
+            aria-label="Join the mailing list"
+            disabled={loading}
+          >
+            {loading ? "Joining..." : "Join waitlist"}
           </button>
+
           <p id="cta-help" className={s.help}>
             We’ll only email important updates. Unsubscribe anytime.
           </p>
-          {msg && <p role="alert" className={s.error}>{msg}</p>}
+
+          {msg && (
+            <p role="alert" className={s.error}>
+              {msg}
+            </p>
+          )}
         </form>
       </div>
     </section>
