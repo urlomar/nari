@@ -32,7 +32,6 @@ export default async function handler(req: any, res: any) {
     try {
       body = JSON.parse(body);
     } catch {
-      // If parsing fails, we'll handle as missing fields below
       body = null;
     }
   }
@@ -65,9 +64,9 @@ export default async function handler(req: any, res: any) {
     const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const rangeEnv = process.env.GOOGLE_SHEET_RANGE;
-    const range = rangeEnv && rangeEnv.trim().length > 0 ? rangeEnv : "Sheet1!A:D";
+    const range =
+      rangeEnv && rangeEnv.trim().length > 0 ? rangeEnv : "Sheet1!A:D";
 
-    // Validate critical env vars
     if (!clientEmail || !privateKeyRaw || !sheetId) {
       console.error("Subscribe config error", {
         hasClientEmail: !!clientEmail,
@@ -78,24 +77,24 @@ export default async function handler(req: any, res: any) {
       res.end(
         JSON.stringify({
           error: "Server misconfigured.",
-          details: "Missing one or more Google env vars (email, private key, or sheet ID).",
+          details:
+            "Missing one or more Google env vars (email, private key, or sheet ID).",
         })
       );
       return;
     }
 
-    // Never log raw key, but we can log length for sanity if needed
+    // Handle escaped newlines if the key is stored with \n sequences
     const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
 
-    // Create JWT client for service account
-    const auth = new google.auth.JWT(
-      clientEmail,
-      undefined,
-      privateKey,
-      ["https://www.googleapis.com/auth/spreadsheets"]
-    );
+    // ✅ Correct modern JWT constructor signature
+    const auth = new google.auth.JWT({
+      email: clientEmail,
+      key: privateKey,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
 
-    // Explicitly get an access token so we catch auth problems clearly
+    // 🔑 Explicitly get an access token so we catch auth problems clearly
     await auth.authorize();
 
     const sheets = google.sheets({ version: "v4", auth });
@@ -112,7 +111,6 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    // Optional: log a tiny success line (no PII beyond email hint)
     console.log("Subscribe success", {
       sheetId: sheetId.slice(0, 6) + "...",
       range,
@@ -137,7 +135,6 @@ export default async function handler(req: any, res: any) {
 
     console.error("Subscribe error", {
       message: details,
-      // DO NOT log private key or full sheet ID here
       code: (err as any)?.code,
       errors: (err as any)?.errors,
     });
