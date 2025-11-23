@@ -2,10 +2,12 @@
 import { google } from "googleapis";
 
 /**
- * Generic Node-style handler for subscribing users to the Nari waitlist.
+ * Subscribes a user to the Nari waitlist by appending their info to a Google Sheet.
  * Expects POST with JSON body: { firstName, lastName, email }.
  */
 export default async function handler(req: any, res: any) {
+  res.setHeader?.("Content-Type", "application/json");
+
   if (req.method !== "POST") {
     res.setHeader?.("Allow", "POST");
     res.statusCode = 405;
@@ -13,9 +15,17 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // If you're running on some platforms, req.body may not be parsed yet.
-  // For Vercel serverless functions, req.body is already parsed.
-  const { firstName, lastName, email } = (req.body || {}) as {
+  // Ensure body is parsed (in some runtimes req.body may be a string)
+  let body = req.body as any;
+  if (!body || typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      // ignore; we'll fail validation below
+    }
+  }
+
+  const { firstName, lastName, email } = (body || {}) as {
     firstName?: string;
     lastName?: string;
     email?: string;
@@ -44,12 +54,17 @@ export default async function handler(req: any, res: any) {
     const range = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A:D";
 
     if (!clientEmail || !privateKeyRaw || !sheetId) {
-      console.error("Missing Google Sheets environment variables");
+      console.error("Missing Google Sheets environment variables", {
+        hasClientEmail: !!clientEmail,
+        hasPrivateKey: !!privateKeyRaw,
+        hasSheetId: !!sheetId,
+      });
       res.statusCode = 500;
       res.end(JSON.stringify({ error: "Server misconfigured." }));
       return;
     }
 
+    // Handle escaped newlines if the key is stored with \n sequences
     const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
 
     const auth = new google.auth.JWT(
@@ -73,14 +88,16 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    // Success
     res.statusCode = 201;
     res.end(JSON.stringify({ ok: true }));
-  } catch (err) {
+  } catch (err: any) {
     console.error("Subscribe error:", err);
     res.statusCode = 500;
     res.end(
-      JSON.stringify({ error: "Failed to subscribe. Please try again later." })
+      JSON.stringify({
+        error: "Failed to subscribe. Please try again later.",
+        details: err?.message ?? String(err),
+      })
     );
   }
 }
