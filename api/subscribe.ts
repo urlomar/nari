@@ -2,12 +2,23 @@
 import { google } from "googleapis";
 
 /**
- * Subscribes a user to the Nari waitlist by appending their info to a Google Sheet.
- * Expects POST with JSON body: { firstName, lastName, email }.
+ * Nari waitlist subscription endpoint.
+ *
+ * - Accepts POST with JSON: { firstName, lastName, email }
+ * - Validates input.
+ * - Appends a row to a Google Sheet using a service account.
+ *
+ * Env vars required (set in Vercel):
+ * - GOOGLE_SERVICE_ACCOUNT_EMAIL
+ * - GOOGLE_PRIVATE_KEY
+ * - GOOGLE_SHEET_ID
+ * - GOOGLE_SHEET_RANGE (optional, defaults to "Sheet1!A:D")
  */
 export default async function handler(req: any, res: any) {
+  // Always respond JSON
   res.setHeader?.("Content-Type", "application/json");
 
+  // 1) Method guard
   if (req.method !== "POST") {
     res.setHeader?.("Allow", "POST");
     res.statusCode = 405;
@@ -15,13 +26,14 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Ensure body is parsed (in some runtimes req.body may be a string)
-  let body = req.body as any;
+  // 2) Body parsing with safety
+  let body: any = req.body;
   if (!body || typeof body === "string") {
     try {
       body = JSON.parse(body);
     } catch {
-      // ignore; we'll fail validation below
+      // If parsing fails, we'll handle as missing fields below
+      body = null;
     }
   }
 
@@ -47,26 +59,35 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // 3) Config & auth
   try {
     const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const range = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A:D";
+    const rangeEnv = process.env.GOOGLE_SHEET_RANGE;
+    const range = rangeEnv && rangeEnv.trim().length > 0 ? rangeEnv : "Sheet1!A:D";
 
+    // Validate critical env vars
     if (!clientEmail || !privateKeyRaw || !sheetId) {
-      console.error("Missing Google Sheets environment variables", {
+      console.error("Subscribe config error", {
         hasClientEmail: !!clientEmail,
         hasPrivateKey: !!privateKeyRaw,
         hasSheetId: !!sheetId,
       });
       res.statusCode = 500;
-      res.end(JSON.stringify({ error: "Server misconfigured." }));
+      res.end(
+        JSON.stringify({
+          error: "Server misconfigured.",
+          details: "Missing one or more Google env vars (email, private key, or sheet ID).",
+        })
+      );
       return;
     }
 
-    // Handle escaped newlines if the key is stored with \n sequences
+    // Never log raw key, but we can log length for sanity if needed
     const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
 
+    // Create JWT client for service account
     const auth = new google.auth.JWT(
       clientEmail,
       undefined,
@@ -74,11 +95,14 @@ export default async function handler(req: any, res: any) {
       ["https://www.googleapis.com/auth/spreadsheets"]
     );
 
-    const sheets = google.sheets({ version: "v4", auth });
+    // Explicitly get an access token so we catch auth problems clearly
+    await auth.authorize();
 
+    const sheets = google.sheets({ version: "v4", auth });
     const timestamp = new Date().toISOString();
 
-    await sheets.spreadsheets.values.append({
+    // 4) Append to sheet
+    const appendResult = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range,
       valueInputOption: "RAW",
@@ -88,15 +112,41 @@ export default async function handler(req: any, res: any) {
       },
     });
 
+    // Optional: log a tiny success line (no PII beyond email hint)
+    console.log("Subscribe success", {
+      sheetId: sheetId.slice(0, 6) + "...",
+      range,
+      emailHint: email.slice(0, 3) + "***",
+      updatedRange: appendResult.data.updates?.updatedRange,
+    });
+
+    // 5) Success response
     res.statusCode = 201;
     res.end(JSON.stringify({ ok: true }));
   } catch (err: any) {
-    console.error("Subscribe error:", err);
+    // 6) Centralized error handling with helpful details
+    let details = "Unknown error";
+
+    if (err && typeof err === "object") {
+      if (err.message) {
+        details = err.message;
+      } else if ((err as any).response?.data?.error?.message) {
+        details = (err as any).response.data.error.message;
+      }
+    }
+
+    console.error("Subscribe error", {
+      message: details,
+      // DO NOT log private key or full sheet ID here
+      code: (err as any)?.code,
+      errors: (err as any)?.errors,
+    });
+
     res.statusCode = 500;
     res.end(
       JSON.stringify({
         error: "Failed to subscribe. Please try again later.",
-        details: err?.message ?? String(err),
+        details,
       })
     );
   }
