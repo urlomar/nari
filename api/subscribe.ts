@@ -146,7 +146,10 @@ export default async function handler(req: any, res: any) {
         const resend = new Resend(resendApiKey);
 
         const fromEmail =
-          process.env.NARI_FROM_EMAIL || "Nari <nari.curls@gmail.com>";
+          process.env.NARI_FROM_EMAIL || "Nari <onboarding@resend.dev>";
+        
+        // Keep your Gmail as the reply-to so replies go to you.
+        const replyToEmail = "nari.curls@gmail.com";
 
         await resend.emails.send({
           from: fromEmail,
