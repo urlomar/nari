@@ -154,6 +154,7 @@ export default async function handler(req: any, res: any) {
         await resend.emails.send({
           from: fromEmail,
           to: email,
+          replyTo: replyToEmail,
           subject: "Welcome to the Nari waitlist 💫",
           text: [
             `Hi ${firstName},`,
