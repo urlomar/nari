@@ -161,11 +161,11 @@ export default async function handler(req: any, res: any) {
             "",
             `Thank you for joining the Nari waitlist and staying engaged with our journey.`,
             "",
-            `We’re building a personalized hair care experience for curls, coils, and kinks — from product recommendations to routine guidance and protective style ideas.`,
+            `We’re building a personalized hair care experience for curls, coils, and fros — from product recommendations to routine guidance and protective style ideas.`,
             "",
             `You’ll be among the first to hear about new features, early demos, and launch updates.`,
             "",
-            `With love for your curls,`,
+            `With love,`,
             `The Nari Team`,
           ].join("\n"),
         });
