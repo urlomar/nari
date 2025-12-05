@@ -1,4 +1,4 @@
-import s from "@/styles/Hero.module.css";
+import s from '../styles/Hero.module.css';
 import { Link } from "react-router-dom";
 import { track } from "@/lib/analytics";
 
@@ -10,7 +10,7 @@ export default function Hero() {
   return (
     <section className={s.hero} aria-labelledby="hero-title">
       <div className={s.wrap}>
-        <h1 id="hero-title">Personalized hair care for curls, coils & kinks.</h1>
+        <h1 id="hero-title">Be the first to experience Nari</h1>
         <p className={s.subtitle}>
           Nari learns your texture, porosity, and goals to recommend routines,
           products, and protective styles that actually work—while guarding
@@ -18,14 +18,7 @@ export default function Hero() {
         </p>
 
         <div className={s.ctas}>
-          <Link
-            to="/app"
-            className={s.primary}
-            onClick={() => track("click_try_app")}
-            aria-label="Try the Nari demo workspace"
-          >
-            Try the demo
-          </Link>
+          
           <a
             href="#mailing"
             className={s.secondary}

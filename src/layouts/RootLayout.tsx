@@ -16,8 +16,6 @@ export default function RootLayout() {
             Nari
           </NavLink>
           <ul className={s.menu}>
-            <li><NavLink to="/app">Try It</NavLink></li>
-            <li><NavLink to="/pricing">Pricing</NavLink></li>
             <li><NavLink to="/about">About</NavLink></li>
             <li><NavLink to="/contact" className={s.cta}>Get Updates</NavLink></li>
           </ul>

@@ -7,7 +7,7 @@ export default function FAQ() {
       <div className={s.wrap}>
         <h2 id="faq-title">FAQ</h2>
         <details>
-          <summary>Is Nari only for Black women?</summary>
+          <summary>Who is Nari for?</summary>
           <p>Nari centers kinky, coily, and curly hair—our first audience. We’re expanding to support all curl patterns.</p>
         </details>
         <details>
