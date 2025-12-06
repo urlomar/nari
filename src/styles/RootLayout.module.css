@@ -9,5 +9,152 @@
 .menu { list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; }
 .cta { padding: 8px 14px; border-radius: 999px; background: var(--brand); color: #100b1a; font-weight: 700; }
 .main { max-width: 100%; }
-.footer { border-top: 1px solid #222; margin-top: 64px; }
-.footer p { max-width: var(--w); margin: 0 auto; padding: 24px 8px; color: var(--muted); }
+
+/* --- existing header/nav/main styles can stay above this --- */
+
+/* Footer */
+
+.footer {
+  position: relative;
+  z-index: 2;
+  padding: 2.75rem 1.5rem 2rem;
+  background: linear-gradient(180deg, #080010 0%, #05000b 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.footerInner {
+  max-width: var(--w);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 1.3fr);
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.footerLogo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f6e0ff;
+}
+
+.footerTagline {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(240, 228, 255, 0.8);
+}
+
+.footerContact,
+.footerSocial {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footerHeading {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(248, 230, 255, 0.8);
+}
+
+.footerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+
+  color: #fbb6ff;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+
+  transition:
+    color 140ms ease-out,
+    transform 120ms ease-out;
+}
+
+.footerLink:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.footerLink:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.footerLinkText {
+  white-space: nowrap;
+}
+
+/* Icons */
+
+.iconEmail,
+.iconLinkedIn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  background: rgba(251, 182, 255, 0.1);
+  border: 1px solid rgba(251, 182, 255, 0.5);
+  color: #fbb6ff;
+}
+
+.iconLinkedIn {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Social list */
+
+.socialList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.socialItem {
+  margin: 0;
+}
+
+/* Bottom row */
+
+.footerBottom {
+  max-width: var(--w);
+  margin: 2rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+  color: rgba(210, 196, 235, 0.85);
+}
+
+/* Responsive footer */
+
+@media (max-width: 900px) {
+  .footerInner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+  }
+
+  .footerLinkText {
+    white-space: normal;
+  }
+}
