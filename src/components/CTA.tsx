@@ -133,14 +133,14 @@ export default function CTA() {
             </div>
 
             <div className={s.fieldGroupSmall}>
-              <label className={s.label} htmlFor="hairType">
+              <label className="sr-only" htmlFor="hairType">
                 Hair type (optional)
               </label>
               <input
                 id="hairType"
                 name="hairType"
                 type="text"
-                placeholder="4B, low porosity, etc."
+                placeholder="Hair type (optional)"
                 value={hairType}
                 onChange={(e) => setHairType(e.target.value)}
                 disabled={loading}

@@ -40,13 +40,13 @@
 }
 
 .wrap h2 {
-  font-size: 2rem;
+  font-size: 2.1rem;
   margin-bottom: 0.5rem;
 }
 
 .copy {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 1rem;
   color: rgba(245, 240, 255, 0.8);
 }
 
@@ -58,11 +58,11 @@
 
   background: rgba(8, 3, 30, 0.94);
   border-radius: 24px;
-  padding: 1.5rem 1.75rem;
+  padding: 1.8rem 1.9rem;
 
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 1rem;
 
   backdrop-filter: blur(22px);
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.85);
@@ -72,17 +72,12 @@
 .row {
   display: grid;
   gap: 0.9rem;
-}
-
-/* Row 1: first | last | hair type */
-.row:first-of-type {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr);
 }
 
-/* Row 2: email | button */
-.row:last-of-type {
-  grid-template-columns: minmax(0, 2.2fr) auto;
-  align-items: stretch;
+/* Row 2 specific layout: email spans first two columns */
+.fieldGroupWide {
+  grid-column: 1 / span 2;
 }
 
 /* field groups */
@@ -101,8 +96,8 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  padding: 0.75rem 1rem;
-  font-size: 0.95rem;
+  padding: 0.9rem 1.1rem;
+  font-size: 1rem;
   outline: none;
   transition:
     border-color 140ms ease-out,
@@ -110,18 +105,8 @@
     box-shadow 140ms ease-out;
 }
 
-/* Hair type label inline above the smaller pill */
-.label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.3rem;
-  color: rgba(244, 236, 255, 0.8);
-  text-align: left;
-}
-
 .fieldGroupSmall input {
-  padding-inline: 0.9rem;
+  padding-inline: 1rem;
 }
 
 /* focus states */
@@ -133,8 +118,10 @@
   box-shadow: 0 0 0 1px rgba(251, 182, 255, 0.7);
 }
 
-/* button aligned to the right of email, same height as inputs */
+/* button aligned to the third column, same visual height as inputs */
 .button {
+  grid-column: 3;
+
   align-self: stretch;
   border-radius: 999px;
   border: none;
@@ -143,7 +130,7 @@
   background: #ffffff;
   color: #1a102a;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   cursor: pointer;
   white-space: nowrap;
 
@@ -181,14 +168,14 @@
 /* helper text + error */
 .help {
   margin: 0.2rem 0 0;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: rgba(235, 226, 255, 0.75);
   text-align: left;
 }
 
 .error {
   margin: 0.4rem 0 0;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   color: #ffd0dc;
   text-align: left;
 }
@@ -204,12 +191,16 @@
     border-radius: 20px;
   }
 
-  .row:first-of-type,
-  .row:last-of-type {
+  .row {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .fieldGroupWide {
+    grid-column: auto;
+  }
+
   .button {
+    grid-column: auto;
     margin-top: 0.1rem;
     width: 100%;
   }
