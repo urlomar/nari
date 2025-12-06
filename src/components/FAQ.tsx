@@ -22,10 +22,10 @@ const ITEMS: FaqItem[] = [
       "Not necessarily. Nari can work with your current stash and suggest options across budgets when you’re ready to try something new.",
   },
   {
-    id: "medical",
-    question: "Does Nari diagnose medical issues?",
+    id: "why",
+    question: "Why was Nari created?",
     answer:
-      "No. Nari focuses on hair care guidance, routines, and styles. For scalp or medical concerns, always consult a licensed professional.",
+      "We saw a lack of personalized hair care solutions for people with curly hair, especially Black individuals. Nari aims to fill that gap with tailored recommendations and support.",
   },
 ];
 

@@ -1,0 +1,262 @@
+/* src/styles/Contact.module.css */
+
+.section {
+  position: relative;
+  z-index: 2;
+
+  padding: 4.5rem 1.5rem 5rem;
+  min-height: 70vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Purple / pink gradient background */
+  background:
+    radial-gradient(circle at top left, #ff7ac4 0%, transparent 55%),
+    radial-gradient(circle at bottom right, #a064ff 0%, transparent 55%),
+    linear-gradient(145deg, #05000b 0%, #120022 40%, #2b0f4a 100%);
+  color: #ffffff;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 880px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Main card */
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(9, 2, 30, 0.97);
+  border-radius: 24px;
+  padding: 2.4rem 2.2rem 2.1rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.85);
+}
+
+/* Success icon */
+
+.iconCircle {
+  margin: 0 auto 1.5rem;
+  width: 86px;
+  height: 86px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ffe8ff 40%, #f3b6ff 100%);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+}
+
+.iconCheck {
+  font-size: 2.4rem;
+  color: #16a34a;
+}
+
+/* Typography */
+
+.title {
+  margin: 0 0 0.6rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.body {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: rgba(243, 235, 255, 0.85);
+}
+
+/* Share block */
+
+.shareBlock {
+  margin-top: 2.1rem;
+  text-align: left;
+}
+
+.shareHeading {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.shareSub {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(235, 226, 255, 0.8);
+}
+
+/* Copy row */
+
+.shareRow {
+  margin-top: 1.1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) auto;
+  gap: 0.8rem;
+}
+
+.shareInputWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.shareInputWrap input {
+  border: none;
+  background: transparent;
+  color: rgba(244, 237, 255, 0.96);
+  font-size: 0.92rem;
+  width: 100%;
+  outline: none;
+}
+
+.iconLink {
+  font-size: 1rem;
+}
+
+/* Buttons */
+
+.copyButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0 1.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  background: #ffffff;
+  color: #1a102a;
+  cursor: pointer;
+  white-space: nowrap;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    transform 130ms ease-out,
+    box-shadow 130ms ease-out,
+    background 130ms ease-out,
+    color 130ms ease-out;
+}
+
+.copyButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+
+.copyButton:active {
+  transform: translateY(0);
+  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.7);
+}
+
+.copyButton:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.copyButton:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.secondaryButton,
+.primaryLink {
+  margin-top: 1rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  border: 1px solid rgba(251, 182, 255, 0.6);
+  background: rgba(251, 182, 255, 0.06);
+  color: #fbb6ff;
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    background 130ms ease-out,
+    color 130ms ease-out,
+    transform 130ms ease-out,
+    box-shadow 130ms ease-out;
+}
+
+.secondaryButton:hover,
+.primaryLink:hover {
+  background: rgba(251, 182, 255, 0.16);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.7);
+}
+
+.secondaryButton:focus-visible,
+.primaryLink:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+/* Icons for email / links */
+
+.iconEmail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+
+  background: rgba(251, 182, 255, 0.16);
+  border: 1px solid rgba(251, 182, 255, 0.7);
+  color: #fbb6ff;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+  .card {
+    padding-inline: 1.6rem;
+  }
+
+  .shareRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .copyButton {
+    width: 100%;
+  }
+
+  .shareBlock {
+    text-align: center;
+  }
+
+  .shareInputWrap {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    animation: none;
+  }
+}
