@@ -1,9 +1,11 @@
 // src/components/CTA.tsx
+import { motion } from "motion/react";
 import s from "@/styles/CTA.module.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { z } from "zod";
 import { track } from "@/lib/analytics";
+import { fadeUp, staggerChildren } from "@/styles/motionVariants";
 
 /**
  * Mailing-list CTA box with hover glow and dynamic interactions.
@@ -91,13 +93,33 @@ export default function CTA() {
 
   return (
     <section id="mailing" className={s.section} aria-labelledby="cta-title">
-      <div className={s.wrap}>
-        <h2 id="cta-title">Get notified when Nari launches</h2>
-        <p className={s.copy}>
-          Be first in line for launch updates, early demos, and pro curl tips.
-        </p>
+      <motion.div
+        className={s.wrap}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        variants={staggerChildren}
+      >
+        <motion.p className={s.trustLine} variants={fadeUp}>
+          Your photos are analyzed and immediately deleted — never stored or shared.
+        </motion.p>
+        <motion.p className={s.curlRange} variants={fadeUp}>
+          Built for every curl pattern — 1A to 4C.
+        </motion.p>
 
-        <form className={s.box} onSubmit={onSubmit} aria-describedby="cta-help">
+        <motion.h2 id="cta-title" variants={fadeUp}>
+          Get notified when Nari launches
+        </motion.h2>
+        <motion.p className={s.copy} variants={fadeUp}>
+          Be first in line for launch updates, early demos, and pro curl tips.
+        </motion.p>
+
+        <motion.form
+          className={s.box}
+          onSubmit={onSubmit}
+          aria-describedby="cta-help"
+          variants={fadeUp}
+        >
           {/* Row 1: first, last, hair type */}
           <div className={s.row}>
             <div className={s.fieldGroup}>
@@ -186,8 +208,8 @@ export default function CTA() {
               {msg}
             </p>
           )}
-        </form>
-      </div>
+        </motion.form>
+      </motion.div>
     </section>
   );
 }

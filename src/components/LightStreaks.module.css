@@ -1,0 +1,61 @@
+.wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.beam {
+  position: absolute;
+  top: -30vh;
+  width: 42vw;
+  height: 150vh;
+  background: linear-gradient(180deg, var(--color-accent-start), var(--color-accent-end) 55%, transparent 100%);
+  filter: blur(80px);
+  will-change: transform, opacity;
+}
+
+.beamOne {
+  left: -8vw;
+  transform: rotate(18deg);
+  opacity: 0.3;
+  animation: streakOne 7s ease-in-out infinite;
+}
+
+.beamTwo {
+  right: -14vw;
+  transform: rotate(18deg);
+  opacity: 0.25;
+  animation: streakTwo 8s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes streakOne {
+  0%, 100% {
+    transform: rotate(18deg) translate(0, 0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: rotate(18deg) translate(20px, -20px);
+    opacity: 0.4;
+  }
+}
+
+@keyframes streakTwo {
+  0%, 100% {
+    transform: rotate(18deg) translate(0, 0);
+    opacity: 0.2;
+  }
+  50% {
+    transform: rotate(18deg) translate(-15px, 25px);
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beamOne,
+  .beamTwo {
+    animation: none;
+  }
+}

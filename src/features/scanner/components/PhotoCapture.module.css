@@ -2,14 +2,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 24px;
-  border-radius: 999px;
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  color: var(--text);
-  font-size: 15px;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: var(--text-base);
   cursor: pointer;
   text-align: center;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.button:hover {
+  transform: translateY(-2px);
 }
 
 .button[data-disabled] {

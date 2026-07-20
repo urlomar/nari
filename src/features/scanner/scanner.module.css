@@ -3,8 +3,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: var(--bg);
+  padding: var(--space-lg);
+  background: var(--color-bg);
 }
 
 .step,
@@ -12,7 +12,7 @@
   width: min(480px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-md);
 }
 
 .stepCenter {
@@ -22,131 +22,150 @@
 
 .eyebrow {
   margin: 0;
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .heading {
   margin: 0;
-  font-size: clamp(24px, 5vw, 32px);
-  line-height: 1.2;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(24px, 5vw, var(--text-3xl));
+  line-height: var(--leading-tight);
+  color: var(--color-text);
 }
 
 .body {
   margin: 0;
-  color: var(--muted);
-  line-height: 1.5;
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
 }
 
 .progress {
   margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .silhouetteSlot {
   height: 160px;
-  border-radius: var(--radius);
-  background: var(--panel);
-  border: 1px dashed color-mix(in srgb, var(--muted) 40%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--color-bg-elevated);
+  border: 1px dashed var(--color-border);
 }
 
 .previewWrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
 }
 
 .preview {
   width: 100%;
   max-height: 240px;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
 }
 
 .hint {
   margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .error {
   margin: 0;
-  color: var(--error);
-  font-size: 14px;
+  color: var(--color-error);
+  font-size: var(--text-sm);
 }
 
 .privacyLine {
   margin: 0;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .navRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
 }
 
 .primaryButton {
   appearance: none;
   border: none;
-  border-radius: 999px;
-  padding: 14px 28px;
-  font-size: 16px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--text-base);
   font-weight: 600;
-  color: #0f0f10;
-  background: var(--brand);
+  color: var(--color-white);
+  background: var(--gradient-accent);
+  box-shadow: var(--shadow-glow);
   cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.primaryButton:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 
 .primaryButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .textButton {
   appearance: none;
   border: none;
   background: transparent;
-  color: var(--muted);
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
   cursor: pointer;
-  padding: 8px;
+  padding: var(--space-xs);
 }
 
 .chipGrid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .chip {
   appearance: none;
-  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  font-size: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--text-base);
   text-align: left;
-  color: var(--text);
-  background: var(--panel);
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.chip:hover {
+  transform: translateY(-2px);
 }
 
 .chip[data-selected] {
-  border-color: var(--brand);
-  background: color-mix(in srgb, var(--brand) 20%, var(--panel));
+  border-color: var(--color-accent-start);
+  background: color-mix(in srgb, var(--color-accent-start) 20%, var(--color-bg-elevated));
 }
 
 .thumbGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-xs);
 }
 
 .thumbButton {
@@ -157,7 +176,7 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2xs);
   align-items: center;
 }
 
@@ -165,12 +184,12 @@
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
 }
 
 .thumbLabel {
-  font-size: 11px;
-  color: var(--muted);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .answerList {
@@ -179,34 +198,34 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-xs);
 }
 
 .answerRow {
   appearance: none;
   width: 100%;
-  border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
-  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  padding: var(--space-sm) var(--space-md);
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-sm);
   cursor: pointer;
   text-align: left;
 }
 
 .answerValue {
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 3px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  border-top-color: var(--brand);
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent-start);
   animation: spin 0.8s linear infinite;
 }
 

@@ -1,53 +1,41 @@
 // src/components/Hero.tsx
+import { motion } from "motion/react";
+import { Link } from "react-router-dom";
 import s from "../styles/Hero.module.css";
+import { HeroMedia } from "./HeroMedia";
+import { LightStreaks } from "./LightStreaks";
+import { fadeUp, staggerChildren } from "@/styles/motionVariants";
 import { track } from "@/lib/analytics";
 
-/**
- * Hero section with value prop and primary CTA.
- * Sticks to the top of the viewport so the rest of the page scrolls over it.
- */
+/** Hero section: staggered fade-up reveal, primary CTA into the scanner. */
 export default function Hero() {
   return (
     <section className={s.hero} aria-labelledby="hero-title">
-      <div className={s.gradient} />
+      <LightStreaks />
 
-      <div className={s.wrap}>
+      <motion.div className={s.wrap} initial="hidden" animate="visible" variants={staggerChildren}>
         <div className={s.copy}>
-          <h1 id="hero-title" className={s.title}>
-            Be the first to experience Nari
-          </h1>
-
-          <p className={s.subtitle}>
-            Nari learns your texture, porosity, and goals to recommend routines,
-            products, and protective styles that actually work—while guarding
-            against heat damage and breakage.
-          </p>
-
-          <div className={s.ctas}>
-            <a
-              href="#mailing"
-              className={s.secondary}
-              onClick={() => track("click_join_list_from_hero")}
-            >
-              Join the list
-            </a>
-          </div>
+          <motion.p className={s.eyebrow} variants={fadeUp}>
+            Nari
+          </motion.p>
+          <motion.h1 id="hero-title" className={s.title} variants={fadeUp}>
+            Your hair, finally understood.
+          </motion.h1>
+          <motion.p className={s.subtitle} variants={fadeUp}>
+            Three photos. A curl pattern, porosity read, and a routine built for your hair — not
+            someone else&rsquo;s.
+          </motion.p>
+          <motion.div className={s.ctas} variants={fadeUp}>
+            <Link to="/scan" className={s.primary} onClick={() => track("click_start_scan_from_hero")}>
+              Start my scan
+            </Link>
+          </motion.div>
         </div>
 
-        <div className={s.art} aria-hidden="true">
-          <div className={s.blob} />
-          <div className={s.card}>
-            <div className={s.cardHeader}>
-              <span className={s.pill}>Today’s Routine</span>
-            </div>
-            <ul className={s.cardList}>
-              <li>Hydrating co-wash</li>
-              <li>Leave-in + sealant</li>
-              <li>Air-dry with curl clips</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+        <motion.div className={s.art} variants={fadeUp}>
+          <HeroMedia />
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

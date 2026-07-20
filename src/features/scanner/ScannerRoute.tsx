@@ -1,9 +1,11 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { track } from "@/lib/analytics";
 import { analyzeHair } from "@/lib/analyzeHair";
 import { compressImage } from "@/lib/compressImage";
 import { ScanDataSchema, type HairAnalysis, type ScanAnswers, type ScanPhotos } from "@/lib/schemas";
+import { fadeUp } from "@/styles/motionVariants";
 import { PhotoStep } from "./steps/PhotoStep";
 import { QuestionStep } from "./steps/QuestionStep";
 import { ConfirmationStep } from "./steps/ConfirmationStep";
@@ -100,56 +102,61 @@ export default function ScannerRoute() {
     dispatch({ type: "NEXT" });
   }
 
+  const photoConfig = PHOTO_STEPS.find((config) => config.id === step);
+  const questionConfig = QUESTION_STEPS.find((config) => config.id === step);
+
+  let stepContent: ReactNode = null;
+  if (step === "welcome") {
+    stepContent = <WelcomeStep onStart={handleStart} />;
+  } else if (photoConfig) {
+    const index = PHOTO_STEPS.indexOf(photoConfig);
+    stepContent = (
+      <PhotoStep
+        config={photoConfig}
+        stepNumber={index + 1}
+        totalSteps={PHOTO_STEPS.length}
+        file={state.photos[photoConfig.key]}
+        previewUrl={previews[photoConfig.key]}
+        compressing={compressingKey === photoConfig.key}
+        onCapture={(file) => handleCapture(photoConfig.key, file)}
+        onRetake={() => dispatch({ type: "CLEAR_PHOTO", key: photoConfig.key })}
+        onBack={() => dispatch({ type: "BACK" })}
+        onNext={() => dispatch({ type: "NEXT" })}
+      />
+    );
+  } else if (questionConfig) {
+    stepContent = (
+      <QuestionStep
+        config={questionConfig}
+        selected={state.answers[questionConfig.key]}
+        onSelect={(value) => handleAnswerSelect(questionConfig.key, value)}
+        onBack={() => dispatch({ type: "BACK" })}
+      />
+    );
+  } else if (step === "confirmation") {
+    stepContent = (
+      <ConfirmationStep
+        previews={previews}
+        answers={state.answers}
+        onEditPhoto={(stepId) => dispatch({ type: "GOTO", step: stepId, returnTo: "confirmation" })}
+        onEditAnswer={(stepId) => dispatch({ type: "GOTO", step: stepId, returnTo: "confirmation" })}
+        onBack={() => dispatch({ type: "BACK" })}
+        onConfirm={() => dispatch({ type: "NEXT" })}
+      />
+    );
+  } else if (step === "analyzing") {
+    stepContent = (
+      <AnalyzingStep error={state.analysisError} onRetry={() => dispatch({ type: "RETRY_ANALYSIS" })} />
+    );
+  }
+
   return (
     <div className={s.screen}>
-      {step === "welcome" && <WelcomeStep onStart={handleStart} />}
-
-      {PHOTO_STEPS.map(
-        (config, index) =>
-          step === config.id && (
-            <PhotoStep
-              key={config.id}
-              config={config}
-              stepNumber={index + 1}
-              totalSteps={PHOTO_STEPS.length}
-              file={state.photos[config.key]}
-              previewUrl={previews[config.key]}
-              compressing={compressingKey === config.key}
-              onCapture={(file) => handleCapture(config.key, file)}
-              onRetake={() => dispatch({ type: "CLEAR_PHOTO", key: config.key })}
-              onBack={() => dispatch({ type: "BACK" })}
-              onNext={() => dispatch({ type: "NEXT" })}
-            />
-          )
-      )}
-
-      {QUESTION_STEPS.map(
-        (config) =>
-          step === config.id && (
-            <QuestionStep
-              key={config.id}
-              config={config}
-              selected={state.answers[config.key]}
-              onSelect={(value) => handleAnswerSelect(config.key, value)}
-              onBack={() => dispatch({ type: "BACK" })}
-            />
-          )
-      )}
-
-      {step === "confirmation" && (
-        <ConfirmationStep
-          previews={previews}
-          answers={state.answers}
-          onEditPhoto={(stepId) => dispatch({ type: "GOTO", step: stepId, returnTo: "confirmation" })}
-          onEditAnswer={(stepId) => dispatch({ type: "GOTO", step: stepId, returnTo: "confirmation" })}
-          onBack={() => dispatch({ type: "BACK" })}
-          onConfirm={() => dispatch({ type: "NEXT" })}
-        />
-      )}
-
-      {step === "analyzing" && (
-        <AnalyzingStep error={state.analysisError} onRetry={() => dispatch({ type: "RETRY_ANALYSIS" })} />
-      )}
+      <AnimatePresence mode="wait">
+        <motion.div key={step} initial="hidden" animate="visible" exit="hidden" variants={fadeUp}>
+          {stepContent}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
