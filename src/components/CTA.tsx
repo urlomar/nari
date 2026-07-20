@@ -3,8 +3,8 @@ import { motion } from "motion/react";
 import s from "@/styles/CTA.module.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { z } from "zod";
 import { track } from "@/lib/analytics";
+import { useSubscribe } from "@/lib/useSubscribe";
 import { fadeUp, staggerChildren } from "@/styles/motionVariants";
 
 /**
@@ -13,81 +13,18 @@ import { fadeUp, staggerChildren } from "@/styles/motionVariants";
  */
 export default function CTA() {
   const navigate = useNavigate();
+  const { submit, loading, error } = useSubscribe();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [hairType, setHairType] = useState("");
   const [email, setEmail] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const schema = z.object({
-    firstName: z.string().min(1, "First name is required."),
-    lastName: z.string().min(1, "Last name is required."),
-    email: z.string().email("Please enter a valid email address."),
-    hairType: z
-      .string()
-      .max(80, "Hair type description is too long.")
-      .optional(),
-  });
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
-
-    const parsed = schema.safeParse({
-      firstName,
-      lastName,
-      email,
-      hairType: hairType.trim() === "" ? undefined : hairType.trim(),
-    });
-
-    if (!parsed.success) {
-      const errs = parsed.error.flatten().fieldErrors;
-      const firstError =
-        errs.firstName?.[0] ??
-        errs.lastName?.[0] ??
-        errs.email?.[0] ??
-        errs.hairType?.[0];
-      setMsg(firstError ?? "Please check your details and try again.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const endpoint = "/api/subscribe";
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          hairType: hairType.trim() === "" ? null : hairType.trim(),
-        }),
-      });
-
-      if (!res.ok) {
-        let errorMessage = "Something went wrong. Please try again.";
-        try {
-          const data = await res.json();
-          if (data?.error) errorMessage = data.error;
-        } catch {
-          // ignore JSON parse issues
-        }
-        setMsg(errorMessage);
-        return;
-      }
-
+    const ok = await submit({ firstName, lastName, email, hairType });
+    if (ok) {
       track("join_waitlist", { email_hint: email.slice(0, 3) + "***" });
       navigate("/contact?subscribed=1", { replace: false });
-    } catch (err) {
-      console.error(err);
-      setMsg("Network error. Please check your connection and try again.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -184,7 +121,7 @@ export default function CTA() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                aria-invalid={msg ? "true" : "false"}
+                aria-invalid={error ? "true" : "false"}
                 disabled={loading}
               />
             </div>
@@ -203,9 +140,9 @@ export default function CTA() {
             We’ll only email important updates. You can unsubscribe anytime.
           </p>
 
-          {msg && (
+          {error && (
             <p role="alert" className={s.error}>
-              {msg}
+              {error}
             </p>
           )}
         </motion.form>

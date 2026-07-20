@@ -70,3 +70,33 @@ export const HairAnalysisSchema = z.object({
   recommendations: z.array(RecommendationSchema).length(3),
 });
 export type HairAnalysis = z.infer<typeof HairAnalysisSchema>;
+
+// api/analyze.ts request body — photos travel as base64 over the wire.
+export const AnalyzePhotoSchema = z.object({
+  base64: z.string().min(1),
+  mediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+});
+export type AnalyzePhoto = z.infer<typeof AnalyzePhotoSchema>;
+
+export const AnalyzeRequestSchema = z.object({
+  photos: z.object({
+    front: AnalyzePhotoSchema,
+    back: AnalyzePhotoSchema,
+    strand: AnalyzePhotoSchema,
+  }),
+  answers: z.object({
+    naturalState: NaturalStateAnswerSchema,
+    product: ProductAnswerSchema,
+    freshness: FreshnessAnswerSchema,
+  }),
+});
+export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
+
+// CTA.tsx / results-page email capture — shared by useSubscribe.
+export const SubscribeInputSchema = z.object({
+  firstName: z.string().min(1, "First name is required."),
+  lastName: z.string().min(1, "Last name is required."),
+  email: z.string().email("Please enter a valid email address."),
+  hairType: z.string().max(80, "Hair type description is too long.").optional(),
+});
+export type SubscribeInput = z.infer<typeof SubscribeInputSchema>;

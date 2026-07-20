@@ -1,64 +1,58 @@
-import type { CurlPattern, HairAnalysis, PorosityEstimate, ScanData } from "./schemas";
+import { HairAnalysisSchema, type HairAnalysis, type ScanData } from "./schemas";
+import { analyzeHairFallback } from "./analyzeHairFallback";
 
-const ANALYSIS_DELAY_MS = 2200;
-
-const CURL_PATTERNS_BY_STATE: Record<ScanData["answers"]["naturalState"], CurlPattern[]> = {
-  natural: ["3A", "3B", "3C", "4A", "4B", "4C"],
-  straightened: ["2A", "2B", "2C"],
-  protective: ["3B", "3C", "4A", "4B"],
-  other: ["2C", "3A", "3B", "4A"],
-};
-
-const POROSITY_OPTIONS: PorosityEstimate[] = ["low", "medium", "high"];
-
-function pick<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function conditionNotes(scanData: ScanData): string {
-  if (scanData.answers.product === "heavy") {
-    return "Product buildup may be masking your natural texture — a clarifying wash will help us see the full picture next time.";
-  }
-  if (scanData.answers.freshness === "wash-day") {
-    return "Your hair is a bit past due for a wash, which can flatten curl definition — we've factored that into these recommendations.";
-  }
-  return "Your hair looks well-defined with healthy curl clumping and minimal frizz along the shaft.";
-}
-
-function recommendationsFor(porosity: PorosityEstimate): HairAnalysis["recommendations"] {
-  const porosityLabel = porosity === "high" ? "High" : porosity === "low" ? "Low" : "Medium";
-  return [
-    {
-      title: "Hydrating leave-in conditioner",
-      why: `${porosityLabel} porosity hair needs consistent moisture to stay defined.`,
-    },
-    {
-      title: "Weekly deep conditioning treatment",
-      why: "Restores elasticity and reduces breakage between wash days.",
-    },
-    {
-      title: "Silk or satin pillowcase",
-      why: "Cuts down on friction that causes frizz and tangling overnight.",
-    },
-  ];
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
- * Mock analysis with a realistic delay. Milestone 5 swaps the body for a
- * call to /api/analyze with a rules-based fallback on failure — callers
- * never need to change since the signature stays the same.
+ * Calls /api/analyze for a real vision-based read of the photos. On any
+ * failure (network, server error, malformed response) falls back to
+ * rules-based results derived from the questionnaire — the caller never
+ * knows which path ran.
  */
 export async function analyzeHair(scanData: ScanData): Promise<HairAnalysis> {
-  await new Promise((resolve) => setTimeout(resolve, ANALYSIS_DELAY_MS));
+  try {
+    const [front, back, strand] = await Promise.all([
+      fileToBase64(scanData.photos.front),
+      fileToBase64(scanData.photos.back),
+      fileToBase64(scanData.photos.strand),
+    ]);
 
-  const pool = CURL_PATTERNS_BY_STATE[scanData.answers.naturalState];
-  const curlPattern = pick(pool);
-  const porosity = pick(POROSITY_OPTIONS);
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        photos: {
+          front: { base64: front, mediaType: "image/jpeg" },
+          back: { base64: back, mediaType: "image/jpeg" },
+          strand: { base64: strand, mediaType: "image/jpeg" },
+        },
+        answers: scanData.answers,
+      }),
+    });
 
-  return {
-    curlPattern,
-    porosity,
-    conditionNotes: conditionNotes(scanData),
-    recommendations: recommendationsFor(porosity),
-  };
+    if (!res.ok) {
+      throw new Error(`Analyze request failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    const parsed = HairAnalysisSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Analyze response failed schema validation.");
+    }
+
+    return parsed.data;
+  } catch (err) {
+    console.error("analyzeHair: falling back to rules-based results", err);
+    return analyzeHairFallback(scanData);
+  }
 }

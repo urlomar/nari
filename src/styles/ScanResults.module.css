@@ -94,3 +94,107 @@
 .primaryButton:hover {
   transform: translateY(-2px);
 }
+
+.secondaryButton {
+  appearance: none;
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-xs);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.captureBox {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.captureHeading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+.captureRow {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.captureRow input {
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-base);
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.captureRow input:focus-visible {
+  border-color: var(--color-accent-tint-1);
+  box-shadow: 0 0 0 1px var(--color-accent-tint-1);
+}
+
+.captureButton {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-lg);
+  background: var(--gradient-accent);
+  color: var(--color-white);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.captureButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.captureButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.captureHelp {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.captureError {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+.captureSuccess {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
+@media (max-width: 480px) {
+  .captureRow {
+    flex-direction: column;
+  }
+}

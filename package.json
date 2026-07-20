@@ -11,6 +11,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "clsx": "^2.1.1",
     "googleapis": "^166.0.0",
     "motion": "^12.42.2",

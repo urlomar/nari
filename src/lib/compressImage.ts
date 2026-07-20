@@ -1,10 +1,13 @@
 const MAX_BYTES = 1_000_000;
 const MAX_DIMENSION = 1600;
 
-/** Downscales and re-encodes an image client-side so uploads stay under ~1MB. */
+/**
+ * Downscales and re-encodes an image client-side so uploads stay under ~1MB.
+ * Always re-encodes to JPEG, even when already small enough - camera
+ * captures (e.g. HEIC on iPhone) aren't a format the analysis API accepts,
+ * so every photo needs to be normalized, not just the large ones.
+ */
 export async function compressImage(file: File): Promise<File> {
-  if (file.size <= MAX_BYTES) return file;
-
   const image = await loadImage(file);
   const { width, height } = fitDimensions(image.naturalWidth, image.naturalHeight, MAX_DIMENSION);
 
