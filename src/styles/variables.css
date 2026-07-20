@@ -1,14 +1,115 @@
 :root {
-  --bg: #0f0f10;
-  --panel: #151517;
-  --text: #f7f7f8;
-  --muted: #c8c9cc;
-  --accent: #ffd166; /* warm pop */
-  --brand: #8a5cf6;  /* rich lilac */
-  --ok: #33d19f;
-  --error: #ff6b6b;
+  /* ---------------------------------------------------------------------
+   * Neutral ramp — near-black base with a purple cast (#0A0118), full
+   * scale derived from it. 950 is the anchor; everything else is tuned
+   * around that hue (~263°) for a consistent, premium dark feel.
+   * ------------------------------------------------------------------- */
+  --color-neutral-950: #0A0118;
+  --color-neutral-900: #140B26;
+  --color-neutral-800: #211735;
+  --color-neutral-700: #322650;
+  --color-neutral-600: #473868;
+  --color-neutral-500: #5F4F82;
+  --color-neutral-400: #8478A0;
+  --color-neutral-300: #ACA3BF;
+  --color-neutral-200: #D3CEDF;
+  --color-neutral-100: #E9E6F0;
+  --color-neutral-50: #F6F4FA;
+  --color-white: #FFFFFF;
 
-  --radius: 16px;
-  --shadow: 0 10px 30px rgba(0,0,0,0.25);
+  /* ---------------------------------------------------------------------
+   * Accent — purple → pink gradient, two lighter tints, one glow shadow.
+   * Both gradient stops pass WCAG AA as text-on-bg against neutral-950
+   * (~5.2:1 and ~5.8:1) — no adjustment needed from the given hexes.
+   * ------------------------------------------------------------------- */
+  --color-accent-start: #A855F7;
+  --color-accent-end: #EC4899;
+  --color-accent-tint-1: #C084FC;
+  --color-accent-tint-2: #E9D5FF;
+  --gradient-accent: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  --shadow-glow: 0 0 40px rgba(168, 85, 247, 0.35), 0 0 80px rgba(236, 72, 153, 0.2);
+  --shadow-elevation-1: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  /* Status colors, kept outside the neutral/accent ramp. */
+  --color-success: #33D19F;
+  --color-error: #FF6B6B;
+
+  /* ---------------------------------------------------------------------
+   * Semantic aliases — what components should actually reference.
+   * ------------------------------------------------------------------- */
+  --color-bg: var(--color-neutral-950);
+  --color-bg-elevated: var(--color-neutral-900);
+  --color-text: var(--color-white);
+  --color-text-muted: var(--color-neutral-400);
+  --color-border: var(--color-neutral-700);
+
+  /* ---------------------------------------------------------------------
+   * Typography — Clash Display for headlines, Inter for body. Loaded via
+   * Fontshare/Google Fonts links in index.html.
+   * ------------------------------------------------------------------- */
+  --font-display: "Clash Display", "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+  --text-5xl: 64px;
+
+  --leading-tight: 1.1;
+  --leading-normal: 1.5;
+
+  /* ---------------------------------------------------------------------
+   * Spacing scale.
+   * ------------------------------------------------------------------- */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* ---------------------------------------------------------------------
+   * Radius scale — cards live in the 12–24px range per spec.
+   * ------------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+  --radius-card: 16px;
+
+  /* ---------------------------------------------------------------------
+   * Motion timings — paired with src/styles/motionVariants.ts.
+   * ------------------------------------------------------------------- */
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
   --w: min(1120px, 92vw);
+
+  /* ---------------------------------------------------------------------
+   * Deprecated — old flat token names, aliased to the new system so
+   * existing components keep working unchanged. Milestone 4 migrates
+   * component usages to the tokens above; remove these once that's done.
+   * ------------------------------------------------------------------- */
+  --bg: var(--color-bg);
+  --panel: var(--color-bg-elevated);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-accent-tint-1);
+  --brand: var(--color-accent-start);
+  --ok: var(--color-success);
+  --error: var(--color-error);
+  --radius: var(--radius-lg);
+  --shadow: var(--shadow-elevation-1);
 }
