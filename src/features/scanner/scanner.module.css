@@ -1,0 +1,223 @@
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.step,
+.stepCenter {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stepCenter {
+  align-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.heading {
+  margin: 0;
+  font-size: clamp(24px, 5vw, 32px);
+  line-height: 1.2;
+}
+
+.body {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.progress {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.silhouetteSlot {
+  height: 160px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px dashed color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+.previewWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--error);
+  font-size: 14px;
+}
+
+.privacyLine {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.navRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.primaryButton {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f0f10;
+  background: var(--brand);
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.textButton {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.chipGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  font-size: 16px;
+  text-align: left;
+  color: var(--text);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.chip[data-selected] {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 20%, var(--panel));
+}
+
+.thumbGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.thumbButton {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.thumbLabel {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.answerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.answerRow {
+  appearance: none;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.answerValue {
+  color: var(--muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  border-top-color: var(--brand);
+  animation: spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,28 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.button[data-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+}
