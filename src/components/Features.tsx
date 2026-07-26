@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import s from "@/styles/Features.module.css";
-import { fadeUp, staggerChildren } from "@/styles/motionVariants";
+import { useScrollReveal } from "@/styles/useScrollReveal";
 
 const STEPS = [
   {
@@ -9,38 +9,46 @@ const STEPS = [
   },
   {
     title: "Analyze",
-    body: "We read your curl pattern, porosity, and condition. No guesswork.",
+    body: "We analyze your hair texture, porosity, and condition. No guesswork.",
   },
   {
     title: "Your routine",
-    body: "Get three tailored recommendations, each with the why behind it.",
+    body: "Get personalized product recommendations and routine suggestions.",
   },
 ];
 
+function FeatureCard({ step, index }: { step: (typeof STEPS)[number]; index: number }) {
+  const { ref, style } = useScrollReveal<HTMLLIElement>();
+  return (
+    <motion.li ref={ref} style={style} className={s.card}>
+      <span className={s.stepNumber}>{String(index + 1).padStart(2, "0")}</span>
+      <h3 className={s.cardTitle}>{step.title}</h3>
+      <p className={s.cardBody}>{step.body}</p>
+    </motion.li>
+  );
+}
+
 /** How it works: Scan -> Analyze -> Your routine, as a simple bento grid. */
 export default function Features() {
+  const heading = useScrollReveal<HTMLHeadingElement>();
+
   return (
     <section className={s.section} aria-labelledby="how-it-works-title">
-      <motion.div
-        className={s.wrap}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
-        variants={staggerChildren}
-      >
-        <motion.h2 id="how-it-works-title" className={s.heading} variants={fadeUp}>
+      <div className={s.wrap}>
+        <motion.h2
+          id="how-it-works-title"
+          ref={heading.ref}
+          style={heading.style}
+          className={s.heading}
+        >
           How it works
         </motion.h2>
         <ul className={s.grid}>
           {STEPS.map((step, index) => (
-            <motion.li key={step.title} className={s.card} variants={fadeUp}>
-              <span className={s.stepNumber}>{String(index + 1).padStart(2, "0")}</span>
-              <h3 className={s.cardTitle}>{step.title}</h3>
-              <p className={s.cardBody}>{step.body}</p>
-            </motion.li>
+            <FeatureCard key={step.title} step={step} index={index} />
           ))}
         </ul>
-      </motion.div>
+      </div>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import s from "@/styles/ResultsPreview.module.css";
-import { fadeUp, staggerChildren } from "@/styles/motionVariants";
+import { useScrollReveal } from "@/styles/useScrollReveal";
 
 const SAMPLE_RECOMMENDATIONS = [
   { title: "Hydrating leave-in conditioner", why: "Locks in moisture for high-porosity strands." },
@@ -10,23 +10,20 @@ const SAMPLE_RECOMMENDATIONS = [
 
 /** Polished static mock of the real results screen, for the landing page. */
 export default function ResultsPreview() {
+  const intro = useScrollReveal<HTMLDivElement>();
+  const card = useScrollReveal<HTMLDivElement>({ distance: 36 });
+
   return (
     <section className={s.section} aria-labelledby="results-preview-title">
-      <motion.div
-        className={s.wrap}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
-        variants={staggerChildren}
-      >
-        <motion.div className={s.intro} variants={fadeUp}>
+      <div className={s.wrap}>
+        <motion.div ref={intro.ref} style={intro.style} className={s.intro}>
           <h2 id="results-preview-title" className={s.heading}>
-            See exactly what you&rsquo;ll get
+            Nari is ready, are you?
           </h2>
-          <p className={s.body}>A clear read on your hair, and a routine you can actually follow.</p>
+          <p className={s.body}>Real results, recommendations, and a routine you can try tomorrow.</p>
         </motion.div>
 
-        <motion.div className={s.card} variants={fadeUp} aria-hidden="true">
+        <motion.div ref={card.ref} style={card.style} className={s.card} aria-hidden="true">
           <span className={s.previewTag}>Sample result</span>
           <p className={s.eyebrow}>Your hair type</p>
           <p className={s.curlPattern}>3C</p>
@@ -40,7 +37,7 @@ export default function ResultsPreview() {
             ))}
           </ul>
         </motion.div>
-      </motion.div>
+      </div>
     </section>
   );
 }

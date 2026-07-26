@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { track } from "@/lib/analytics";
 import { useSubscribe } from "@/lib/useSubscribe";
-import { fadeUp, staggerChildren } from "@/styles/motionVariants";
+import { useScrollReveal } from "@/styles/useScrollReveal";
+import { GradientRibbon } from "./GradientRibbon";
 
 /**
  * Mailing-list CTA box with hover glow and dynamic interactions.
@@ -19,6 +20,11 @@ export default function CTA() {
   const [hairType, setHairType] = useState("");
   const [email, setEmail] = useState("");
 
+  const trustLine = useScrollReveal<HTMLParagraphElement>();
+  const heading = useScrollReveal<HTMLHeadingElement>();
+  const copy = useScrollReveal<HTMLParagraphElement>();
+  const form = useScrollReveal<HTMLFormElement>({ distance: 36 });
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const ok = await submit({ firstName, lastName, email, hairType });
@@ -30,33 +36,20 @@ export default function CTA() {
 
   return (
     <section id="mailing" className={s.section} aria-labelledby="cta-title">
-      <motion.div
-        className={s.wrap}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
-        variants={staggerChildren}
-      >
-        <motion.p className={s.trustLine} variants={fadeUp}>
+      <GradientRibbon variant="accent" />
+      <div className={s.wrap}>
+        <motion.p ref={trustLine.ref} style={trustLine.style} className={s.trustLine}>
           Your photos are analyzed and immediately deleted — never stored or shared.
         </motion.p>
-        <motion.p className={s.curlRange} variants={fadeUp}>
-          Built for every curl pattern — 1A to 4C.
-        </motion.p>
 
-        <motion.h2 id="cta-title" variants={fadeUp}>
+        <motion.h2 id="cta-title" ref={heading.ref} style={heading.style}>
           Get notified when Nari launches
         </motion.h2>
-        <motion.p className={s.copy} variants={fadeUp}>
-          Be first in line for launch updates, early demos, and pro curl tips.
+        <motion.p ref={copy.ref} style={copy.style} className={s.copy}>
+          Join the waitlist to be first in line for launch updates, early demos, and pro curl tips.
         </motion.p>
 
-        <motion.form
-          className={s.box}
-          onSubmit={onSubmit}
-          aria-describedby="cta-help"
-          variants={fadeUp}
-        >
+        <motion.form ref={form.ref} style={form.style} className={s.box} onSubmit={onSubmit}>
           {/* Row 1: first, last, hair type */}
           <div className={s.row}>
             <div className={s.fieldGroup}>
@@ -136,17 +129,13 @@ export default function CTA() {
             </button>
           </div>
 
-          <p id="cta-help" className={s.help}>
-            We’ll only email important updates. You can unsubscribe anytime.
-          </p>
-
           {error && (
             <p role="alert" className={s.error}>
               {error}
             </p>
           )}
         </motion.form>
-      </motion.div>
+      </div>
     </section>
   );
 }

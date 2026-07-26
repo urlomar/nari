@@ -28,6 +28,7 @@
   font-weight: 600;
   font-size: clamp(32px, 8vw, var(--text-5xl));
   line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
   background: var(--gradient-accent);
   -webkit-background-clip: text;
   background-clip: text;
@@ -66,6 +67,15 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   padding: var(--space-md) var(--space-lg);
+  box-shadow: var(--shadow-elevation-1);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.recommendationCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
 }
 
 .recommendationTitle {
@@ -84,7 +94,7 @@
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-white);
-  background: var(--gradient-accent);
+  background: var(--gradient-accent-solid);
   box-shadow: var(--shadow-glow);
   cursor: pointer;
   align-self: flex-start;
@@ -93,6 +103,12 @@
 
 .primaryButton:hover {
   transform: translateY(-2px);
+  background: var(--gradient-accent-solid-hover);
+}
+
+.primaryButton:active {
+  transform: scale(0.97);
+  transition: transform 80ms var(--ease-out);
 }
 
 .secondaryButton {
@@ -157,7 +173,7 @@
   border: none;
   border-radius: var(--radius-pill);
   padding: 0 var(--space-lg);
-  background: var(--gradient-accent);
+  background: var(--gradient-accent-solid);
   color: var(--color-white);
   font-weight: 600;
   font-size: var(--text-sm);
@@ -168,6 +184,12 @@
 
 .captureButton:hover:not(:disabled) {
   transform: translateY(-2px);
+  background: var(--gradient-accent-solid-hover);
+}
+
+.captureButton:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 80ms var(--ease-out);
 }
 
 .captureButton:disabled {

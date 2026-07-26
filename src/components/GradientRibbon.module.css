@@ -1,0 +1,172 @@
+.wrap {
+  overflow: hidden;
+  pointer-events: none;
+  /* Negative, not 0: a fixed/absolute element with z-index:auto or 0 still
+   * paints above plain static in-flow content elsewhere in the document
+   * (per the CSS stacking spec, positioned z-index:auto descendants paint
+   * above static ones regardless of DOM order) — so a fixed hero ribbon at
+   * z-index:0 would bleed through every later section's background. -1
+   * keeps it below ordinary static content while staying above the page's
+   * own white background. */
+  z-index: -1;
+}
+
+/* Hero variant — pinned to the viewport so it sits behind the (transparent-
+ * over-hero) navbar; opaque sections further down the page scroll over it. */
+.heroWrap {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+}
+
+/* Mouse-reactive glow (hero only, desktop/fine-pointer only) — a soft
+ * radial gradient under the ribbon layers that tracks the cursor via
+ * --mx/--my, set from JS. Hidden by default; the media query is the real
+ * gate (not the JS feature-check), so it's correct even if the listener
+ * never attaches for some reason. */
+.mouseGlow {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    500px circle at var(--mx, 50%) var(--my, 30%),
+    color-mix(in srgb, var(--color-accent-start) 16%, transparent),
+    transparent 70%
+  );
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mouseGlow {
+    display: block;
+  }
+}
+
+/* Accent variant — confined to its own (position: relative) section. */
+.accentWrap {
+  position: absolute;
+  inset: 0;
+}
+
+.layer {
+  position: absolute;
+  will-change: transform, opacity;
+  /* Pivot at the top-right corner so each band visually fans out from the
+   * viewport's top-right (where it tucks behind the navbar), rather than
+   * rotating around its own center. */
+  transform-origin: 100% 0%;
+}
+
+/* ---------------------------------------------------------------------
+ * Hero layers — viewport-relative sizing. Anchored at the top-right
+ * corner, fanning down-left; heavy blur on the outer two, a sharper
+ * saturated core layer carries the visible color spine.
+ * ------------------------------------------------------------------- */
+.heroWrap .layerOuter {
+  top: -3vh;
+  right: -5vw;
+  width: 46vw;
+  height: 150vh;
+  background: linear-gradient(
+    200deg,
+    var(--color-accent-warm) 0%,
+    var(--color-accent-end) 32%,
+    var(--color-accent-start) 64%,
+    var(--color-accent-blue) 100%
+  );
+  filter: blur(90px);
+  opacity: 0.22;
+  transform: rotate(-27deg);
+  animation: driftOuter 12s ease-in-out infinite;
+}
+
+.heroWrap .layerMid {
+  top: -2vh;
+  right: -3vw;
+  width: 29vw;
+  height: 138vh;
+  background: linear-gradient(
+    200deg,
+    var(--color-accent-warm) 0%,
+    var(--color-accent-end) 40%,
+    var(--color-accent-start) 75%,
+    var(--color-accent-blue) 100%
+  );
+  filter: blur(56px);
+  opacity: 0.28;
+  transform: rotate(-22deg);
+  animation: driftMid 10s ease-in-out infinite;
+  animation-delay: -3.2s;
+}
+
+.heroWrap .layerCore {
+  top: -1vh;
+  right: -1vw;
+  width: 15vw;
+  height: 120vh;
+  background: linear-gradient(
+    205deg,
+    var(--color-accent-warm) 0%,
+    var(--color-accent-end) 45%,
+    var(--color-accent-start) 100%
+  );
+  filter: blur(22px);
+  opacity: 0.34;
+  transform: rotate(-18deg);
+  animation: driftCore 8s ease-in-out infinite;
+  animation-delay: -5.4s;
+}
+
+/* ---------------------------------------------------------------------
+ * Accent layers — percentage sizing so they scale with whatever section
+ * renders them, much fainter, only two layers.
+ * ------------------------------------------------------------------- */
+.accentWrap .layerOuter {
+  top: -4%;
+  right: -6%;
+  width: 40%;
+  height: 190%;
+  background: linear-gradient(
+    200deg,
+    var(--color-accent-warm) 0%,
+    var(--color-accent-end) 45%,
+    var(--color-accent-start) 100%
+  );
+  filter: blur(80px);
+  opacity: 0.13;
+  transform: rotate(-24deg);
+  animation: driftOuter 13s ease-in-out infinite;
+}
+
+.accentWrap .layerCore {
+  top: -2%;
+  right: -2%;
+  width: 20%;
+  height: 160%;
+  background: linear-gradient(205deg, var(--color-accent-warm) 0%, var(--color-accent-end) 50%, var(--color-accent-start) 100%);
+  filter: blur(40px);
+  opacity: 0.16;
+  transform: rotate(-18deg);
+  animation: driftCore 9s ease-in-out infinite;
+  animation-delay: -4.4s;
+}
+
+@keyframes driftOuter {
+  0%, 100% { transform: rotate(-24deg) translate(0, 0) scale(1); }
+  50% { transform: rotate(-24deg) translate(-26px, 22px) scale(1.05); }
+}
+
+@keyframes driftMid {
+  0%, 100% { transform: rotate(-20deg) translate(0, 0) scale(1); }
+  50% { transform: rotate(-20deg) translate(20px, -18px) scale(1.04); }
+}
+
+@keyframes driftCore {
+  0%, 100% { transform: rotate(-16deg) translate(0, 0) scale(1); }
+  50% { transform: rotate(-16deg) translate(-16px, 16px) scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    animation: none;
+  }
+}

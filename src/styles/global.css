@@ -1,15 +1,48 @@
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+html, body { height: 100%; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* min-height, not height: a fixed height: 100% on #root caps its box to
+ * exactly one viewport tall. Since <header> is a direct DOM child of
+ * #root, position: sticky is scoped to that box as its containing block —
+ * once real page content (which is taller than one viewport) scrolls
+ * past that point, the header's containing block has already "ended" and
+ * it stops sticking, scrolling away instead of staying pinned. */
+#root { min-height: 100%; }
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-  background: radial-gradient(1200px 800px at 20% 0%, #1b1b20 0%, var(--bg) 60%), var(--bg);
-  color: var(--text);
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 img { max-width: 100%; height: auto; }
 a { color: inherit; text-decoration: none; }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--color-accent-tint-1);
   outline-offset: 2px;
 }
+::selection {
+  background: color-mix(in srgb, var(--color-accent-start) 30%, transparent);
+  color: var(--color-neutral-950);
+}
 .sr-only { position: absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip: rect(0 0 0 0); clip-path: inset(50%); border:0; }
+
+/* Theme toggle transition — document.startViewTransition (see
+ * src/styles/useTheme.tsx) already gives a crossfade between the old/new
+ * painted states for free; this just tunes its duration/easing to match
+ * the app's own tokens instead of the browser default (~0.25s linear).
+ * Unsupported browsers never run this at all — the toggle applies
+ * instantly there, per useTheme.tsx. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

@@ -1,0 +1,14 @@
+/* src/components/Cube.module.css */
+
+.canvasWrap {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 420px;
+  margin-inline: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvasWrap:active {
+  cursor: grabbing;
+}

@@ -106,7 +106,7 @@
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-white);
-  background: var(--gradient-accent);
+  background: var(--gradient-accent-solid);
   box-shadow: var(--shadow-glow);
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-out);
@@ -114,6 +114,12 @@
 
 .primaryButton:hover:not(:disabled) {
   transform: translateY(-2px);
+  background: var(--gradient-accent-solid-hover);
+}
+
+.primaryButton:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 80ms var(--ease-out);
 }
 
 .primaryButton:disabled {
@@ -220,23 +226,46 @@
   color: var(--color-text-muted);
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-accent-start);
-  animation: spin 0.8s linear infinite;
+/* Analyzing screen: a light ribbon accent standing in for a shimmer/spinner
+ * — a sweep of the brand gradient across a pill track, not a spinning ring. */
+.shimmer {
+  width: 200px;
+  max-width: 100%;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+
+.shimmer::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent-warm),
+    var(--color-accent-end),
+    var(--color-accent-start),
+    var(--color-accent-blue),
+    var(--color-accent-warm)
+  );
+  background-size: 300% 100%;
+  animation: shimmerSweep 2.2s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
+  .shimmer::after {
     animation: none;
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@keyframes shimmerSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
   }
 }

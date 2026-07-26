@@ -1,54 +1,89 @@
 :root {
   /* ---------------------------------------------------------------------
-   * Neutral ramp — near-black base with a purple cast (#0A0118), full
-   * scale derived from it. 950 is the anchor; everything else is tuned
-   * around that hue (~263°) for a consistent, premium dark feel.
+   * Neutral ramp — warm white base with a soft purple cast, full scale
+   * anchored at 50 (near-white bg) and 950 (near-black text), tuned for
+   * a light, airy, "ethereal" feel rather than flat gray.
    * ------------------------------------------------------------------- */
-  --color-neutral-950: #0A0118;
-  --color-neutral-900: #140B26;
-  --color-neutral-800: #211735;
-  --color-neutral-700: #322650;
-  --color-neutral-600: #473868;
-  --color-neutral-500: #5F4F82;
-  --color-neutral-400: #8478A0;
-  --color-neutral-300: #ACA3BF;
-  --color-neutral-200: #D3CEDF;
-  --color-neutral-100: #E9E6F0;
-  --color-neutral-50: #F6F4FA;
+  --color-neutral-50: #FDFCFE;
+  --color-neutral-100: #F7F4FB;
+  --color-neutral-200: #ECE7F5;
+  --color-neutral-300: #DAD2E8;
+  --color-neutral-400: #B7ABCE;
+  --color-neutral-500: #9385AC;
+  --color-neutral-600: #766A8D;
+  --color-neutral-700: #5B5566;
+  --color-neutral-800: #372F45;
+  --color-neutral-900: #241C30;
+  --color-neutral-950: #1A1523;
   --color-white: #FFFFFF;
 
   /* ---------------------------------------------------------------------
-   * Accent — purple → pink gradient, two lighter tints, one glow shadow.
-   * Both gradient stops pass WCAG AA as text-on-bg against neutral-950
-   * (~5.2:1 and ~5.8:1) — no adjustment needed from the given hexes.
+   * Accent — purple / pink / warm orange, Stripe-signature against white.
+   * accent-start/end/warm/blue are the bright, saturated stops used for
+   * large decorative surfaces: the ribbon, buttons' resting glow, and
+   * gradient-clipped headline text at large sizes (verified >=3:1 large
+   * -text AA on white). accent-text/tint-1 is a deepened purple for any
+   * small text, icon, border, or focus ring on white (verified >=4.5:1
+   * text / 3:1 UI-component contrast). gradient-accent-solid uses deeper
+   * stops so white button text stays >=4.5:1 at any button size.
    * ------------------------------------------------------------------- */
   --color-accent-start: #A855F7;
   --color-accent-end: #EC4899;
-  --color-accent-tint-1: #C084FC;
-  --color-accent-tint-2: #E9D5FF;
+  --color-accent-warm: #FB923C;
+  --color-accent-blue: #60A5FA;
+  --color-accent-text: #9333EA;
+  --color-accent-tint-1: #9333EA;
+  --color-accent-tint-2: #F3E8FF;
   --gradient-accent: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
-  --shadow-glow: 0 0 40px rgba(168, 85, 247, 0.35), 0 0 80px rgba(236, 72, 153, 0.2);
-  --shadow-elevation-1: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --gradient-accent-solid: linear-gradient(135deg, #9333EA, #DB2777);
+  /* Same stops, shifted angle — used on :hover instead of a static color
+   * swap. Gradients don't smoothly interpolate via CSS transitions across
+   * browsers, so this snaps; the accompanying transform/shadow transitions
+   * carry the perceived smoothness. */
+  --gradient-accent-solid-hover: linear-gradient(115deg, #9333EA, #DB2777);
+  --gradient-ribbon: linear-gradient(
+    120deg,
+    var(--color-accent-warm) 0%,
+    var(--color-accent-end) 40%,
+    var(--color-accent-start) 70%,
+    var(--color-accent-blue) 100%
+  );
 
-  /* Status colors, kept outside the neutral/accent ramp. */
-  --color-success: #33D19F;
-  --color-error: #FF6B6B;
+  /* Two-layer shadow system — a tight, low-opacity dark shadow close to
+   * the element (contact/grounding) plus a larger, softer, brand-tinted
+   * ambient shadow further out (the "glow"). Every shadow in the app is
+   * one of these two tokens; never write a one-off box-shadow value in a
+   * component file — that's how "soft tinted shadows" stays consistent
+   * instead of drifting per-component.
+   * elevation-1: resting state for cards/panels.
+   * glow: hover/emphasis state (buttons, card hover) — deeper, richer. */
+  --shadow-elevation-1: 0 1px 2px rgba(26, 21, 35, 0.06), 0 12px 32px rgba(168, 85, 247, 0.10);
+  --shadow-glow: 0 2px 4px rgba(26, 21, 35, 0.08), 0 16px 40px rgba(168, 85, 247, 0.18), 0 8px 20px rgba(236, 72, 153, 0.12);
+
+  /* Status colors — deepened from brand-adjacent hues so they clear 4.5:1
+   * as text on white (the originals were tuned for a dark bg and don't). */
+  --color-success: #15803D;
+  --color-error: #DC2626;
 
   /* ---------------------------------------------------------------------
    * Semantic aliases — what components should actually reference.
    * ------------------------------------------------------------------- */
-  --color-bg: var(--color-neutral-950);
-  --color-bg-elevated: var(--color-neutral-900);
-  --color-text: var(--color-white);
-  --color-text-muted: var(--color-neutral-400);
-  --color-border: var(--color-neutral-700);
+  --color-bg: var(--color-white);
+  --color-bg-elevated: var(--color-neutral-50);
+  --color-text: var(--color-neutral-950);
+  --color-text-muted: var(--color-neutral-700);
+  --color-border: color-mix(in srgb, var(--color-neutral-950) 10%, transparent);
 
   /* ---------------------------------------------------------------------
-   * Typography — Clash Display for headlines, Inter for body. Loaded via
+   * Typography — Clash Display for headlines, Inter for body, Figtree
+   * reserved for the <Logo /> wordmark specifically (see
+   * src/components/Logo.tsx) — not used anywhere else, so the brand mark
+   * stays visually distinct from section headings. Loaded via
    * Fontshare/Google Fonts links in index.html.
    * ------------------------------------------------------------------- */
   --font-display: "Clash Display", "Inter", system-ui, -apple-system, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-wordmark: "Figtree", "Inter", system-ui, -apple-system, sans-serif;
 
   --text-xs: 12px;
   --text-sm: 14px;
@@ -112,4 +147,52 @@
   --error: var(--color-error);
   --radius: var(--radius-lg);
   --shadow: var(--shadow-elevation-1);
+}
+
+/* ---------------------------------------------------------------------
+ * Dark theme — same token names as :root, different values, switched via
+ * `data-theme="dark"` on <html> (see src/styles/theme.ts). Every component
+ * reads the semantic aliases above, so nothing here needs a parallel
+ * component stylesheet: overriding the token is the whole fix.
+ *
+ * Note --gradient-accent / --gradient-accent-solid / --gradient-ribbon are
+ * NOT redefined here — they're declared once at :root as
+ * `linear-gradient(... var(--color-accent-start) ...)`, and custom
+ * properties resolve at point-of-use against the cascaded value, so
+ * overriding --color-accent-start/-end/-warm/-blue below is enough to
+ * repaint every gradient that references them. Redefining the gradients
+ * too would just be the same value twice with two places to drift apart.
+ * ------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --color-bg: #120E19;
+  --color-bg-elevated: #1D1728;
+  --color-text: #F7F4FB;
+  --color-text-muted: #B7ABCE;
+  --color-border: color-mix(in srgb, white 14%, transparent);
+
+  /* Lighter, more saturated stops than the light theme's — legible as
+   * text/large-surface color against near-black instead of white, and
+   * read as "neon" rather than "pastel" the way the light theme's bright
+   * stops do on white. */
+  --color-accent-start: #C084FC;
+  --color-accent-end: #F472B6;
+  --color-accent-warm: #FDBA74;
+  --color-accent-blue: #93C5FD;
+  /* Light theme's tint-1 (#9333EA) is a *deepened* purple chosen specifically
+   * for AA contrast on white — on a near-black bg that same dark purple
+   * would measure ~2:1. Dark mode needs the opposite move: a light purple,
+   * for small text/icons/borders/focus rings on --color-bg. */
+  --color-accent-text: #D8B4FE;
+  --color-accent-tint-1: #D8B4FE;
+  --color-accent-tint-2: color-mix(in srgb, #C084FC 20%, transparent);
+
+  --color-success: #4ADE80;
+  --color-error: #F87171;
+
+  /* Neon-bloom glow, not the light theme's soft tinted-ambient shadow — a
+   * subtle dark shadow is invisible against a near-black bg, so depth here
+   * comes from a brighter, wider colored bloom instead of a bigger blur
+   * radius on a dark shadow. */
+  --shadow-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 24px rgba(192, 132, 252, 0.14);
+  --shadow-glow: 0 0 1px rgba(0, 0, 0, 0.6), 0 0 32px rgba(192, 132, 252, 0.45), 0 0 64px rgba(244, 114, 182, 0.3);
 }

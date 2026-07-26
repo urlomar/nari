@@ -1,7 +1,8 @@
 import s from "./HeroMedia.module.css";
+import heroPhoto from "@/assets/photos/afro-pic-1.jpg";
 
 export interface HeroMediaProps {
-  /** Swap in a looping product video later; falls back to an animated gradient placeholder. */
+  /** Swap in a looping product video later; falls back to the static photo. */
   videoSrc?: string;
 }
 
@@ -13,9 +14,10 @@ export function HeroMedia({ videoSrc }: HeroMediaProps) {
   }
 
   return (
-    <div className={s.placeholder} aria-hidden="true">
-      <div className={s.blobOne} />
-      <div className={s.blobTwo} />
-    </div>
+    <img
+      className={s.media}
+      src={heroPhoto}
+      alt="Portrait of a woman with a defined, healthy natural curl pattern"
+    />
   );
 }

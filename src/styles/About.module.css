@@ -1,0 +1,85 @@
+/* src/styles/About.module.css */
+
+.section {
+  padding: calc(var(--space-4xl) + var(--space-lg)) 0 var(--space-4xl);
+  background: var(--color-bg);
+}
+
+.wrap {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-2xl);
+  align-items: center;
+}
+
+.copy {
+  color: var(--color-text);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 4vw, var(--text-4xl));
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-lg);
+}
+
+.body {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+}
+
+.body:last-of-type {
+  margin-bottom: 0;
+}
+
+/* .photoWrap is the actual grid item (and what the scroll-parallax
+ * transform applies to); .photo (the img) just fills it. Keeping the
+ * parallax wrapper and the card-styled img separate means `order` below
+ * still works on mobile — it only affects direct grid/flex children, and
+ * with a plain img as the grid item there'd be nothing to hang the
+ * parallax transform on without it also fighting the card's own
+ * width/aspect-ratio. */
+.photoWrap {
+  min-width: 0;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-elevation-1);
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xl);
+  }
+
+  .photoWrap {
+    order: -1;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+}

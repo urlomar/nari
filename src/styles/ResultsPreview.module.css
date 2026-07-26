@@ -20,6 +20,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-3xl);
+  letter-spacing: -0.01em;
   margin: 0 0 var(--space-md);
 }
 
@@ -37,6 +38,14 @@
   border-radius: var(--radius-2xl);
   padding: var(--space-xl);
   box-shadow: var(--shadow-elevation-1);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
 }
 
 .previewTag {
@@ -49,7 +58,7 @@
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  padding: 4px var(--space-sm);
+  padding: var(--space-2xs) var(--space-sm);
 }
 
 .eyebrow {

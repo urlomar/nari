@@ -2,21 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nari — Personalized Hair Care for Kinky & Curly Hair</title>
-    <meta name="description" content="Nari is a personalized hair care app for kinky & curly hair. Discover your hair type, get tailored product recommendations, protect against heat and breakage, and find styles that love your texture." />
-    <meta property="og:title" content="Nari — Personalized Hair Care for Kinky & Curly Hair" />
-    <meta property="og:description" content="Get your hair type, routines, and product picks designed for curls, coils, and kinks." />
+    <!-- Runs before first paint so a returning dark-mode visitor never sees
+         a light flash. New visitors get no localStorage entry, so this is a
+         no-op and they fall through to the default light theme (:root with
+         no data-theme attribute) — intentional per spec, not a bug: every
+         new visitor sees light regardless of OS prefers-color-scheme. -->
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('nari-theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <title>Nari — Personalized Hair Care for Curly & Coily Hair</title>
+    <meta name="description" content="Nari is a personalized hair care app for curly, coily, and afro-textured hair. Discover your hair type, get tailored product recommendations, protect against heat and breakage, and find styles that love your texture." />
+    <meta property="og:title" content="Nari — Personalized Hair Care for Curly & Coily Hair" />
+    <meta property="og:description" content="Get your hair type, routines, and product picks designed for curls, coils, and afro texture." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://nari.example.com" />
     <meta property="og:image" content="https://nari.example.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" />
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-    <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" />
-    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" />
+    <!-- Fonts load without blocking first paint: media="print" makes the
+         browser fetch the stylesheet without treating it as render-blocking
+         (it doesn't apply to screen until the onload swap below fires).
+         The <noscript> fallback covers the no-JS case. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Figtree:wght@700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Figtree:wght@700&display=swap" />
+      <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" />
+    </noscript>
     <script type="application/ld+json">
       {
         "@context":"https://schema.org",

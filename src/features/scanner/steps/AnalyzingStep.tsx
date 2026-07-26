@@ -21,7 +21,7 @@ export function AnalyzingStep({ error, onRetry }: AnalyzingStepProps) {
 
   return (
     <div className={s.stepCenter}>
-      <div className={s.spinner} aria-hidden="true" />
+      <div className={s.shimmer} aria-hidden="true" />
       <p className={s.body} aria-live="polite">
         Reading your curl pattern…
       </p>

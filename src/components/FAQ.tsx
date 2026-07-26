@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import s from "@/styles/FAQ.module.css";
+import { useScrollReveal } from "@/styles/useScrollReveal";
 
 type FaqItem = {
   id: string;
@@ -13,24 +15,64 @@ const ITEMS: FaqItem[] = [
     id: "who",
     question: "Who is Nari for?",
     answer:
-      "Nari centers kinky, coily, and curly hair—our first audience. We’re expanding to support all curl patterns.",
-  },
-  {
-    id: "products",
-    question: "Will I need to buy new products?",
-    answer:
-      "Not necessarily. Nari can work with your current stash and suggest options across budgets when you’re ready to try something new.",
+      "Nari centers curly, coily, and afro textured hair patterns. We aim to expand support across all curl patterns!",
   },
   {
     id: "why",
     question: "Why was Nari created?",
     answer:
-      "We saw a lack of personalized hair care solutions for people with curly hair, especially Black individuals. Nari aims to fill that gap with tailored recommendations and support.",
+      "After transitioning her natural hair for over 2 years, founder of Nari, Nya Muir noticed a need for streamlined experimentation and understanding of natural hair textures. She figured if there was a way to make curly and/or Afro-textured hair care cheaper, faster, and more efficient, then more people would embrace their hair in its most natural state.",
+  },
+  {
+    id: "why-use",
+    question: "Why should I use Nari?",
+    answer:
+      "Feeling comfortable and beautiful in your natural hair shouldn't have so many obstacles. Let Nari help you save money, time, and effort to unlock your most authentic self.",
   },
 ];
 
+function FaqAccordionItem({
+  item,
+  isOpen,
+  onToggle,
+}: {
+  item: FaqItem;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const { ref, style } = useScrollReveal<HTMLDivElement>({ distance: 18 });
+
+  return (
+    <motion.div ref={ref} style={style} className={s.item} role="listitem">
+      <button
+        type="button"
+        className={s.trigger}
+        aria-expanded={isOpen}
+        aria-controls={`faq-panel-${item.id}`}
+        id={`faq-trigger-${item.id}`}
+        onClick={onToggle}
+      >
+        <span className={s.question}>{item.question}</span>
+        <span className={`${s.icon} ${isOpen ? s.iconOpen : ""}`} aria-hidden="true" />
+      </button>
+
+      <div
+        id={`faq-panel-${item.id}`}
+        className={`${s.answer} ${isOpen ? s.answerOpen : ""}`}
+        role="region"
+        aria-labelledby={`faq-trigger-${item.id}`}
+      >
+        <div className={s.answerInner}>
+          <p>{item.answer}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function FAQ() {
   const [openId, setOpenId] = useState<string | null>(null);
+  const heading = useScrollReveal<HTMLHeadingElement>();
 
   function toggle(id: string) {
     setOpenId((prev) => (prev === id ? null : id));
@@ -39,47 +81,19 @@ export default function FAQ() {
   return (
     <section className={s.section} aria-labelledby="faq-title">
       <div className={s.wrap}>
-        <h2 id="faq-title" className={s.heading}>
+        <motion.h2 id="faq-title" ref={heading.ref} style={heading.style} className={s.heading}>
           Frequently Asked Questions
-        </h2>
+        </motion.h2>
 
         <div className={s.list} role="list">
-          {ITEMS.map((item) => {
-            const isOpen = item.id === openId;
-            return (
-              <div
-                key={item.id}
-                className={s.item}
-                role="listitem"
-              >
-                <button
-                  type="button"
-                  className={s.trigger}
-                  aria-expanded={isOpen}
-                  aria-controls={`faq-panel-${item.id}`}
-                  id={`faq-trigger-${item.id}`}
-                  onClick={() => toggle(item.id)}
-                >
-                  <span className={s.question}>{item.question}</span>
-                  <span
-                    className={`${s.icon} ${isOpen ? s.iconOpen : ""}`}
-                    aria-hidden="true"
-                  />
-                </button>
-
-                <div
-                  id={`faq-panel-${item.id}`}
-                  className={`${s.answer} ${isOpen ? s.answerOpen : ""}`}
-                  role="region"
-                  aria-labelledby={`faq-trigger-${item.id}`}
-                >
-                  <div className={s.answerInner}>
-                    <p>{item.answer}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {ITEMS.map((item) => (
+            <FaqAccordionItem
+              key={item.id}
+              item={item}
+              isOpen={item.id === openId}
+              onToggle={() => toggle(item.id)}
+            />
+          ))}
         </div>
       </div>
     </section>

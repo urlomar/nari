@@ -2,9 +2,16 @@
 
 .section {
   position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* Matches #main's scroll-margin-top (RootLayout.module.css) — this
+   * section is a hash-scroll target (the nav's "Get updates" link goes to
+   * /#mailing), so it needs its own offset or the sticky header covers
+   * its top edge when scrolled into view. */
+  scroll-margin-top: 80px;
 
   padding: var(--space-4xl) var(--space-lg);
   color: var(--color-text);
@@ -16,6 +23,8 @@
 }
 
 .wrap {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 880px;
   text-align: center;
@@ -27,21 +36,11 @@
   color: var(--color-text-muted);
 }
 
-.curlRange {
-  margin: 0 0 var(--space-lg);
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--text-lg);
-  background: var(--gradient-accent);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .wrap h2 {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-3xl);
+  letter-spacing: -0.01em;
   margin-bottom: var(--space-xs);
 }
 
@@ -126,7 +125,7 @@
   border: none;
   padding: 0 var(--space-xl);
 
-  background: var(--gradient-accent);
+  background: var(--gradient-accent-solid);
   color: var(--color-white);
   font-weight: 600;
   font-size: var(--text-base);
@@ -145,10 +144,12 @@
 .button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
+  background: var(--gradient-accent-solid-hover);
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
+  transition: transform 80ms var(--ease-out);
 }
 
 .button:disabled {
@@ -161,14 +162,7 @@
   outline-offset: 3px;
 }
 
-/* helper text + error */
-.help {
-  margin: var(--space-2xs) 0 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  text-align: left;
-}
-
+/* error text */
 .error {
   margin: var(--space-xs) 0 0;
   font-size: var(--text-sm);
@@ -196,7 +190,6 @@
     width: 100%;
   }
 
-  .help,
   .error {
     text-align: center;
   }

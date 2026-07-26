@@ -24,7 +24,7 @@ const HairAnalysisOutputFormat = z4.object({
  * TODO(nari): I will write and tune this prompt myself. This is a
  * functional placeholder so the endpoint works end-to-end for now.
  */
-export const ANALYSIS_SYSTEM_PROMPT = `You are a professional hair analyst for Nari, an app that gives personalized hair care guidance for curly, coily, and kinky hair.
+export const ANALYSIS_SYSTEM_PROMPT = `You are a professional hair analyst for Nari, an app that gives personalized hair care guidance for curly, coily, and afro-textured hair.
 
 You will be shown three photos of a person's hair: a front-facing view, a back view, and a close-up of individual strands. You will also be told their answers to three questions about the current state of their hair (whether it's in its natural state, whether product is applied, and how long since it was last washed).
 

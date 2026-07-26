@@ -15,6 +15,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
   margin: 0 0 var(--space-xl);
 }
 
@@ -82,7 +83,7 @@
   background: var(--color-text);
   border-radius: var(--radius-pill);
   transform-origin: center;
-  transition: transform 180ms var(--ease-out);
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .icon::before {
@@ -108,8 +109,8 @@
   opacity: 0;
 
   transition:
-    max-height 230ms var(--ease-out),
-    opacity 200ms var(--ease-out);
+    max-height var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
 }
 
 .answerInner {
@@ -124,9 +125,13 @@
   color: var(--color-text-muted);
 }
 
-/* when open */
+/* when open — 320px, not the 220px this was originally tuned for: the
+ * founder-story answer ("Why was Nari created?") runs ~5-6 lines on
+ * mobile widths, and a maxheight-based accordion (needed since height:auto
+ * can't transition) clips silently rather than erroring if it's too
+ * small. */
 .answerOpen {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
 }
 
