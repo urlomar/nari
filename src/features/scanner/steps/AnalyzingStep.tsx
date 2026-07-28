@@ -23,10 +23,10 @@ export function AnalyzingStep({ error, onRetry }: AnalyzingStepProps) {
     <div className={s.stepCenter}>
       <div className={s.shimmer} aria-hidden="true" />
       <p className={s.body} aria-live="polite">
-        Reading your curl pattern…
+        Building your recommendations…
       </p>
       <p className={s.privacyLine}>
-        Your photos are analyzed and immediately deleted — never stored or shared.
+        Your answers are used only to build these recommendations — never stored or shared.
       </p>
     </div>
   );

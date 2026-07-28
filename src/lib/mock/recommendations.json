@@ -1,0 +1,69 @@
+{
+  "categories": [
+    {
+      "name": "Cleanse",
+      "picks": [
+        {
+          "name": "Sulfate-Free Moisture Shampoo",
+          "category": "Cleanse",
+          "why": "Cleanses without stripping the natural oils that 3B–4C coils depend on to stay hydrated."
+        },
+        {
+          "name": "Co-Wash Cleansing Conditioner",
+          "category": "Cleanse",
+          "why": "A gentler wash-day option for tightly coiled hair that dries out easily between washes."
+        },
+        {
+          "name": "Scalp Clarifying Rinse",
+          "category": "Cleanse",
+          "why": "Clears product buildup at the root without disturbing curl clumping further down the shaft."
+        }
+      ]
+    },
+    {
+      "name": "Style",
+      "picks": [
+        {
+          "name": "Curl Defining Cream",
+          "category": "Style",
+          "why": "Locks in moisture and encourages coil clumping for more consistent definition."
+        },
+        {
+          "name": "Edge Control Gel",
+          "category": "Style",
+          "why": "Lightweight hold for laying edges without flaking on coily textures."
+        },
+        {
+          "name": "Twist-Out Butter",
+          "category": "Style",
+          "why": "Rich enough to hold a twist-out's shape through 4A–4C shrinkage."
+        },
+        {
+          "name": "Leave-In Detangler Spray",
+          "category": "Style",
+          "why": "Softens strands enough to detangle 3C–4C coils without breakage."
+        }
+      ]
+    },
+    {
+      "name": "Treat",
+      "picks": [
+        {
+          "name": "Weekly Deep Conditioning Mask",
+          "category": "Treat",
+          "why": "Restores elasticity that's especially important for high-porosity, tightly coiled hair."
+        },
+        {
+          "name": "Protein-Strengthening Treatment",
+          "category": "Treat",
+          "why": "Reinforces strand strength for coily hair prone to breakage at the curl bends."
+        },
+        {
+          "name": "Hot Oil Scalp Treatment",
+          "category": "Treat",
+          "why": "Soothes a dry or sensitive scalp while sealing moisture into the lengths."
+        }
+      ]
+    }
+  ]
+}

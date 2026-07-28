@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { HairAnalysis } from "@/lib/schemas";
+import type { RecommendationSet } from "@/lib/schemas";
 import { track } from "@/lib/analytics";
 import { useSubscribe } from "@/lib/useSubscribe";
 import { fadeUp, staggerChildren } from "@/styles/motionVariants";
 import s from "@/styles/ScanResults.module.css";
 
 interface ScanResultsLocationState {
-  analysis?: HairAnalysis;
+  recommendations?: RecommendationSet;
 }
 
 /** The most beautiful, screenshot-worthy screen in the app. */
 export default function ScanResults() {
   const location = useLocation();
   const navigate = useNavigate();
-  const analysis = (location.state as ScanResultsLocationState | null)?.analysis;
+  const recommendations = (location.state as ScanResultsLocationState | null)?.recommendations;
 
-  if (!analysis) {
+  if (!recommendations) {
     return (
       <div className={s.screen}>
         <div className={s.card}>
@@ -34,27 +34,32 @@ export default function ScanResults() {
     <div className={s.screen}>
       <motion.div className={s.card} initial="hidden" animate="visible" variants={staggerChildren}>
         <motion.div variants={fadeUp}>
-          <p className={s.eyebrow}>Your hair type</p>
-          <h1 className={s.heading}>{analysis.curlPattern}</h1>
-          <p className={s.body}>{analysis.conditionNotes}</p>
-          <p className={s.hint}>Estimated porosity: {analysis.porosity}</p>
+          <p className={s.eyebrow}>Your recommendations</p>
+          <h1 className={s.heading}>Built for your hair</h1>
+          <p className={s.body}>Based on your diagnostic, here&rsquo;s what we&rsquo;d reach for first.</p>
         </motion.div>
 
-        <motion.ul className={s.recommendationList} variants={fadeUp}>
-          {analysis.recommendations.map((rec) => (
-            <li key={rec.title} className={s.recommendationCard}>
-              <h2 className={s.recommendationTitle}>{rec.title}</h2>
-              <p className={s.body}>{rec.why}</p>
-            </li>
-          ))}
-        </motion.ul>
+        {recommendations.categories.map((category) => (
+          <motion.section key={category.name} className={s.categorySection} variants={fadeUp}>
+            <h2 className={s.categoryHeading}>{category.name}</h2>
+            <ul className={s.recommendationList}>
+              {category.picks.map((pick) => (
+                <li key={pick.name} className={s.recommendationCard}>
+                  <span className={s.categoryBadge}>{pick.category}</span>
+                  <h3 className={s.recommendationTitle}>{pick.name}</h3>
+                  <p className={s.body}>{pick.why}</p>
+                </li>
+              ))}
+            </ul>
+          </motion.section>
+        ))}
 
         <motion.p className={s.privacyLine} variants={fadeUp}>
-          Your photos are analyzed and immediately deleted — never stored or shared.
+          Your answers are used only to build these recommendations — never stored or shared.
         </motion.p>
 
         <motion.div variants={fadeUp}>
-          <EmailCapture hairType={analysis.curlPattern} />
+          <EmailCapture />
         </motion.div>
 
         <motion.button
@@ -70,7 +75,7 @@ export default function ScanResults() {
   );
 }
 
-function EmailCapture({ hairType }: { hairType: string }) {
+function EmailCapture() {
   const { submit, loading, error, success } = useSubscribe();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -78,9 +83,9 @@ function EmailCapture({ hairType }: { hairType: string }) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await submit({ firstName, lastName, email, hairType });
+    const ok = await submit({ firstName, lastName, email });
     if (ok) {
-      track("email_captured", { email_hint: email.slice(0, 3) + "***", hair_type: hairType });
+      track("email_captured", { email_hint: email.slice(0, 3) + "***" });
     }
   }
 

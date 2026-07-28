@@ -5,7 +5,8 @@ import { Link } from "react-router-dom";
 import s from "../styles/Hero.module.css";
 import cubeStyles from "./Cube.module.css";
 import { GradientRibbon } from "./GradientRibbon";
-import { fadeUp, staggerLetters, letterFade, clipReveal } from "@/styles/motionVariants";
+import { Typewriter } from "./Typewriter";
+import { fadeUp, clipReveal } from "@/styles/motionVariants";
 import { track } from "@/lib/analytics";
 
 // Lazy: three.js + @react-three/fiber + drei add real weight (~230kB
@@ -48,20 +49,7 @@ export default function Hero() {
         variants={heroGroupStagger}
       >
         <div className={s.copy}>
-          <motion.p
-            className={s.eyebrow}
-            initial="hidden"
-            animate="visible"
-            variants={staggerLetters}
-            role="text"
-            aria-label={WORDMARK}
-          >
-            {WORDMARK.split("").map((letter, i) => (
-              <motion.span key={i} variants={letterFade} aria-hidden="true">
-                {letter}
-              </motion.span>
-            ))}
-          </motion.p>
+          <Typewriter text={WORDMARK} className={s.eyebrow} />
           <motion.h1 id="hero-title" className={s.title} variants={fadeUp}>
             Your hair, <span className={s.accent}>finally understood.</span>
           </motion.h1>

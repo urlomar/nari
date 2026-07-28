@@ -1,15 +1,7 @@
-import type { ScanAnswers, ScanPhotos } from "@/lib/schemas";
+import type { HairContext } from "@/lib/schemas";
 
-export type PhotoStepId = "photo-front" | "photo-back" | "photo-strand";
-export type QuestionStepId = "question-naturalState" | "question-product" | "question-freshness";
-export type StepId = "welcome" | PhotoStepId | QuestionStepId | "confirmation" | "analyzing";
-
-export interface PhotoStepConfig {
-  id: PhotoStepId;
-  key: keyof ScanPhotos;
-  title: string;
-  instruction: string;
-}
+export type QuestionStepId = "question-naturalState" | "question-product";
+export type StepId = "intro" | QuestionStepId | "photo" | "quiz" | "analyzing";
 
 export interface QuestionOption {
   value: string;
@@ -18,31 +10,10 @@ export interface QuestionOption {
 
 export interface QuestionStepConfig {
   id: QuestionStepId;
-  key: keyof ScanAnswers;
+  key: keyof HairContext;
   question: string;
   options: QuestionOption[];
 }
-
-export const PHOTO_STEPS: PhotoStepConfig[] = [
-  {
-    id: "photo-front",
-    key: "front",
-    title: "Front-facing hair",
-    instruction: "Face the camera and pull your hair back so we can see your hairline and overall shape.",
-  },
-  {
-    id: "photo-back",
-    key: "back",
-    title: "Back of your head",
-    instruction: "Have someone snap the back of your head, or use a mirror — we want to see the crown and nape.",
-  },
-  {
-    id: "photo-strand",
-    key: "strand",
-    title: "Close-up of your strands",
-    instruction: "Get in close on a few strands so we can read your curl pattern.",
-  },
-];
 
 export const QUESTION_STEPS: QuestionStepConfig[] = [
   {
@@ -66,22 +37,24 @@ export const QUESTION_STEPS: QuestionStepConfig[] = [
       { value: "heavy", label: "Heavy product or styled" },
     ],
   },
-  {
-    id: "question-freshness",
-    key: "freshness",
-    question: "How would you describe your hair today?",
-    options: [
-      { value: "fresh", label: "Freshly washed" },
-      { value: "few-days", label: "A few days in" },
-      { value: "wash-day", label: "Wash day needed" },
-    ],
-  },
 ];
 
-export const STEP_ORDER: StepId[] = [
-  "welcome",
-  ...PHOTO_STEPS.map((s) => s.id),
-  ...QUESTION_STEPS.map((s) => s.id),
-  "confirmation",
-  "analyzing",
-];
+// The 10-question diagnostic quiz. Progress-bar/section-label math below
+// assumes this stays fixed at 10 — see ScanProgress.tsx.
+export const QUIZ_QUESTION_COUNT = 10;
+
+// One "almost there" interstitial, shown once the user has answered this
+// many quiz questions (0-indexed quizIndex reaching this value) — i.e.
+// after question 6, before question 7. See ScannerRoute's SET_QUIZ_ANSWER
+// handling.
+export const INTERSTITIAL_AFTER_INDEX = 6;
+
+// Linear steps before the quiz begins. The quiz itself isn't a single
+// StepId per question — QuizStep reads quizIndex off the reducer state —
+// so STEP_ORDER only needs to represent it once.
+export const STEP_ORDER: StepId[] = ["intro", ...QUESTION_STEPS.map((s) => s.id), "photo", "quiz", "analyzing"];
+
+// Total units the shared progress bar spans: the 2 hair-context questions +
+// 1 photo + 10 quiz questions. Intro and the analyzing screen aren't steps
+// for progress purposes.
+export const TOTAL_PROGRESS_UNITS = QUESTION_STEPS.length + 1 + QUIZ_QUESTION_COUNT;

@@ -92,6 +92,51 @@ export const AnalyzeRequestSchema = z.object({
 });
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
+// --- Diagnostic quiz + mock recommendations (src/lib/dataSource.ts) ---
+
+export const QuizOptionSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+});
+export type QuizOption = z.infer<typeof QuizOptionSchema>;
+
+export const QuizQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  options: z.array(QuizOptionSchema).min(2),
+});
+export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
+
+// questionId -> selected option value
+export const QuizAnswersSchema = z.record(z.string(), z.string());
+export type QuizAnswers = z.infer<typeof QuizAnswersSchema>;
+
+// The 1-2 pre-photo context questions, answered before the quiz starts.
+export const HairContextSchema = z.object({
+  naturalState: NaturalStateAnswerSchema,
+  product: ProductAnswerSchema,
+});
+export type HairContext = z.infer<typeof HairContextSchema>;
+
+export const ProductPickSchema = z.object({
+  name: z.string(),
+  category: z.string(),
+  why: z.string(),
+  imageUrl: z.string().optional(),
+});
+export type ProductPick = z.infer<typeof ProductPickSchema>;
+
+export const RecommendationCategorySchema = z.object({
+  name: z.string(),
+  picks: z.array(ProductPickSchema).min(1),
+});
+export type RecommendationCategory = z.infer<typeof RecommendationCategorySchema>;
+
+export const RecommendationSetSchema = z.object({
+  categories: z.array(RecommendationCategorySchema).min(1),
+});
+export type RecommendationSet = z.infer<typeof RecommendationSetSchema>;
+
 // CTA.tsx / results-page email capture — shared by useSubscribe.
 export const SubscribeInputSchema = z.object({
   firstName: z.string().min(1, "First name is required."),

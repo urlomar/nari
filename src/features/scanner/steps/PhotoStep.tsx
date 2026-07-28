@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { PhotoCapture } from "../components/PhotoCapture";
-import type { PhotoStepConfig } from "../steps";
 import s from "../scanner.module.css";
 
 export interface PhotoStepProps {
-  config: PhotoStepConfig;
-  stepNumber: number;
-  totalSteps: number;
   file: File | null;
   previewUrl: string | null;
   compressing: boolean;
@@ -16,27 +12,15 @@ export interface PhotoStepProps {
   onNext: () => void;
 }
 
-export function PhotoStep({
-  config,
-  stepNumber,
-  totalSteps,
-  file,
-  previewUrl,
-  compressing,
-  onCapture,
-  onRetake,
-  onBack,
-  onNext,
-}: PhotoStepProps) {
+export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, onBack, onNext }: PhotoStepProps) {
   const [error, setError] = useState<string | null>(null);
 
   return (
     <div className={s.step}>
-      <p className={s.progress}>
-        {stepNumber}/{totalSteps}
+      <h2 className={s.heading}>A photo of your hair</h2>
+      <p className={s.body}>
+        Face the camera and pull your hair back so we can see your natural texture and shape.
       </p>
-      <h2 className={s.heading}>{config.title}</h2>
-      <p className={s.body}>{config.instruction}</p>
 
       {previewUrl ? (
         <div className={s.previewWrap}>

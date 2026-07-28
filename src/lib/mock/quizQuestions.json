@@ -1,0 +1,99 @@
+[
+  {
+    "id": "curlPattern",
+    "text": "Which best describes your curl pattern?",
+    "options": [
+      { "value": "3b", "label": "Springy, well-defined curls (3B)" },
+      { "value": "3c", "label": "Tight corkscrew curls (3C)" },
+      { "value": "4a", "label": "Soft, springy coils (4A)" },
+      { "value": "4b", "label": "Tightly coiled, zigzag pattern (4B)" },
+      { "value": "4c", "label": "Densely packed coils, less defined (4C)" }
+    ]
+  },
+  {
+    "id": "porosity",
+    "text": "How does your hair react to water?",
+    "options": [
+      { "value": "low", "label": "Water beads up, takes a while to get wet" },
+      { "value": "medium", "label": "Absorbs water at a normal pace" },
+      { "value": "high", "label": "Soaks up water almost instantly" },
+      { "value": "unsure", "label": "Not sure" }
+    ]
+  },
+  {
+    "id": "shrinkage",
+    "text": "How much does your hair shrink when it dries?",
+    "options": [
+      { "value": "minimal", "label": "Barely any shrinkage" },
+      { "value": "moderate", "label": "Noticeable — maybe 30–50%" },
+      { "value": "significant", "label": "Major shrinkage, 50%+" }
+    ]
+  },
+  {
+    "id": "density",
+    "text": "How would you describe your hair density?",
+    "options": [
+      { "value": "thin", "label": "Thin — scalp is easy to see" },
+      { "value": "medium", "label": "Medium — some scalp visible" },
+      { "value": "thick", "label": "Thick — scalp is hard to see" }
+    ]
+  },
+  {
+    "id": "goals",
+    "text": "What's your top hair goal right now?",
+    "options": [
+      { "value": "moisture", "label": "More moisture, less dryness" },
+      { "value": "definition", "label": "Better curl definition" },
+      { "value": "growth", "label": "Length retention / growth" },
+      { "value": "breakage", "label": "Less breakage" }
+    ]
+  },
+  {
+    "id": "washFrequency",
+    "text": "How often do you wash your hair?",
+    "options": [
+      { "value": "weekly", "label": "Once a week" },
+      { "value": "biweekly", "label": "Every 1–2 weeks" },
+      { "value": "monthly", "label": "Every 3–4 weeks" },
+      { "value": "varies", "label": "It varies a lot" }
+    ]
+  },
+  {
+    "id": "protectiveStyles",
+    "text": "Do you wear protective styles often?",
+    "options": [
+      { "value": "often", "label": "Yes, most of the time" },
+      { "value": "sometimes", "label": "Occasionally" },
+      { "value": "rarely", "label": "Rarely or never" }
+    ]
+  },
+  {
+    "id": "scalp",
+    "text": "How would you describe your scalp?",
+    "options": [
+      { "value": "dry", "label": "Dry or flaky" },
+      { "value": "oily", "label": "Oily, especially close to wash day" },
+      { "value": "balanced", "label": "Pretty balanced" },
+      { "value": "sensitive", "label": "Sensitive or itchy" }
+    ]
+  },
+  {
+    "id": "heatStyling",
+    "text": "How often do you use heat styling tools?",
+    "options": [
+      { "value": "never", "label": "Never" },
+      { "value": "rarely", "label": "A few times a year" },
+      { "value": "occasionally", "label": "About once a month" },
+      { "value": "often", "label": "Weekly or more" }
+    ]
+  },
+  {
+    "id": "routineTime",
+    "text": "How much time do you want to spend on your routine?",
+    "options": [
+      { "value": "minimal", "label": "As little as possible" },
+      { "value": "moderate", "label": "A moderate, consistent routine" },
+      { "value": "involved", "label": "I don't mind an involved routine" }
+    ]
+  }
+]
