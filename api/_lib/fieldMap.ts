@@ -19,6 +19,12 @@
  * silently dropped — add them here if/when they're needed.
  *
  * No image URL column exists yet in the live base.
+ *
+ * Server-only: lives under api/_lib (not src/lib) because api/*.ts
+ * functions run as standalone Vercel Lambdas and only reliably bundle
+ * files that stay within the api/ directory tree — see the "Product Data
+ * Pipeline" section of CLAUDE.md for the production incident that found
+ * this the hard way.
  */
 export const FIELD_MAP = {
   "Product name": "name",

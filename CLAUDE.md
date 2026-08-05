@@ -40,13 +40,14 @@ catalog) => RecommendationSet`) is Prompt 2's deliverable, not this one.
 1. **`api/products.ts`** (Vercel serverless function) authenticates to the
    Airtable REST API and fetches Nya's product catalog, paginating past
    Airtable's 100-record-per-page cap until exhausted.
-2. Raw records are normalized through **`src/lib/products/fieldMap.ts`**
+2. Raw records are normalized through **`api/_lib/fieldMap.ts`**
    (Airtable column name → internal property name) and validated by the
-   Zod schema in **`src/lib/products/schema.ts`**, which also coerces
-   types (checkboxes → booleans, numbers, lowercased/trimmed tag arrays)
-   and produces a **normalization report** (counts, skipped rows +
-   reasons, fields present in the response but unmapped, mapped fields
-   missing from the response).
+   Zod schema in **`api/_lib/schema.ts`**, which also coerces types
+   (checkboxes → booleans, numbers, lowercased/trimmed tag arrays) and
+   produces a **normalization report** (counts, skipped rows + reasons,
+   fields present in the response but unmapped, mapped fields missing
+   from the response). See "Server code boundary" below for why this
+   lives under `api/_lib/` and not `src/lib/`.
 3. Results are cached in-memory for ~10 minutes so Nya's catalog edits go
    live without a redeploy, without hitting Airtable on every request. If
    a refetch fails and a cache exists, the stale cache is served (flagged
@@ -61,16 +62,54 @@ catalog) => RecommendationSet`) is Prompt 2's deliverable, not this one.
    report as JSON — the verification surface for this pipeline. Temporary;
    Prompt 4 removes or gates it once the real results page is live.
 
+### Server code boundary — why normalization lives under `api/_lib/`, not `src/lib/`
+`api/products.ts` originally imported its normalization code from
+`src/lib/products/`, the same way `api/analyze.ts` imports
+`src/lib/schemas` from outside `api/`. That shipped a working local dev
+experience but **crashed in Vercel production** with
+`FUNCTION_INVOCATION_FAILED`: the compiled Lambda's import resolved to an
+absolute path (`/src/lib/products/schema.ts`, `.ts` extension, doesn't
+exist in the Lambda runtime) — Vercel's Node function builder doesn't
+reliably trace/bundle imports that reach outside the `api/` directory the
+way a general-purpose bundler (esbuild in "bundle" mode, which is what
+locally proved the module resolution itself was fine) would. `api/
+subscribe.ts`, the one endpoint confirmed working in production, has
+**zero local imports** — only npm packages — which is the actual reason
+it never hit this.
+
+Fix: all server-side normalization code (`normalizeProduct`,
+`buildNormalizationReport`, `FIELD_MAP`, the Zod `ProductSchema`) now
+lives under **`api/_lib/`** (underscore prefix = internal helper, not a
+routable endpoint) so `api/products.ts` stays self-contained within
+`api/`, matching `subscribe.ts`'s working pattern. The client still needs
+the `Product` TypeScript type (for `dataSource.ts` / `ProductsDebug.tsx`)
+— `src/lib/products/schema.ts` gets it via `import type { Product } from
+"../../../api/_lib/schema"`, which is erased entirely at compile time, so
+no runtime dependency crosses the boundary in either direction. The
+client keeps its own small, independent Zod schema for validating the
+`/api/products` response envelope (shape-level only — the server already
+did the deep per-field validation, so this doesn't need to duplicate
+`ProductSchema`).
+
+**`api/analyze.ts` has the identical at-risk pattern** (`import {
+AnalyzeRequestSchema, HairAnalysisSchema } from "../src/lib/schemas"`) and
+was never confirmed working against a real Vercel deploy (see Milestone 6
+in PLAN.md) — if it has the same bug, nobody would notice, because
+`analyzeHair.ts` silently falls back to rules-based results on *any*
+`/api/analyze` failure. Flagged, not fixed here — out of scope for the
+product pipeline, but worth a dedicated check before relying on real
+vision analysis in production.
+
 ### Updating `FIELD_MAP` when Nya renames or adds a column
-`FIELD_MAP` in `fieldMap.ts` is the single place Airtable's human-editable
-column names are allowed to appear — never in scoring logic, components,
-or tests. If Nya renames a column, update its key in `FIELD_MAP`; if she
-adds a column that should flow through, add a new entry (and a matching
-field on `ProductSchema` + an entry in `schema.ts`'s `FIELD_KINDS` map for
-its coercion type). You don't have to react immediately, though — an
-unmapped column doesn't break anything; it just shows up in the
-normalization report's `unmappedFields` list so it's visible rather than
-silently dropped.
+`FIELD_MAP` in `api/_lib/fieldMap.ts` is the single place Airtable's
+human-editable column names are allowed to appear — never in scoring
+logic, components, or tests. If Nya renames a column, update its key in
+`FIELD_MAP`; if she adds a column that should flow through, add a new
+entry (and a matching field on `ProductSchema` + an entry in
+`api/_lib/schema.ts`'s `FIELD_KINDS` map for its coercion type). You
+don't have to react immediately, though — an unmapped column doesn't
+break anything; it just shows up in the normalization report's
+`unmappedFields` list so it's visible rather than silently dropped.
 
 ### Validation / skip policy
 Every row is parsed independently; invalid rows (missing a required field

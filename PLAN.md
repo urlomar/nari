@@ -437,4 +437,17 @@ against tags instead, no `api/analyze.ts` involvement.
   the required `Product name` field).
 - No image URL column exists yet in the live base (non-blocking — schema
   field is optional, Prompt 4 handles absence).
+- **Production fix (post-ship):** `api/products.ts` crashed on Vercel with
+  `FUNCTION_INVOCATION_FAILED` — its normalization import reached outside
+  `api/` into `src/lib/products/`, which Vercel's Node function builder
+  didn't trace into the Lambda bundle (confirmed working locally the whole
+  time, since local testing used a general-purpose bundler that traces
+  cross-directory imports fine — the gap was Vercel-builder-specific).
+  Moved all server-side normalization code to `api/_lib/` so the function
+  matches `api/subscribe.ts`'s working pattern (zero imports outside
+  `api/`); the client keeps only a type-only import of `Product` (erased
+  at compile time) plus its own lightweight response-shape validator. See
+  CLAUDE.md "Server code boundary" for the full writeup — `api/analyze.ts`
+  has the identical import pattern and was flagged as an unconfirmed
+  same-risk case, not yet fixed.
 - Next: Prompt 2 (`scoring.ts` + Vitest cases).

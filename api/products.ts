@@ -4,7 +4,7 @@ import {
   type AirtableRecord,
   type NormalizationReport,
   type Product,
-} from "../src/lib/products/schema";
+} from "./_lib/schema";
 
 /**
  * Nari product catalog endpoint.
