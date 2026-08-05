@@ -77,7 +77,7 @@ subscribe.ts`, the one endpoint confirmed working in production, has
 **zero local imports** — only npm packages — which is the actual reason
 it never hit this.
 
-Fix: all server-side normalization code (`normalizeProduct`,
+Fix, part 1: all server-side normalization code (`normalizeProduct`,
 `buildNormalizationReport`, `FIELD_MAP`, the Zod `ProductSchema`) now
 lives under **`api/_lib/`** (underscore prefix = internal helper, not a
 routable endpoint) so `api/products.ts` stays self-contained within
@@ -91,14 +91,56 @@ client keeps its own small, independent Zod schema for validating the
 did the deep per-field validation, so this doesn't need to duplicate
 `ProductSchema`).
 
-**`api/analyze.ts` has the identical at-risk pattern** (`import {
-AnalyzeRequestSchema, HairAnalysisSchema } from "../src/lib/schemas"`) and
-was never confirmed working against a real Vercel deploy (see Milestone 6
-in PLAN.md) — if it has the same bug, nobody would notice, because
-`analyzeHair.ts` silently falls back to rules-based results on *any*
-`/api/analyze` failure. Flagged, not fixed here — out of scope for the
-product pipeline, but worth a dedicated check before relying on real
-vision analysis in production.
+**Fix, part 2 — a second, distinct failure after part 1.** Moving the
+code into `api/_lib/` fixed the tracing problem but produced a *new*,
+more specific crash: `ERR_MODULE_NOT_FOUND: Cannot find module
+'/var/task/api/_lib/schema'` (no `.ts`/`.js` extension in the error this
+time). Root cause: the project's `package.json` has `"type": "module"`,
+and **Node's own ESM loader requires explicit file extensions on
+relative imports** — `import ... from "./_lib/schema"` is only valid
+under a bundler (which resolves it for you); plain Node needs
+`"./_lib/schema.js"`. Vercel's Node function builder transpiles each
+`api/*.ts` file **individually** (not into one bundled file) and leaves
+import specifiers exactly as written in the source — it doesn't rewrite
+or add extensions. `tsc` doesn't catch this because `tsconfig.json` uses
+`"moduleResolution": "bundler"`, which deliberately tolerates
+extensionless relative imports on the assumption a bundler is doing the
+resolving — true for Vite locally, false for how Vercel packages each
+function. **This is why typechecking green was not sufficient
+verification** — confirmed by building a harness that transpiles each
+`api/*.ts` file individually (via esbuild's transform-only mode, which —
+unlike bundle mode — does not resolve or rewrite import specifiers,
+faithfully reproducing what Vercel's builder does) into a mirrored
+directory tree with its own `"type": "module"` package.json, then lets
+Node's real ESM resolver load it. That harness reproduces the exact
+`ERR_MODULE_NOT_FOUND` shape against the old extensionless imports (verified
+as a negative control) and resolves cleanly against the current code.
+
+Fix: every relative import inside `api/` now carries an explicit `.js`
+extension pointing at the file's *compiled* name (`"./_lib/schema.js"`,
+`"./fieldMap.js"`, `"./_lib/schemas.js"`) even though the source files are
+`.ts` — this is intentional and correct under `moduleResolution:
+"bundler"`, which resolves a `.js`-suffixed relative specifier against
+the sibling `.ts` file. If you add a new relative import anywhere under
+`api/`, it needs the same explicit `.js` suffix, or it will typecheck
+fine locally and still crash in production.
+
+**`api/analyze.ts` had the identical at-risk pattern** (`import {
+AnalyzeRequestSchema, HairAnalysisSchema } from "../src/lib/schemas"`,
+crossing outside `api/` with no extension) and was never confirmed
+working against a real Vercel deploy (see Milestone 6 in PLAN.md) — a
+live risk, not just a theoretical one, since `analyzeHair.ts` silently
+falls back to rules-based results on *any* `/api/analyze` failure, so a
+broken production endpoint could have gone unnoticed indefinitely. Fixed
+alongside the products pipeline fix: **`api/_lib/schemas.ts`** now holds
+a server-only subset of `src/lib/schemas.ts` (just the pieces
+`analyze.ts` needs — `AnalyzeRequestSchema`, `HairAnalysisSchema`, and
+their transitive dependencies), and `analyze.ts` imports from
+`"./_lib/schemas.js"`. `src/lib/schemas.ts` remains the single source of
+truth for client code (used far more broadly there — quiz answers, scan
+state, etc.) and is intentionally *not* moved; the `api/_lib` copy is a
+deliberate, documented duplication, kept in sync by hand if either
+schema changes.
 
 ### Updating `FIELD_MAP` when Nya renames or adds a column
 `FIELD_MAP` in `api/_lib/fieldMap.ts` is the single place Airtable's

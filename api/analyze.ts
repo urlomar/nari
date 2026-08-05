@@ -2,7 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import * as z4 from "zod/v4";
-import { AnalyzeRequestSchema, HairAnalysisSchema, type AnalyzeRequest } from "../src/lib/schemas";
+import { AnalyzeRequestSchema, HairAnalysisSchema, type AnalyzeRequest } from "./_lib/schemas.js";
 
 /**
  * zodOutputFormat() requires zod/v4-shaped schemas specifically, but the

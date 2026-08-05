@@ -446,8 +446,26 @@ against tags instead, no `api/analyze.ts` involvement.
   Moved all server-side normalization code to `api/_lib/` so the function
   matches `api/subscribe.ts`'s working pattern (zero imports outside
   `api/`); the client keeps only a type-only import of `Product` (erased
-  at compile time) plus its own lightweight response-shape validator. See
-  CLAUDE.md "Server code boundary" for the full writeup — `api/analyze.ts`
-  has the identical import pattern and was flagged as an unconfirmed
-  same-risk case, not yet fixed.
+  at compile time) plus its own lightweight response-shape validator.
+- **Second production fix, same day:** after the `api/_lib/` move, a
+  *different*, more specific crash surfaced —
+  `ERR_MODULE_NOT_FOUND: Cannot find module '/var/task/api/_lib/schema'`.
+  Cause: the project is `"type": "module"`, so Node's own ESM loader
+  requires explicit `.js` extensions on relative imports; Vercel
+  transpiles each `api/*.ts` file individually (not bundled) and doesn't
+  add them. `tsc` didn't catch this because `moduleResolution: "bundler"`
+  tolerates extensionless imports on the assumption something else
+  resolves them — true locally (Vite), false for how Vercel packages
+  functions. Fixed by adding explicit `.js` extensions to every relative
+  import under `api/`. Also fixed `api/analyze.ts`'s identical
+  cross-boundary import (never confirmed working in production, silently
+  maskable by `analyzeHair.ts`'s fallback-on-failure behavior) by giving
+  it the same treatment: a new `api/_lib/schemas.ts` holds a server-only
+  subset of `src/lib/schemas.ts`. Verified with a purpose-built harness
+  that transpiles each file individually (esbuild transform-only mode,
+  which — unlike bundling — doesn't resolve/rewrite import specifiers) and
+  loads the result with Node's real ESM resolver; confirmed as a faithful
+  reproduction by checking it fails the same way against the old code
+  (negative control) before confirming it passes against the fix. See
+  CLAUDE.md "Server code boundary" for the full writeup.
 - Next: Prompt 2 (`scoring.ts` + Vitest cases).

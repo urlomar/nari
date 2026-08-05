@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FIELD_MAP, type AirtableFieldName, type ProductFieldName } from "./fieldMap";
+import { FIELD_MAP, type AirtableFieldName, type ProductFieldName } from "./fieldMap.js";
 
 /**
  * Server-only: normalization/validation for the Airtable product catalog.
