@@ -1,0 +1,61 @@
+.page {
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  padding: var(--space-2xl) var(--space-lg);
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  margin: 0 0 var(--space-2xs);
+}
+
+.pageNote {
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2xl);
+}
+
+.section {
+  margin-bottom: var(--space-2xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-xs);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-left: var(--space-xs);
+}
+
+.badgeOk {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.badgeStale {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.pre {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  overflow-x: auto;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}

@@ -418,3 +418,23 @@ pending user confirmation before calling it shipped.**
 - [ ] **Go/no-go decision on the upgraded cube — pending the user**, per
       the brief's own checkpoint instruction. Do not treat Part F as
       shipped until confirmed either way.
+
+## Product recommendation feature — Prompt 1 of 4: Airtable data pipeline
+**Status: done.** Data pipeline only — no scoring, quiz, or results UI
+(Prompts 2-4). `api/products.ts` fetches Nya's Airtable catalog
+(paginated, ~10min in-memory cache, serves stale on failure),
+`src/lib/products/fieldMap.ts` + `schema.ts` normalize/validate it into a
+typed `Product[]`, `dataSource.ts` exposes it via `getProducts()`, and
+`/debug/products` (dev-only) renders the parsed catalog + normalization
+report for verification. See CLAUDE.md "Product Data Pipeline" for full
+details, the live-schema mismatches found, the corrected `.env.local`
+Airtable vars (base ID was a mangled full URL path; table name didn't
+resolve, switched to table ID), and the verified distinct tag values
+Prompt 2 needs. Corrected an earlier (uncommitted-to-docs) plan to
+generate recommendations via an LLM — matching is deterministic scoring
+against tags instead, no `api/analyze.ts` involvement.
+- Live catalog: 47 records fetched, 45 valid, 2 skipped (both missing
+  the required `Product name` field).
+- No image URL column exists yet in the live base (non-blocking — schema
+  field is optional, Prompt 4 handles absence).
+- Next: Prompt 2 (`scoring.ts` + Vitest cases).

@@ -1,4 +1,5 @@
 import type { HairContext, QuizAnswers, QuizQuestion, RecommendationSet } from "./schemas";
+import { ProductsResponseSchema, type ProductsResponse } from "./products/schema";
 import quizQuestionsData from "./mock/quizQuestions.json";
 import recommendationsData from "./mock/recommendations.json";
 
@@ -24,4 +25,24 @@ export function getRecommendations(
   _hairContext: HairContext
 ): Promise<RecommendationSet> {
   return delay(recommendationsData as RecommendationSet, RECOMMENDATIONS_DELAY_MS);
+}
+
+/**
+ * Real catalog data, backed by /api/products (Airtable, cached server-side).
+ * Not yet consumed by getRecommendations() — that stays on mock data until
+ * Prompt 4 wires in the scoring function from Prompt 2.
+ */
+export async function getProducts(): Promise<ProductsResponse> {
+  const res = await fetch("/api/products");
+  if (!res.ok) {
+    throw new Error(`Failed to load products (status ${res.status}).`);
+  }
+
+  const data = await res.json();
+  const parsed = ProductsResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Products response failed schema validation.");
+  }
+
+  return parsed.data;
 }

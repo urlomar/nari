@@ -9,6 +9,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ScannerRoute = lazy(() => import("./features/scanner/ScannerRoute"));
 const ScanResults = lazy(() => import("./pages/ScanResults"));
 const SwatchesLazy = lazy(() => import("./pages/dev/Swatches"));
+const ProductsDebugLazy = lazy(() => import("./pages/dev/ProductsDebug"));
 
 const router = createBrowserRouter([
   {
@@ -28,7 +29,11 @@ const router = createBrowserRouter([
   // replaced at build time, so this branch (and its dynamic import) is
   // dead-code-eliminated from production bundles.
   ...(import.meta.env.DEV
-    ? [{ path: "/dev/swatches", element: <SwatchesLazy /> }]
+    ? [
+        { path: "/dev/swatches", element: <SwatchesLazy /> },
+        // Prompt 1 verification surface — temporary, see ProductsDebug.tsx.
+        { path: "/debug/products", element: <ProductsDebugLazy /> },
+      ]
     : [])
 ]);
 

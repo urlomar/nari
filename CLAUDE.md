@@ -23,6 +23,107 @@
   "Spike 2 / Part F" for its current go/no-go status before assuming it's
   final.
 
+## Product Data Pipeline
+
+Product recommendations are matched via a **deterministic scoring
+function**, not an LLM call. An earlier plan described generating
+recommendations via an LLM; that approach is cancelled — Nya's Airtable
+catalog is cleanly tagged (hair type/porosity/density/etc.), so matching
+quiz answers to products doesn't need generation, just comparison. There
+is no per-request AI cost in this path and `api/analyze.ts` (the vision
+pipeline used for the scan's hair analysis) is not involved in product
+matching at all — those are two separate features that happen to share a
+scan flow. The scoring function itself (`scoring.ts`, `(quizAnswers,
+catalog) => RecommendationSet`) is Prompt 2's deliverable, not this one.
+
+### How it works end to end
+1. **`api/products.ts`** (Vercel serverless function) authenticates to the
+   Airtable REST API and fetches Nya's product catalog, paginating past
+   Airtable's 100-record-per-page cap until exhausted.
+2. Raw records are normalized through **`src/lib/products/fieldMap.ts`**
+   (Airtable column name → internal property name) and validated by the
+   Zod schema in **`src/lib/products/schema.ts`**, which also coerces
+   types (checkboxes → booleans, numbers, lowercased/trimmed tag arrays)
+   and produces a **normalization report** (counts, skipped rows +
+   reasons, fields present in the response but unmapped, mapped fields
+   missing from the response).
+3. Results are cached in-memory for ~10 minutes so Nya's catalog edits go
+   live without a redeploy, without hitting Airtable on every request. If
+   a refetch fails and a cache exists, the stale cache is served (flagged
+   via `meta.stale`) rather than erroring — Airtable being briefly
+   unavailable must not break the results page.
+4. **`src/lib/dataSource.ts`**'s `getProducts()` is the only sanctioned
+   way for the client to reach this data — no component should call
+   `/api/products` directly. `getRecommendations()` still returns mock
+   data until Prompt 4 wires the real scoring function in.
+5. **`/debug/products`** (dev-only, gated by `import.meta.env.DEV` the
+   same way `/dev/swatches` is) renders the parsed catalog + normalization
+   report as JSON — the verification surface for this pipeline. Temporary;
+   Prompt 4 removes or gates it once the real results page is live.
+
+### Updating `FIELD_MAP` when Nya renames or adds a column
+`FIELD_MAP` in `fieldMap.ts` is the single place Airtable's human-editable
+column names are allowed to appear — never in scoring logic, components,
+or tests. If Nya renames a column, update its key in `FIELD_MAP`; if she
+adds a column that should flow through, add a new entry (and a matching
+field on `ProductSchema` + an entry in `schema.ts`'s `FIELD_KINDS` map for
+its coercion type). You don't have to react immediately, though — an
+unmapped column doesn't break anything; it just shows up in the
+normalization report's `unmappedFields` list so it's visible rather than
+silently dropped.
+
+### Validation / skip policy
+Every row is parsed independently; invalid rows (missing a required field
+— name, brand, or category) are logged and skipped, never allowed to
+crash the endpoint or silently produce a wrong match. As the catalog
+grows, bad data entry is the primary expected failure mode — this
+boundary is what catches it. Checkbox fields absent from a record are
+Airtable's own representation of "unchecked" (Airtable omits `false`
+checkboxes from its API response rather than sending `false`) and are
+normalized to `false`, not treated as missing/invalid data.
+
+### Live schema notes (verified 2026-08-05, may drift as Nya edits the base)
+The originally-described schema didn't quite match the live base — several
+field names differ (`"Product name"` not `"Product Name"`; `"Sulfate
+free"` / `"Silicone free"` / `"Protein free"` with no hyphen; `"Blk
+owned"` not `"Black-owned"`), the live `Category` values are Shampoo,
+Conditioner, Leave-in, Cream, Mousse, Oil/Sealant (no "Gel" yet — Gel was
+in the original description but has never appeared in real data, and
+Oil/Sealant's only current row is one of the two invalid ones below), and
+there is **no image URL column yet** (optional in `ProductSchema` so its
+absence doesn't break anything — Prompt 4 handles a missing image
+gracefully). Two extra columns exist in the live base that aren't wired
+into `FIELD_MAP` yet: `"Key ingredients"` and `"Who it works for"` (both
+free text) — they show up in the normalization report's `unmappedFields`
+rather than being silently dropped.
+
+Also found and fixed: `.env.local`'s `AIRTABLE_BASE_ID` held a full
+Airtable URL path (`app.../tbl.../viw...` concatenated with `/`) instead
+of just the base ID, and `AIRTABLE_TABLE_NAME` ("Nari Product
+Recommendations") didn't resolve against the live API — the token can
+authenticate against the base by table ID but lacks the schema/meta scope
+needed to look up the correct display name. Both env vars now hold the
+verified-working values (base ID only; table ID instead of display name —
+also more robust, since it survives Nya renaming the table). If Vercel's
+env vars mirror the old `.env.local` values, they need the same fix.
+
+**Distinct post-normalization values actually present**, for Prompt 2 to
+build the quiz↔catalog matching against real data rather than assumption:
+- `category`: `Conditioner`, `Cream`, `Leave-in`, `Mousse`, `Oil/Sealant`, `Shampoo`
+- `hairTypes`: `3a`, `3b`, `3c`, `4a`, `4b`, `4c` (no 1A-2C rows exist yet;
+  the schema doesn't restrict to only these, so new rows in other types
+  will flow through fine)
+- `porosity`: `high`, `low`, `normal`
+- `density`: `fine`, `medium`, `thick`
+
+Known quiz↔catalog mismatches (documented for Prompt 2, not solved here):
+quiz curl-type answers include compound values (`"2a2b"`, `"2c3a"`,
+`"3b3c"`) that will need to expand to multiple catalog tags; quiz density
+answers (`"fine_low"`, `"fine_high"`, `"thick_low"`, `"thick_high"`) are
+more granular than the catalog's three values above; quiz porosity
+includes `"unsure"`, which has no catalog equivalent and needs a defined
+fallback.
+
 ## Design System Notes
 
 ### Token file
