@@ -92,31 +92,14 @@ export const AnalyzeRequestSchema = z.object({
 });
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
-// --- Diagnostic quiz + mock recommendations (src/lib/dataSource.ts) ---
-
-export const QuizOptionSchema = z.object({
-  value: z.string(),
-  label: z.string(),
-});
-export type QuizOption = z.infer<typeof QuizOptionSchema>;
-
-export const QuizQuestionSchema = z.object({
-  id: z.string(),
-  text: z.string(),
-  options: z.array(QuizOptionSchema).min(2),
-});
-export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
-
-// questionId -> selected option value
-export const QuizAnswersSchema = z.record(z.string(), z.string());
-export type QuizAnswers = z.infer<typeof QuizAnswersSchema>;
-
-// The 1-2 pre-photo context questions, answered before the quiz starts.
-export const HairContextSchema = z.object({
-  naturalState: NaturalStateAnswerSchema,
-  product: ProductAnswerSchema,
-});
-export type HairContext = z.infer<typeof HairContextSchema>;
+// --- Mock recommendations output (src/lib/dataSource.ts) ---
+//
+// The quiz's own input types (QuizAnswers/QuizQuestionConfig) live in
+// src/features/scanner/quiz/quizTypes.ts, and the scoring engine's input
+// type (DiagnosticAnswers) lives in src/lib/products/scoring.ts — see
+// DECISIONS.md for why neither reuses a shared schema here. This file
+// keeps only the recommendation *output* shape, since ScanResults.tsx
+// (Prompt 4 territory) still consumes it from the mock data source.
 
 export const ProductPickSchema = z.object({
   name: z.string(),

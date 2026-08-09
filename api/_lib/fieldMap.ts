@@ -12,13 +12,19 @@
  * — see CLAUDE.md "Product Data Pipeline" for the full list of mismatches
  * found.
  *
- * Two columns exist in the live base but are intentionally left unmapped:
- * "Key ingredients" and "Who it works for" (free-text, not covered by
- * this prompt's scope). They'll surface in the normalization report as
- * "present in response but absent from FIELD_MAP" rather than being
- * silently dropped — add them here if/when they're needed.
+ * Updated 2026-08-07 (Prompt 2) to map four columns that were previously
+ * left intentionally unmapped: "Best For Goals", "Frustrations",
+ * "Fragrance Free" (a checkbox like the other free-from fields), and
+ * "Key ingredients" (free text, display-only — plays no role in scoring).
+ * "Who it works for", seen in Prompt 1's inspection, no longer appears in
+ * the live base as of this pass and was dropped from FIELD_MAP; if it
+ * reappears it'll surface in the normalization report's `unmappedFields`
+ * rather than being silently lost.
  *
- * No image URL column exists yet in the live base.
+ * No image URL column and no mineral-oil-related column exist yet in the
+ * live base (verified again on this pass) — see scoring.ts for how the
+ * mineral-oil sensitivity filter is written to activate automatically,
+ * with no code change beyond adding a column here, once one exists.
  *
  * Server-only: lives under api/_lib (not src/lib) because api/*.ts
  * functions run as standalone Vercel Lambdas and only reliably bundle
@@ -38,11 +44,15 @@ export const FIELD_MAP = {
   "Sulfate free": "sulfateFree",
   "Silicone free": "siliconeFree",
   "Protein free": "proteinFree",
+  "Fragrance Free": "fragranceFree",
   "Blk owned": "blackOwned",
   "EWG safety score": "ewgScore",
   "Community sentiment": "communitySentiment",
   "Notes/context": "notes",
   "Buy link": "buyLink",
+  "Best For Goals": "goals",
+  "Frustrations": "frustrations",
+  "Key ingredients": "keyIngredients",
 } as const;
 
 export type AirtableFieldName = keyof typeof FIELD_MAP;

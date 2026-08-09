@@ -1,0 +1,54 @@
+.wrap {
+  margin: var(--space-md) 0 0;
+}
+
+.trigger {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--color-accent-tint-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--space-2xs) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* max-height accordion, same convention as FAQ.module.css's .answer —
+ * height:auto can't transition, so this fakes it with a ceiling comfortably
+ * above the longest note's rendered height. */
+.note {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  border-left: 3px solid var(--color-accent-start);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  transition:
+    max-height var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
+
+.noteOpen {
+  max-height: 240px;
+  opacity: 1;
+  margin-top: var(--space-xs);
+}
+
+.noteInner {
+  padding: var(--space-sm) var(--space-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note,
+  .noteOpen {
+    max-height: none;
+    opacity: 1;
+    transition: none;
+  }
+}

@@ -1,9 +1,8 @@
-import type { HairContext, QuizAnswers, QuizQuestion, RecommendationSet } from "./schemas";
+import type { RecommendationSet } from "./schemas";
+import type { DiagnosticAnswers } from "./products/scoring";
 import { ProductsResponseSchema, type ProductsResponse } from "./products/schema";
-import quizQuestionsData from "./mock/quizQuestions.json";
 import recommendationsData from "./mock/recommendations.json";
 
-const QUIZ_QUESTIONS_DELAY_MS = 400;
 const RECOMMENDATIONS_DELAY_MS = 1800;
 
 function delay<T>(value: T, ms: number): Promise<T> {
@@ -11,19 +10,18 @@ function delay<T>(value: T, ms: number): Promise<T> {
 }
 
 /**
- * Single boundary between UI and quiz/product content. Backed by local mock
- * JSON today; swapping the backing source later (Airtable via a serverless
- * function, or anything else) only means changing what happens inside these
- * two functions — no caller changes.
+ * Single boundary between UI and product recommendation content. Backed by
+ * local mock JSON today; swapping the backing source later (the real
+ * scoreProducts() from src/lib/products/scoring.ts, per Prompt 4) only
+ * means changing what happens inside this function — no caller changes.
+ *
+ * Takes the real quiz's DiagnosticAnswers shape (Prompt 3's
+ * toDiagnosticAnswers() produces one) even though this mock body still
+ * ignores it — that's Prompt 4's wiring, not this one's — but the
+ * parameter type is honest about what the caller now actually has, rather
+ * than the old QuizAnswers/HairContext shape from the placeholder quiz.
  */
-export function getQuizQuestions(): Promise<QuizQuestion[]> {
-  return delay(quizQuestionsData as QuizQuestion[], QUIZ_QUESTIONS_DELAY_MS);
-}
-
-export function getRecommendations(
-  _answers: QuizAnswers,
-  _hairContext: HairContext
-): Promise<RecommendationSet> {
+export function getRecommendations(_answers: DiagnosticAnswers): Promise<RecommendationSet> {
   return delay(recommendationsData as RecommendationSet, RECOMMENDATIONS_DELAY_MS);
 }
 

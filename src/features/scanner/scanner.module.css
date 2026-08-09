@@ -165,36 +165,6 @@
   gap: var(--space-md);
 }
 
-.chipGrid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.chip {
-  appearance: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-md) var(--space-lg);
-  font-size: var(--text-base);
-  text-align: left;
-  color: var(--color-text);
-  background: var(--color-bg-elevated);
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
-}
-
-.chip:hover {
-  transform: translateY(-2px);
-}
-
-.chip[data-selected] {
-  border-color: var(--color-accent-start);
-  background: color-mix(in srgb, var(--color-accent-start) 20%, var(--color-bg-elevated));
-}
-
 .thumbGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

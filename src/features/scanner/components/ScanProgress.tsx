@@ -1,4 +1,5 @@
-import { QUESTION_STEPS, QUIZ_QUESTION_COUNT, TOTAL_PROGRESS_UNITS, type StepId } from "../steps";
+import { QUIZ_PHASES, QUIZ_QUESTIONS } from "../quiz/quizQuestions";
+import { QUIZ_QUESTION_COUNT, TOTAL_PROGRESS_UNITS, type StepId } from "../steps";
 import s from "./ScanProgress.module.css";
 
 export interface ScanProgressProps {
@@ -6,39 +7,35 @@ export interface ScanProgressProps {
   quizIndex: number;
 }
 
-type SectionId = "about" | "photo" | "diagnostic";
+const PHOTO_LABEL = "Your photo";
 
-const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "about", label: "About you" },
-  { id: "photo", label: "Your photo" },
-  { id: "diagnostic", label: "Diagnostic" },
-];
-
-function activeSection(step: StepId): SectionId | null {
-  if (QUESTION_STEPS.some((q) => q.id === step)) return "about";
-  if (step === "photo") return "photo";
-  if (step === "quiz" || step === "analyzing") return "diagnostic";
+function activeSection(step: StepId, quizIndex: number): string | null {
+  if (step === "quiz") return QUIZ_QUESTIONS[quizIndex]?.phase ?? QUIZ_PHASES[0];
+  if (step === "photo" || step === "analyzing") return PHOTO_LABEL;
   return null;
 }
 
 function currentUnit(step: StepId, quizIndex: number): number {
-  const questionIndex = QUESTION_STEPS.findIndex((q) => q.id === step);
-  if (questionIndex !== -1) return questionIndex + 1;
-  if (step === "photo") return QUESTION_STEPS.length + 1;
-  if (step === "quiz") {
-    return QUESTION_STEPS.length + 1 + Math.min(quizIndex + 1, QUIZ_QUESTION_COUNT);
-  }
+  if (step === "quiz") return Math.min(quizIndex + 1, QUIZ_QUESTION_COUNT);
+  if (step === "photo") return QUIZ_QUESTION_COUNT + 1;
   if (step === "analyzing") return TOTAL_PROGRESS_UNITS;
   return 0;
 }
 
 /**
- * Single progress bar spanning the whole flow (hair questions + photo +
- * quiz) — no per-section resets, per the "one continuous journey" brief.
- * Hidden during the intro, which isn't a step for progress purposes.
+ * Single progress bar spanning the whole flow (9-question quiz + photo) —
+ * no per-section resets, per the "one continuous journey" brief. Hidden
+ * during the intro, which isn't a step for progress purposes.
+ *
+ * Shows only the CURRENT section's label (one of Nya's three phase names,
+ * or "Your photo"), not all four at once — her phase names are full
+ * sentences ("What are we building toward?"), and this bar lives in a
+ * 480px-max-width wrap, so four of them side by side would overflow badly.
+ * A single active caption + a "current unit / total" counter fits that
+ * width and still surfaces the phase name Part D asked for.
  */
 export function ScanProgress({ step, quizIndex }: ScanProgressProps) {
-  const section = activeSection(step);
+  const section = activeSection(step, quizIndex);
   if (!section) return null;
 
   const unit = currentUnit(step, quizIndex);
@@ -50,11 +47,12 @@ export function ScanProgress({ step, quizIndex }: ScanProgressProps) {
         <div className={s.fill} style={{ width: `${percent}%` }} />
       </div>
       <div className={s.labels}>
-        {SECTIONS.map((item) => (
-          <span key={item.id} className={s.label} data-active={item.id === section || undefined}>
-            {item.label}
-          </span>
-        ))}
+        <span className={s.label} data-active>
+          {section}
+        </span>
+        <span className={s.counter}>
+          {unit} / {TOTAL_PROGRESS_UNITS}
+        </span>
       </div>
     </div>
   );

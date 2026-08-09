@@ -1,24 +1,12 @@
-import type { HairContext, NaturalStateAnswer, ProductAnswer, QuizAnswers, QuizQuestion } from "@/lib/schemas";
+import type { QuizAnswerValue, QuizAnswers } from "./quiz/quizTypes";
 import { INTERSTITIAL_AFTER_INDEX, QUIZ_QUESTION_COUNT, STEP_ORDER } from "./steps";
 
 export const QUIZ_PROGRESS_STORAGE_KEY = "nari-scan-quiz-progress";
 
-/**
- * Draft version of HairContext — nullable until both pre-quiz questions are
- * answered. Becomes a real HairContext by the time the "quiz" step is
- * reached (QUESTION_STEPS always come before it in STEP_ORDER).
- */
-export interface HairContextDraft {
-  naturalState: NaturalStateAnswer | null;
-  product: ProductAnswer | null;
-}
-
 export interface ScannerState {
   stepIndex: number;
-  hairContext: HairContextDraft;
   /** Purely in-memory, never persisted — see the sessionStorage note below. */
   photo: File | null;
-  quizQuestions: QuizQuestion[];
   quizAnswers: QuizAnswers;
   quizIndex: number;
   showInterstitial: boolean;
@@ -29,17 +17,15 @@ export interface ScannerState {
 }
 
 interface PersistedQuizProgress {
-  hairContext: HairContext;
   quizAnswers: QuizAnswers;
   quizIndex: number;
   interstitialShown: boolean;
 }
 
 /**
- * The narrow, deliberate sessionStorage exception (CLAUDE.md): quiz answers,
- * quiz position, and the 2 hair-context answers that feed getRecommendations
- * survive a refresh. The photo never does — it's excluded from this blob and
- * stays purely in React state.
+ * The narrow, deliberate sessionStorage exception (CLAUDE.md): quiz
+ * answers and quiz position survive a refresh. The photo never does — it's
+ * excluded from this blob and stays purely in React state.
  */
 function readPersistedQuizProgress(): PersistedQuizProgress | null {
   try {
@@ -72,9 +58,7 @@ export function clearPersistedQuizProgress(): void {
 export function createInitialScannerState(): ScannerState {
   const base: ScannerState = {
     stepIndex: 0,
-    hairContext: { naturalState: null, product: null },
     photo: null,
-    quizQuestions: [],
     quizAnswers: {},
     quizIndex: 0,
     showInterstitial: false,
@@ -89,7 +73,6 @@ export function createInitialScannerState(): ScannerState {
   return {
     ...base,
     stepIndex: STEP_ORDER.indexOf("quiz"),
-    hairContext: restored.hairContext,
     quizAnswers: restored.quizAnswers,
     quizIndex: restored.quizIndex,
     interstitialShown: restored.interstitialShown,
@@ -97,11 +80,10 @@ export function createInitialScannerState(): ScannerState {
 }
 
 export type ScannerAction =
-  | { type: "SET_QUIZ_QUESTIONS"; questions: QuizQuestion[] }
-  | { type: "SET_HAIR_ANSWER"; key: keyof HairContextDraft; value: string }
   | { type: "SET_PHOTO"; file: File }
   | { type: "CLEAR_PHOTO" }
-  | { type: "SET_QUIZ_ANSWER"; questionId: string; value: string }
+  | { type: "SET_QUIZ_ANSWER"; questionId: string; value: QuizAnswerValue }
+  | { type: "ADVANCE_QUIZ" }
   | { type: "DISMISS_INTERSTITIAL" }
   | { type: "NEXT" }
   | { type: "BACK" }
@@ -110,30 +92,30 @@ export type ScannerAction =
 
 export function scannerReducer(state: ScannerState, action: ScannerAction): ScannerState {
   switch (action.type) {
-    case "SET_QUIZ_QUESTIONS":
-      return { ...state, quizQuestions: action.questions };
-
-    case "SET_HAIR_ANSWER":
-      return { ...state, hairContext: { ...state.hairContext, [action.key]: action.value } };
-
     case "SET_PHOTO":
       return { ...state, photo: action.file };
 
     case "CLEAR_PHOTO":
       return { ...state, photo: null };
 
-    case "SET_QUIZ_ANSWER": {
-      const quizAnswers = { ...state.quizAnswers, [action.questionId]: action.value };
+    // Only records the answer — does NOT move quizIndex. Single-select
+    // questions auto-advance (QuizStep schedules a separate ADVANCE_QUIZ
+    // shortly after); multi/ranked questions need several taps before the
+    // user is done, so advancing here would cut that short after the
+    // first tap.
+    case "SET_QUIZ_ANSWER":
+      return { ...state, quizAnswers: { ...state.quizAnswers, [action.questionId]: action.value } };
+
+    case "ADVANCE_QUIZ": {
       const nextIndex = state.quizIndex + 1;
 
       if (nextIndex >= QUIZ_QUESTION_COUNT) {
-        return { ...state, quizAnswers, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("analyzing") };
+        return { ...state, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("photo") };
       }
 
       const showInterstitial = nextIndex === INTERSTITIAL_AFTER_INDEX && !state.interstitialShown;
       return {
         ...state,
-        quizAnswers,
         quizIndex: nextIndex,
         showInterstitial,
         interstitialShown: state.interstitialShown || showInterstitial,
@@ -153,6 +135,13 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
     case "BACK": {
       if (STEP_ORDER[state.stepIndex] === "quiz" && state.quizIndex > 0) {
         return { ...state, quizIndex: state.quizIndex - 1 };
+      }
+      // Backing up out of "photo" re-enters the quiz at its last question,
+      // not step index - 1 blindly — quizIndex was already advanced to
+      // QUIZ_QUESTION_COUNT (out of range) the moment the 9th question was
+      // answered, since that's what triggers the move to "photo".
+      if (STEP_ORDER[state.stepIndex] === "photo") {
+        return { ...state, stepIndex: STEP_ORDER.indexOf("quiz"), quizIndex: QUIZ_QUESTION_COUNT - 1 };
       }
       return { ...state, stepIndex: Math.max(state.stepIndex - 1, 0) };
     }

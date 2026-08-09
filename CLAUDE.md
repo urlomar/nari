@@ -178,6 +178,12 @@ into `FIELD_MAP` yet: `"Key ingredients"` and `"Who it works for"` (both
 free text) — they show up in the normalization report's `unmappedFields`
 rather than being silently dropped.
 
+*(Updated 2026-08-07, Prompt 2): `"Key ingredients"` is now mapped
+(display-only, no scoring role) and `"Who it works for"` no longer
+appears in the live base at all — see "Product Scoring" below for the
+four columns Prompt 2 added: `"Best For Goals"`, `"Frustrations"`,
+`"Fragrance Free"`, `"Key ingredients"`.)*
+
 Also found and fixed: `.env.local`'s `AIRTABLE_BASE_ID` held a full
 Airtable URL path (`app.../tbl.../viw...` concatenated with `/`) instead
 of just the base ID, and `AIRTABLE_TABLE_NAME` ("Nari Product
@@ -204,6 +210,187 @@ answers (`"fine_low"`, `"fine_high"`, `"thick_low"`, `"thick_high"`) are
 more granular than the catalog's three values above; quiz porosity
 includes `"unsure"`, which has no catalog equivalent and needs a defined
 fallback.
+
+## Product Scoring
+
+`src/lib/products/scoring.ts` turns a completed quiz answer set
+(`DiagnosticAnswers`) plus the normalized catalog (`Product[]` from
+`api/_lib/schema.ts`) into ranked, categorized picks (`scoreProducts()`).
+It's a **pure function** — no network, no React, no side effects — on
+purpose: same inputs always produce the same output, which is what makes
+it fast to unit test and fast to tune. Matching is deterministic tag
+comparison, not an LLM call — see DECISIONS.md for why.
+
+**On the types**: the brief described the signature using the existing
+`QuizAnswers`/`RecommendationSet` types from `src/lib/schemas.ts`, but
+those belong to the old placeholder quiz/mock flow and can't hold what
+this needs (ranked frustrations, match reasons, relaxation flags, the
+unenforced-sensitivity flag) — and Prompt 3 hasn't ported the real
+9-question quiz yet, so there's no confirmed source of truth for exact
+answer strings beyond what Prompt 2's brief specified directly.
+`scoring.ts` defines its own `DiagnosticAnswers` (input) and
+`ScoredRecommendationSet` (output) types instead. Prompt 3 needs to
+produce a `DiagnosticAnswers` from the real quiz UI; Prompt 4 consumes
+`ScoredRecommendationSet` in place of the old mock `RecommendationSet`.
+Two fields' exact value format were inferred rather than given verbatim —
+`budgetMax` (a plain numeric dollar ceiling, not a bucketed string enum)
+and `blackOwnedPref`'s literal casing (`"yes_always"` / `"mixed"` /
+`"no_preference"`) — flagged in DECISIONS.md for Prompt 3 to confirm.
+
+### The four stages
+1. **Hard filters** (`applyHardFilters`) — sensitivities *exclude*
+   products entirely, never just lower their score. Conservative rule:
+   only a positively-checked free-from field counts as safe; an
+   unchecked box (whether it means "contains it" or "unverified" — see
+   the Supercurl product's notes in the live catalog for a real example
+   of the latter) is excluded either way, for free, via `ProductSchema`'s
+   existing false-when-absent default. `mineral_oil` has no catalog
+   column yet — the filter checks the actual product data at runtime
+   (`getMineralOilFree`) rather than assuming `false`, so it activates
+   automatically the moment a column exists and is mapped, with no
+   `scoring.ts` change needed; until then it's inert and gets recorded in
+   `unenforcedSensitivities` instead of silently doing nothing.
+2. **Weighted scoring** (`scoreProduct`) — every surviving product gets a
+   score built from `SCORING_WEIGHTS`. See "Changing the weights" below.
+3. **Select and diversify** (`selectForCategory`) — top 3 per category,
+   sorted by score, with a one-product-per-brand cap that only relaxes
+   (allows a repeat brand) if there's no other-brand alternative to fill
+   the slot.
+4. **Relaxation** (`buildCategoryRecommendation`) — density, curl type,
+   and porosity aren't just weighted, they're also treated as *required*
+   overlaps for a product to be eligible in the first place (this is why
+   the brief's Stage 4 talks about "relaxing" them even though Stage 2
+   frames them as weights, not filters — both are true: they're weighted
+   AND initially required). If a category has fewer than 2 eligible
+   products, the weakest requirement drops first — density, then curl
+   type, then porosity, **never sensitivities** — and the category's
+   `relaxed`/`relaxedConstraints` fields record exactly what was dropped,
+   so the UI can label it honestly rather than silently backfilling.
+   **This is load-bearing today, not a hypothetical**: the catalog has no
+   products tagged 2a/2b/2c at all, so any 2A/2B or 2C/3A user hits curl-
+   type relaxation immediately — verified directly in
+   `scoring.test.ts`. A second, newly-discovered gap: **Mousse and
+   Oil/Sealant currently have zero protein-free products** (0/6 and
+   0/4) — since relaxation never touches sensitivities, a protein-
+   sensitive user's Demanding-profile test correctly returns those two
+   categories empty. See DECISIONS.md's "Open questions" for both.
+
+### Changing the weights
+Everything lives in the single exported `SCORING_WEIGHTS` object near the
+top of `scoring.ts`, ordered highest-priority to lowest with each tier's
+maximum attainable contribution commented inline (e.g. goals' max is
+`3 * goalMatch`) — the values are deliberately set so a lower-priority
+tier's ceiling stays below the tier above it, so retuning is usually just
+changing one number and confirming the two test profiles' printed output
+still looks right. Porosity is weighted heaviest because it determines
+whether a product physically *works* on someone's hair — a hair-science
+judgment made for this pass, open to Nya's revision, and a one-file,
+one-minute edit to change (see DECISIONS.md). `journey` is deliberately
+**not** in `SCORING_WEIGHTS` at all — no product attribute corresponds to
+it; per Nya's own note it changes how Nari *talks* to the user, not what
+she recommends, so it's collected and passed through on
+`ScoredRecommendationSet` for Prompt 4's copy and nowhere else.
+
+### Running the tests
+`npm test` (Vitest). `scoring.test.ts` runs the two required profiles
+(Demanding: 4C/high-porosity/protein-sensitive/under-$10/thick/#1-
+frustration-breakage; Easy: 2C-3A/normal-porosity/no-sensitivities/no-
+budget/medium) against a **real catalog fixture**
+(`src/lib/products/__fixtures__/catalog.json`, copied verbatim from a
+live `/api/products` fetch, not invented data) and prints each profile's
+full picks-per-category output via `console.log` so the weights can be
+eyeballed while tuning — run with `npx vitest run
+src/lib/products/scoring.test.ts` to see it directly. A few guarantees
+(budget ordering, the brand-diversity cap, the "no alternative" case)
+are instead tested against small synthetic product sets, because real
+data can't reliably offer a clean, single-variable-controlled example —
+see the test file's header comment.
+
+### Extending the field map for this prompt
+Four columns were added to `FIELD_MAP`/`ProductSchema` this pass: `"Best
+For Goals"` → `goals`, `"Frustrations"` → `frustrations`, `"Fragrance
+Free"` → `fragranceFree` (a checkbox, same pattern as the other free-from
+fields), and `"Key ingredients"` → `keyIngredients` (free text,
+display-only, no scoring role). `goals` gets one extra normalization step
+beyond the usual lowercase/trim: a small `GOAL_ALIASES` table in
+`api/_lib/schema.ts` rewrites the two Airtable values that don't match
+the quiz's vocabulary exactly (`"scalp health"` → `"scalp"`, `"heat or
+color damage"` → `"damage"`) — done at the data-normalization boundary,
+per this prompt's own instruction, so `scoring.ts` never has to know
+Airtable's original wording. Three quiz goal values (`"volume"`,
+`"simplify"`, `"technique"`) have no catalog equivalent at all — not an
+error, they simply never contribute a match. `frustrations` needed no
+aliasing — its values matched the quiz vocabulary exactly once
+lowercased.
+
+## Diagnostic Quiz UI
+
+The real 9-question quiz (`src/features/scanner/quiz/`) ported from Nya's
+reference file (`nya-quiz-reference.jsx`, repo root — kept as the
+source-of-truth reference for content, not imported by the app). Replaces
+the old placeholder flow (2 hair-context questions + a 10-question mock
+quiz) entirely — see DECISIONS.md for why the 2 hair-context questions
+were dropped and why `PhaseBar` wasn't ported.
+
+- **`quiz/quizTypes.ts`** — the config schema (`QuizQuestionConfig`,
+  `QuizOption`, `SelectionMode`, `QuestionLayout`) and the answer shape
+  held in scanner state (`QuizAnswers = Record<string, string | string[]>`
+  — a plain string for single-select questions, a string array for
+  multi/ranked ones, order significant for ranked).
+- **`quiz/quizQuestions.ts`** — the 9 questions as data, in Nya's exact
+  order/phases/values/copy. `QUIZ_PHASES` (derived from the questions'
+  `phase` fields) feeds `ScanProgress`'s section label.
+- **`quiz/QuestionRenderer.tsx`** — the single component that renders
+  every question, driven entirely by its config. Replaces Nya's five
+  separate layout components (`IconGrid`/`CurlGrid`/`VisualSingle`/
+  `ChipMulti`/`RankCards`) — see DECISIONS.md's "Diagnostic quiz UI" for
+  the full why-one-component-not-five writeup, including the honest
+  tradeoff (more abstract, less immediately readable than five small
+  components) and why it was still worth it here.
+- **`quiz/CurlIcon.tsx`** — the curl-pattern SVG illustrations, ported
+  as-is (path data unchanged), recolored to `currentColor` so it inherits
+  the option button's text color in both themes with no theme-aware logic
+  of its own.
+- **`quiz/NarisTake.tsx`** — the collapsible "Nari's take on this" note,
+  used by the 3 questions that have one (`journey`, `porosity`,
+  `frustrations`).
+- **`toDiagnosticAnswers.ts`** (one level up, not under `quiz/`) — pure
+  function, `QuizAnswers → DiagnosticAnswers` (the type
+  `src/lib/products/scoring.ts`'s `scoreProducts()` expects). Confirms the
+  two literals Prompt 2 flagged as inferred (`budgetMax`'s bucket
+  mapping, `blackOwnedPref`'s casing) — see DECISIONS.md. Does **not**
+  call `scoreProducts()` — that's Prompt 4's wiring.
+
+### How to add or edit a quiz question
+1. Edit (or add an entry to) the `QUIZ_QUESTIONS` array in
+   `quiz/quizQuestions.ts`. Pick a `selectionMode` (`single` auto-advances
+   on tap; `multi`/`ranked` need the user to tap a Continue button) and a
+   `layout` (`grid` needs `columns`; `chips` wraps; `list` is a vertical
+   stack). Set `max` for multi/ranked, and `exclusiveValue` if one option
+   should clear all others when tapped (e.g. sensitivities' `"none"`,
+   frustrations' `"nothing"`).
+2. **Don't invent new answer `value` strings** if the question maps to an
+   existing scoring dimension (curl type, porosity, density, goals,
+   frustrations, sensitivities, budget, black-owned preference) — those
+   values flow straight into `toDiagnosticAnswers.ts` and from there into
+   `scoreProducts()`'s catalog-tag comparisons with no translation layer.
+   If you do need a new value, add it to the corresponding union type in
+   `src/lib/products/scoring.ts` and confirm the catalog actually uses
+   that tag (see "Product Scoring" above).
+3. If the question needs a visual treatment `QuestionRenderer.tsx` doesn't
+   already support (not just a new combination of existing
+   `layout`/`selectionMode`/option fields, but a genuinely different
+   interaction), extend the renderer/config schema rather than writing a
+   new one-off component — that's the whole point of the config-driven
+   design (see DECISIONS.md).
+4. A question only needs a `nariNote` field if it should show the
+   collapsible "Nari's take" note.
+5. `QUIZ_QUESTION_COUNT`, the progress bar's total units, and the
+   interstitial's position (`steps.ts`'s `INTERSTITIAL_AFTER_INDEX`) all
+   derive from or reference `QUIZ_QUESTIONS.length` — adding/removing a
+   question updates the progress bar automatically; only revisit
+   `INTERSTITIAL_AFTER_INDEX` if the new question count changes where the
+   "almost there" beat should land.
 
 ## Design System Notes
 

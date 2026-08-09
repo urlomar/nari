@@ -468,4 +468,108 @@ against tags instead, no `api/analyze.ts` involvement.
   reproduction by checking it fails the same way against the old code
   (negative control) before confirming it passes against the fix. See
   CLAUDE.md "Server code boundary" for the full writeup.
-- Next: Prompt 2 (`scoring.ts` + Vitest cases).
+- *(Note: `fieldMap.ts`/`schema.ts` referenced above moved to `api/_lib/`
+  in that same-day fix — this status entry is left as originally written
+  for the historical record; see the fix note directly above.)*
+
+## Product recommendation feature — Prompt 2 of 4: Scoring engine
+**Status: done.** Scoring only — no quiz UI, no results page (Prompts 3-4).
+`src/lib/products/scoring.ts` exports a pure `scoreProducts(answers,
+catalog): ScoredRecommendationSet` — hard sensitivity filters, then
+weighted scoring (porosity > curl type > goals > frustrations > density >
+budget > black-owned > EWG/sentiment tiebreakers), then top-3-per-category
+selection with a brand-diversity cap, then progressive relaxation
+(density → curl type → porosity, never sensitivities) when a category's
+eligible pool is thin. All weights live in one exported `SCORING_WEIGHTS`
+object. 14 Vitest cases pass (`src/lib/products/scoring.test.ts`),
+including the two required profiles run against a real catalog fixture.
+See CLAUDE.md "Product Scoring" for the full stage-by-stage writeup and
+DECISIONS.md for the reasoning behind each major call.
+- **Part A**: extended `FIELD_MAP`/`ProductSchema` for four
+  previously-unmapped live columns — `"Best For Goals"` → `goals`,
+  `"Frustrations"` → `frustrations`, `"Fragrance Free"` → `fragranceFree`
+  (confirmed a checkbox), `"Key ingredients"` → `keyIngredients`
+  (display-only). Goals needed a small alias table for two values that
+  didn't match the quiz vocabulary (`"scalp health"` → `"scalp"`,
+  `"heat or color damage"` → `"damage"`); frustrations matched exactly
+  once lowercased. Live catalog re-verified same day: grown to 51 records
+  (50 valid, 1 skipped for missing name+brand — a different row than
+  Prompt 1's two skips, which appear to have since been fixed by Nya).
+- **Real gap found while writing tests, not assumed**: Mousse (0/6) and
+  Oil/Sealant (0/4) currently have zero protein-free products anywhere in
+  the catalog — since relaxation never touches sensitivities, any
+  protein-sensitive user gets a correctly-empty result for those two
+  categories today. Caught by running the required Demanding test profile
+  against the real fixture rather than synthetic data; documented in
+  DECISIONS.md alongside the pre-existing 2A/2B/2C tagging gap.
+- **A type-design call worth flagging**: the brief's signature referenced
+  the existing `QuizAnswers`/`RecommendationSet` types, but those belong
+  to the old placeholder quiz/mock and can't hold what this needs
+  (ranked frustrations, match reasons, relaxation flags). `scoring.ts`
+  defines its own `DiagnosticAnswers`/`ScoredRecommendationSet` instead —
+  Prompt 3 will need to produce a `DiagnosticAnswers` from the real quiz,
+  and two of its fields (`budgetMax` as a plain number, `blackOwnedPref`'s
+  exact literal casing) were inferred rather than given verbatim by this
+  prompt. Flagged in DECISIONS.md for Prompt 3 to confirm against the
+  real quiz JSX.
+- Next: Prompt 3 (port the real 9-question quiz).
+
+## Product recommendation feature — Prompt 3 of 4: Real diagnostic quiz port
+**Status: done.** Quiz UI only — no results page, no `scoreProducts()`
+wiring (Prompt 4). Nya's real 9-question quiz
+(`src/features/scanner/quiz/`) replaces the old placeholder flow (2
+hair-context questions + a 10-question mock quiz) entirely. See CLAUDE.md
+"Diagnostic Quiz UI" for the file-by-file breakdown and how to add/edit a
+question, and DECISIONS.md's "Diagnostic quiz UI (Prompt 3)" section for
+the full reasoning writeup.
+- **One config-driven `QuestionRenderer`** replaces Nya's five separate
+  layout components (`IconGrid`/`CurlGrid`/`VisualSingle`/`ChipMulti`/
+  `RankCards`) — driven by `selectionMode` (single/multi/ranked) and
+  `layout` (grid/list/chips) config per question. Ranked selection (tap
+  to add a numbered badge, tap again to remove and renumber, an
+  `exclusiveValue` like `"nothing"`/`"none"` clears everything else) uses
+  the same toggle mechanics as plain multi-select — they only differ in
+  what gets rendered.
+- **Flow reordered**: quiz now comes before the photo (previously the
+  reverse), matching Nya's "answer questions, then upload a photo" shape.
+  `STEP_ORDER` is now `["intro", "quiz", "photo", "analyzing"]`.
+- **Dropped the 2 hair-context questions** (natural state / product in
+  hair) — they only ever fed `api/analyze.ts`'s photo vision pipeline,
+  which isn't wired into this flow at all. `NaturalStateAnswerSchema`/
+  `ProductAnswerSchema` stay in `src/lib/schemas.ts` for that separate,
+  still-dormant pipeline; the quiz-specific `HairContextSchema` and the
+  old flat `QuizAnswersSchema`/`QuizQuestionSchema` were deleted as
+  genuinely dead code, along with the old mock 10-question quiz JSON and
+  `dataSource.ts`'s `getQuizQuestions()`.
+- **Confirmed the two literals Prompt 2 flagged as inferred**:
+  `budgetMax` bucket mapping (`budget`→10, `mid`→25, `premium`→50,
+  `any`→null) and `blackOwnedPref`'s exact casing — corrected in
+  `scoring.ts` from a guessed `"yes_always"/"no_preference"` to the real
+  quiz's `"yes"/"mixed"/"no_pref"`, so it passes through with no
+  translation layer, same as every other scored dimension. New
+  `toDiagnosticAnswers.ts` (`QuizAnswers → DiagnosticAnswers`, typechecked
+  against `scoreProducts()`'s signature, not calling it) is what Prompt 4
+  will call.
+- **`PhaseBar` not ported** — Nya's three phase names feed the existing
+  `ScanProgress` bar's single active-section label (now shown next to a
+  `unit / total` counter, not all 4 section names side by side — they're
+  full sentences, and the bar lives in a 480px-max-width column).
+- **Real bug found and fixed during verification**: reordering quiz-before-
+  photo exposed a sessionStorage bug where refreshing on the photo step
+  bounced the user back into the last quiz question instead of leaving
+  them on photo, because the persisted quiz blob was frozen at its last
+  quiz-step snapshot. Fixed by clearing the persisted blob the moment the
+  user reaches "photo" — verified via a scripted refresh at both points
+  (mid-quiz restores; photo-step resets to intro cleanly).
+- **Verification**: `npm run typecheck` clean; `npx vitest run` — 18
+  tests pass (14 existing scoring tests + 4 new `toDiagnosticAnswers`
+  tests). Full flow walked end-to-end via a temporary local Playwright
+  install (same approach as the design sprint — not a project dependency)
+  across light/dark themes and desktop/390px mobile viewports, zero
+  console errors in any combination; screenshots confirmed the
+  3-column layouts (curl_type, black_owned_pref) collapse to 2 columns at
+  390px, ranked selection's add/remove/renumber and "nothing" exclusivity
+  both work correctly, and dark mode holds (no hardcoded-white
+  regressions) throughout the whole quiz.
+- Next: Prompt 4 (results page + wiring `scoreProducts()` into the real
+  flow, replacing the mock `getRecommendations()`).

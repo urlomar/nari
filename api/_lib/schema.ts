@@ -39,18 +39,29 @@ export const ProductSchema = z.object({
   sulfateFree: z.boolean().default(false),
   siliconeFree: z.boolean().default(false),
   proteinFree: z.boolean().default(false),
+  fragranceFree: z.boolean().default(false),
   blackOwned: z.boolean().default(false),
   ewgScore: z.number().nullable().default(null),
   communitySentiment: z.string().optional(),
   notes: z.string().optional(),
   buyLink: z.string().optional(),
+  // "Best For Goals" / "Frustrations" — lowercased/trimmed like the other
+  // multi-selects, PLUS a small alias table (see GOAL_ALIASES below) for
+  // the two goal values that don't match the quiz's vocabulary exactly.
+  // The alias table lives here, at the normalization boundary, precisely
+  // so scoring.ts never has to know Airtable's raw wording — see
+  // scoring.ts's header comment and DECISIONS.md.
+  goals: z.array(z.string()).default([]),
+  frustrations: z.array(z.string()).default([]),
+  // Free text, display-only — plays no role in scoring (Prompt 2).
+  keyIngredients: z.string().optional(),
   // No image URL column exists in the live base yet (Prompt 4 handles
   // absence gracefully) — left optional so nothing here forces it.
   imageUrl: z.string().optional(),
 });
 export type Product = z.infer<typeof ProductSchema>;
 
-type FieldKind = "string" | "optionalString" | "boolean" | "number" | "stringArrayLower";
+type FieldKind = "string" | "optionalString" | "boolean" | "number" | "stringArrayLower" | "goalsArray";
 
 const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
   name: "string",
@@ -64,11 +75,28 @@ const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
   sulfateFree: "boolean",
   siliconeFree: "boolean",
   proteinFree: "boolean",
+  fragranceFree: "boolean",
   blackOwned: "boolean",
   ewgScore: "number",
   communitySentiment: "optionalString",
   notes: "optionalString",
   buyLink: "optionalString",
+  goals: "goalsArray",
+  frustrations: "stringArrayLower",
+  keyIngredients: "optionalString",
+};
+
+// "Best For Goals" values that don't match the quiz's answer vocabulary
+// exactly (verified against the live base 2026-08-07) — normalized here,
+// at the data boundary, so scoring.ts can compare goals/frustrations
+// against product tags with plain equality and never needs to know
+// Airtable's original wording. See DECISIONS.md for the full mismatch
+// list, including the quiz goals ("volume", "simplify", "technique") that
+// have no catalog equivalent at all (not an error — they just never
+// match anything).
+const GOAL_ALIASES: Record<string, string> = {
+  "scalp health": "scalp",
+  "heat or color damage": "damage",
 };
 
 function coerce(kind: FieldKind, value: unknown): unknown {
@@ -88,6 +116,13 @@ function coerce(kind: FieldKind, value: unknown): unknown {
     case "stringArrayLower":
       return Array.isArray(value)
         ? value.filter((v): v is string => typeof v === "string").map((v) => v.trim().toLowerCase())
+        : [];
+    case "goalsArray":
+      return Array.isArray(value)
+        ? value
+            .filter((v): v is string => typeof v === "string")
+            .map((v) => v.trim().toLowerCase())
+            .map((v) => GOAL_ALIASES[v] ?? v)
         : [];
   }
 }

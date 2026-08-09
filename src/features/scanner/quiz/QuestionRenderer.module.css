@@ -1,0 +1,175 @@
+.options {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.options[data-layout="grid"][data-columns="2"] {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.options[data-layout="grid"][data-columns="3"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 480px) {
+  /* 3-column layouts (curl_type, black_owned_pref) cramp badly at 390px —
+   * collapse to 2 so each card still has room to breathe. 2-col configs
+   * are already comfortable at this width and stay as-is. */
+  .options[data-layout="grid"][data-columns="3"] {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.options[data-layout="list"] {
+  grid-template-columns: 1fr;
+}
+
+.options[data-layout="chips"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+/* Base option button — every layout shares border/background/transition/
+ * focus/touch-target rules; layout-specific rules below only touch
+ * direction/alignment/padding. */
+.option {
+  appearance: none;
+  min-height: 44px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  position: relative;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.option:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.option[data-selected] {
+  border-color: transparent;
+  background: var(--gradient-accent-solid);
+  color: var(--color-white);
+  box-shadow: var(--shadow-glow);
+}
+
+.options[data-layout="grid"] .option {
+  padding: var(--space-md) var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  text-align: center;
+}
+
+.options[data-layout="list"] .option {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  text-align: left;
+  width: 100%;
+}
+
+.options[data-layout="chips"] .option {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.icon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.options[data-layout="list"] .icon {
+  font-size: 28px;
+}
+
+.options[data-layout="chips"] .icon {
+  font-size: 16px;
+}
+
+.label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.options[data-layout="list"] .label {
+  flex: 1;
+  font-weight: 400;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+.options[data-layout="chips"] .label {
+  font-weight: 500;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.sub,
+.desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.option[data-selected] .sub,
+.option[data-selected] .desc {
+  color: color-mix(in srgb, var(--color-white) 75%, transparent);
+}
+
+.tag {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-pill);
+  padding: 3px var(--space-sm);
+  background: var(--color-accent-tint-2);
+  color: var(--color-accent-tint-1);
+  white-space: nowrap;
+}
+
+.option[data-selected] .tag {
+  background: color-mix(in srgb, var(--color-white) 22%, transparent);
+  color: var(--color-white);
+}
+
+.rankBadge {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-white) 28%, transparent);
+  color: var(--color-white);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.options[data-layout="list"] .rankBadge {
+  position: static;
+  margin-left: var(--space-sm);
+}
+
+.hint {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-accent-tint-1);
+  text-align: center;
+}

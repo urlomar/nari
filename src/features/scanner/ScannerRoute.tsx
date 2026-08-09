@@ -2,14 +2,13 @@ import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { track } from "@/lib/analytics";
-import { getQuizQuestions, getRecommendations } from "@/lib/dataSource";
+import { getRecommendations } from "@/lib/dataSource";
 import { compressImage } from "@/lib/compressImage";
-import type { HairContext, RecommendationSet } from "@/lib/schemas";
+import type { RecommendationSet } from "@/lib/schemas";
 import { fadeUp } from "@/styles/motionVariants";
 import { ScanBackground } from "./components/ScanBackground";
 import { ScanProgress } from "./components/ScanProgress";
 import { IntroStep } from "./steps/IntroStep";
-import { QuestionStep } from "./steps/QuestionStep";
 import { PhotoStep } from "./steps/PhotoStep";
 import { QuizStep } from "./steps/QuizStep";
 import { AnalyzingStep } from "./steps/AnalyzingStep";
@@ -19,11 +18,11 @@ import {
   scannerReducer,
   writePersistedQuizProgress,
 } from "./scannerReducer";
-import { QUESTION_STEPS, STEP_ORDER } from "./steps";
+import { STEP_ORDER } from "./steps";
+import type { QuizAnswerValue } from "./quiz/quizTypes";
+import { toDiagnosticAnswers } from "./toDiagnosticAnswers";
 import { usePhotoPreview } from "./usePhotoPreviews";
 import s from "./scanner.module.css";
-
-const ANSWER_ADVANCE_DELAY_MS = 250;
 
 export default function ScannerRoute() {
   const [state, dispatch] = useReducer(scannerReducer, undefined, createInitialScannerState);
@@ -33,19 +32,6 @@ export default function ScannerRoute() {
 
   const step = STEP_ORDER[state.stepIndex];
   const hasProgress = Boolean(state.photo) || Object.keys(state.quizAnswers).length > 0;
-
-  // Fetched once on mount regardless of step, so questions are ready by the
-  // time the user reaches the quiz — including immediately on a restored
-  // mid-quiz refresh.
-  useEffect(() => {
-    let cancelled = false;
-    getQuizQuestions().then((questions) => {
-      if (!cancelled) dispatch({ type: "SET_QUIZ_QUESTIONS", questions });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -71,38 +57,39 @@ export default function ScannerRoute() {
     else blocker.reset();
   }, [blocker]);
 
-  // The narrow sessionStorage exception (see CLAUDE.md): quiz answers, quiz
-  // position, and the 2 hair-context answers persist while the user is in
-  // the quiz step. The photo is never included here — it stays purely
-  // in-memory, matching what it always was.
+  // The narrow sessionStorage exception (see CLAUDE.md): quiz answers and
+  // quiz position persist while the user is in the quiz step. The photo is
+  // never included here — it stays purely in-memory, matching what it
+  // always was.
   useEffect(() => {
     if (step !== "quiz") return;
-    const { naturalState, product } = state.hairContext;
-    if (!naturalState || !product) return;
     writePersistedQuizProgress({
-      hairContext: { naturalState, product },
       quizAnswers: state.quizAnswers,
       quizIndex: state.quizIndex,
       interstitialShown: state.interstitialShown,
     });
-  }, [step, state.hairContext, state.quizAnswers, state.quizIndex, state.interstitialShown]);
+  }, [step, state.quizAnswers, state.quizIndex, state.interstitialShown]);
+
+  // The moment the user leaves the quiz, its sessionStorage snapshot is
+  // stale forever (the write effect above only fires while step === "quiz",
+  // so it's frozen at the last quiz question, not "the user finished all
+  // 9"). Without this, refreshing on the photo step would read that stale
+  // blob and bounce the user back into the last quiz question instead of
+  // leaving them on photo — sessionStorage is only ever consulted at mount
+  // (createInitialScannerState), so clearing it here doesn't affect normal
+  // in-app Back navigation, which uses the reducer's in-memory state.
+  useEffect(() => {
+    if (step === "photo") clearPersistedQuizProgress();
+  }, [step]);
 
   useEffect(() => {
     if (step !== "analyzing") return;
     let cancelled = false;
 
     (async () => {
-      const { naturalState, product } = state.hairContext;
-      if (!naturalState || !product) {
-        dispatch({
-          type: "ANALYSIS_FAILED",
-          message: "Something's missing from your answers. Please start your scan again.",
-        });
-        return;
-      }
-      const hairContext: HairContext = { naturalState, product };
+      const diagnosticAnswers = toDiagnosticAnswers(state.quizAnswers);
       try {
-        const recommendations: RecommendationSet = await getRecommendations(state.quizAnswers, hairContext);
+        const recommendations: RecommendationSet = await getRecommendations(diagnosticAnswers);
         if (cancelled) return;
         track("scan_completed");
         clearPersistedQuizProgress();
@@ -130,28 +117,25 @@ export default function ScannerRoute() {
     }
   }
 
-  function handleHairAnswer(key: "naturalState" | "product", value: string) {
-    dispatch({ type: "SET_HAIR_ANSWER", key, value });
-    window.setTimeout(() => dispatch({ type: "NEXT" }), ANSWER_ADVANCE_DELAY_MS);
-  }
-
-  function handleQuizAnswer(questionId: string, value: string) {
+  function handleQuizAnswer(questionId: string, value: QuizAnswerValue) {
     dispatch({ type: "SET_QUIZ_ANSWER", questionId, value });
   }
-
-  const questionConfig = QUESTION_STEPS.find((config) => config.id === step);
 
   let stepContent: ReactNode = null;
   let stepKey: string = step;
 
   if (step === "intro") {
     stepContent = <IntroStep onDone={() => dispatch({ type: "NEXT" })} />;
-  } else if (questionConfig) {
+  } else if (step === "quiz") {
+    stepKey = `quiz-${state.quizIndex}-${state.showInterstitial}`;
     stepContent = (
-      <QuestionStep
-        config={questionConfig}
-        selected={state.hairContext[questionConfig.key]}
-        onSelect={(value) => handleHairAnswer(questionConfig.key, value)}
+      <QuizStep
+        quizIndex={state.quizIndex}
+        quizAnswers={state.quizAnswers}
+        showInterstitial={state.showInterstitial}
+        onAnswer={handleQuizAnswer}
+        onAdvance={() => dispatch({ type: "ADVANCE_QUIZ" })}
+        onDismissInterstitial={() => dispatch({ type: "DISMISS_INTERSTITIAL" })}
         onBack={() => dispatch({ type: "BACK" })}
       />
     );
@@ -165,19 +149,6 @@ export default function ScannerRoute() {
         onRetake={() => dispatch({ type: "CLEAR_PHOTO" })}
         onBack={() => dispatch({ type: "BACK" })}
         onNext={() => dispatch({ type: "NEXT" })}
-      />
-    );
-  } else if (step === "quiz") {
-    stepKey = `quiz-${state.quizIndex}-${state.showInterstitial}`;
-    stepContent = (
-      <QuizStep
-        questions={state.quizQuestions}
-        quizIndex={state.quizIndex}
-        quizAnswers={state.quizAnswers}
-        showInterstitial={state.showInterstitial}
-        onAnswer={handleQuizAnswer}
-        onDismissInterstitial={() => dispatch({ type: "DISMISS_INTERSTITIAL" })}
-        onBack={() => dispatch({ type: "BACK" })}
       />
     );
   } else if (step === "analyzing") {

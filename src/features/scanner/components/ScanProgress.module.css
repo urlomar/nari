@@ -24,10 +24,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   transition: color var(--duration-fast) var(--ease-out);
@@ -36,4 +41,10 @@
 .label[data-active] {
   color: var(--color-accent-tint-1);
   font-weight: 600;
+}
+
+.counter {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
