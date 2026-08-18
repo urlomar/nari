@@ -10,16 +10,26 @@ export interface PhotoStepProps {
   onRetake: () => void;
   onBack: () => void;
   onNext: () => void;
+  onSkip: () => void;
 }
 
-export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, onBack, onNext }: PhotoStepProps) {
+export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, onBack, onNext, onSkip }: PhotoStepProps) {
   const [error, setError] = useState<string | null>(null);
+
+  function handleSelect(selected: File) {
+    setError(null);
+    onCapture(selected);
+  }
 
   return (
     <div className={s.step}>
-      <h2 className={s.heading}>A photo of your hair</h2>
+      <h2 className={s.heading}>A photo of your hair (optional)</h2>
       <p className={s.body}>
         Face the camera and pull your hair back so we can see your natural texture and shape.
+      </p>
+      <p className={s.hint}>
+        Photo analysis is coming soon — add a photo to try the flow, or skip straight to your results. Your photo
+        isn&rsquo;t stored or shared.
       </p>
 
       {previewUrl ? (
@@ -30,16 +40,10 @@ export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, 
           </button>
         </div>
       ) : (
-        <>
-          <div className={s.silhouetteSlot} aria-hidden="true" />
-          <PhotoCapture
-            onSelect={(selected) => {
-              setError(null);
-              onCapture(selected);
-            }}
-            onError={setError}
-          />
-        </>
+        <div className={s.captureButtons}>
+          <PhotoCapture capture="environment" label="Take a photo" onSelect={handleSelect} onError={setError} />
+          <PhotoCapture label="Choose a photo" onSelect={handleSelect} onError={setError} />
+        </div>
       )}
 
       {compressing && <p className={s.hint}>Optimizing photo…</p>}
@@ -53,9 +57,14 @@ export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, 
         <button type="button" className={s.textButton} onClick={onBack}>
           Back
         </button>
-        <button type="button" className={s.primaryButton} onClick={onNext} disabled={!file || compressing}>
-          Continue
-        </button>
+        <div className={s.navRowActions}>
+          <button type="button" className={s.textButton} onClick={onSkip}>
+            Skip for now
+          </button>
+          <button type="button" className={s.primaryButton} onClick={onNext} disabled={!file || compressing}>
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );

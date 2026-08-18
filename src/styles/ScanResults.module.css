@@ -1,14 +1,19 @@
 .screen {
   min-height: 100dvh;
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: var(--space-lg);
+  align-items: flex-start;
+  padding: var(--space-3xl) var(--space-lg) var(--space-4xl);
   background: var(--color-bg);
 }
 
+.notFoundScreen {
+  composes: screen;
+  align-items: center;
+}
+
 .card {
-  width: min(720px, 100%);
+  width: min(1040px, 100%);
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
@@ -53,34 +58,109 @@
   color: var(--color-text-muted);
 }
 
-.categorySection {
+/* --- Honesty banners --- */
+
+.unenforcedBanner {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.relaxedBanner {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-tint-2);
+  color: var(--color-accent-tint-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* --- Tabs --- */
+
+.tabList {
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding-bottom: var(--space-2xs);
+}
+
+.tab {
+  appearance: none;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.tab:hover {
+  border-color: var(--color-accent-tint-1);
+}
+
+.tabActive {
+  background: var(--gradient-accent-solid);
+  border-color: transparent;
+  color: var(--color-white);
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: var(--text-xs);
+}
+
+.tabPanel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
-.categoryHeading {
+.emptyCategory {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--text-xl);
-  color: var(--color-text);
+  padding: var(--space-lg) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
-.recommendationList {
+/* --- Product cards --- */
+
+.productGrid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-sm);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
 }
 
-.recommendationCard {
+.productCard {
   border-radius: var(--radius-card);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md);
   box-shadow: var(--shadow-elevation-1);
   display: flex;
   flex-direction: column;
@@ -90,9 +170,17 @@
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.recommendationCard:hover {
+.productCard:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
+}
+
+.productImage {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2xs);
 }
 
 .categoryBadge {
@@ -104,13 +192,60 @@
   color: var(--color-accent-tint-1);
 }
 
-.recommendationTitle {
+.productName {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-base);
   color: var(--color-text);
 }
+
+.productBrand {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.productPrice {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.buyLink {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent-tint-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.whyWrap {
+  margin-top: var(--space-2xs);
+}
+
+.whyToggle {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.whyText {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+/* --- Buttons / footer nav --- */
 
 .primaryButton {
   appearance: none;
@@ -139,7 +274,6 @@
 
 .secondaryButton {
   appearance: none;
-  align-self: center;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -149,6 +283,21 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.secondaryLink {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* --- Email capture (unchanged from prior implementation) --- */
 
 .captureBox {
   background: var(--color-bg-elevated);
@@ -244,5 +393,9 @@
 @media (max-width: 480px) {
   .captureRow {
     flex-direction: column;
+  }
+
+  .footerActions {
+    flex-wrap: wrap;
   }
 }

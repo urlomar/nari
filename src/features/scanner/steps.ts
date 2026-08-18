@@ -1,13 +1,15 @@
 import { QUIZ_QUESTION_COUNT } from "./quiz/quizQuestions";
 
-export type StepId = "intro" | "quiz" | "photo" | "analyzing";
+export type StepId = "intro" | "quiz" | "profile" | "photo" | "analyzing";
 
-// The quiz now comes first (Nya's 9 questions), then the photo — matching
-// her "answer questions, then upload a photo" flow. The old 2 hair-context
-// questions (natural state / product in hair) are dropped: they existed
-// only to disambiguate photo analysis for api/analyze.ts, which isn't
-// wired into this flow at all — see DECISIONS.md.
-export const STEP_ORDER: StepId[] = ["intro", "quiz", "photo", "analyzing"];
+// The quiz now comes first (Nya's 9 questions), then a profile summary
+// (Nya's "done" screen, ported in Spike A Part B), then the photo — matching
+// her "answer questions, see your profile, then upload a photo" flow. The
+// old 2 hair-context questions (natural state / product in hair) are
+// dropped: they existed only to disambiguate photo analysis for
+// api/analyze.ts, which isn't wired into this flow at all — see
+// DECISIONS.md.
+export const STEP_ORDER: StepId[] = ["intro", "quiz", "profile", "photo", "analyzing"];
 
 export { QUIZ_QUESTION_COUNT };
 

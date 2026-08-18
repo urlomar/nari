@@ -342,6 +342,132 @@ mid-quiz refresh restores the in-progress answers and question position;
 a scripted refresh on the photo step now resets cleanly to the intro,
 matching "the photo never persists" as originally intended.
 
+## Spike A — End-to-end results (quiz → profile → photo → real results)
+
+**Prefetch the catalog at quiz start; don't precompute scoring.**
+`dataSource.ts`'s `getProducts()` caches its own in-flight/resolved
+promise at module scope; `prefetchProducts()` (called from
+`ScannerRoute.tsx` the moment `step === "quiz"`) just kicks that promise
+off without awaiting it.
+- **Why:** `scoreProducts()` is a pure, millisecond-cheap function — the
+  network fetch is the slow, cacheable part, especially against a cold
+  server-side cache (`api/products.ts`'s own ~10min in-memory cache).
+  The user spends real time (minutes) answering 9 questions, so starting
+  the fetch at quiz start means it's almost always warm by the time
+  `getRecommendations()` needs it at the analyzing step, with no
+  user-visible loading state added anywhere. Deliberately did **not**
+  also precompute the score itself: the user can go Back and change any
+  answer all the way through the profile step, and invalidating a cached
+  score on every answer edit isn't worth the complexity when scoring
+  itself is too cheap to matter.
+- **What would change it:** if the catalog fetch itself becomes slow
+  enough that even a quiz-start prefetch doesn't finish in time (e.g. a
+  catalog 100x this size with a cold cache) — at that point a visible
+  loading state on the analyzing step, not a different prefetch timing,
+  is probably the right fix.
+
+**Results render before email capture is even offered — never gated.**
+`ScanResults.tsx` shows every category's picks unconditionally; the
+`EmailCapture` form is just another section afterward, not a modal or a
+blur-until-submit overlay.
+- **Why:** the brief is explicit here, and it matches the product's own
+  value proposition — Nari's pitch is "we give you real answers," and
+  gating the answers behind an email address would undercut that on the
+  single screen meant to prove it. It also avoids a common dark pattern
+  (implying results require signup when they don't).
+- **What would change it:** a deliberate future growth experiment could
+  A/B a gate, but that's a product decision for Nya, not a default this
+  spike should ship with.
+
+**The five locked edge cases** (see CLAUDE.md's "Scanner Flow" section
+for the implementation) — reasoning behind each:
+1. **Empty category stays visible with a "0" badge**, rather than being
+   hidden. Hiding it would silently misrepresent the routine as having
+   fewer steps than it does (e.g. a protein-sensitive user would see a
+   5-step routine with no explanation of where Mousse went) — worse than
+   an honest "we're adding products" placeholder.
+2. **The relaxed-match banner only renders when the category also has
+   ≥1 pick.** Found during verification, not anticipated up front: a
+   category that's both relaxed *and* empty (all three constraints
+   dropped, still nothing eligible after sensitivity filtering — e.g.
+   Mousse for a protein-sensitive user) rendered a "closest match"
+   banner directly above "no matches in this category," which reads as
+   self-contradictory. The fix is a one-line `&& active.picks.length >
+   0` guard, not a scoring.ts change — `relaxedConstraints` is still
+   correct data (relaxation genuinely was attempted), it just isn't
+   useful copy to surface when nothing survived it either way.
+3. **Null price omits the line entirely**, never a placeholder like
+   "price unavailable" — the brief called for omission specifically, and
+   it reads cleaner on a card than a line dedicated to saying "we don't
+   know." `formatPrice()` is only ever called after a `product.price !==
+   null` check, so this can't regress silently.
+4. **The unenforced-sensitivities banner is built from
+   `unenforcedSensitivities` at render time**, not hardcoded to mention
+   mineral oil specifically — `getOptionLabel("sensitivities", ...)`
+   looks up whatever's actually in the array. This is what makes it
+   self-resolving: the day a `Mineral Oil Free` column exists and is
+   mapped in `FIELD_MAP`, `scoring.ts`'s existing `getMineralOilFree()`
+   check starts returning real booleans instead of `undefined`, the
+   sensitivity moves from `unenforcedSensitivities` to being genuinely
+   filtered, and this banner stops mentioning it — with no code change
+   here.
+5. **Email capture after results** — see above.
+
+**Photo step honesty fix — why each specific line changed.**
+See CLAUDE.md's "Photo step honesty fix" for the full list of files
+touched. The underlying principle: don't describe capability that isn't
+wired up. `api/analyze.ts` exists and is deployed, but nothing in the
+scanner flow calls it — that's been true since Prompt 3 reordered the
+flow (see "Dropped the 2 hair-context questions" above) and remains true
+after this spike; wiring it is explicitly out of scope. Two copy bugs
+were fixed together because they're the same class of problem (claiming
+something about the photo that isn't true), even though only one
+("analyzed and immediately deleted") was the specifically-named
+launch-blocker: Features.tsx's "Snap three quick photos" was already
+stale on its own (the flow has taken one optional photo since before
+this spike) and sits two lines from the claim that was in scope, so
+fixing both in the same pass was cheaper and more honest than fixing one
+and leaving the other.
+
+**Verification used live Airtable data pulled via the Airtable MCP
+connector, not the checked-in fixture, and not a hand-written mock.**
+This sandbox has no `.env.local` (no `AIRTABLE_TOKEN`/base/table vars),
+so `api/products.ts` can't literally run end-to-end here the way it
+would on Vercel. Rather than screenshot the app against invented data,
+the live catalog (51 records, same base as production —
+`appt4p8UBTxso3Q6w`) was pulled via the Airtable MCP connector, converted
+from its field-ID-keyed shape back into the real Airtable REST API's
+field-name-keyed shape, and run through the **actual**
+`normalizeProduct`/`buildNormalizationReport` code in `api/_lib/schema.ts`
+(via a temporary, unshipped Vitest file, deleted after use) — so the
+data feeding the screenshots went through the identical normalization
+logic production uses, not a re-implementation of it. A temporary Vite
+dev-server middleware (added to `vite.config.ts`, gated behind a
+`VERIFY_LIVE_DATA` env var, reverted via `git checkout` immediately
+after) served this real output at `/api/products` so the actual running
+app — not a mock — could be driven end to end with a temporary local
+Playwright install (same "not a project dependency" approach as prior
+passes) across light/dark and desktop/390px.
+- **What this caught**: the live catalog has drifted from Prompt 2's
+  checked-in test fixture (`src/lib/products/__fixtures__/catalog.json`,
+  captured 2026-08-07) — 18 of 50 products now differ, mostly Nya
+  actively re-verifying and *broadening* porosity tags (several
+  `notes` fields literally say "CORRECTED: added High" etc.), plus a few
+  price/buyLink/ounces corrections and one product renamed. This is
+  healthy catalog maintenance, not a bug — but it means the checked-in
+  fixture is now a stale snapshot, not current truth. **Deliberately
+  left the fixture unchanged** — updating it is Prompt 2/scoring-test
+  territory, not this spike's mandate, and the existing 14 scoring tests
+  still pass against it unmodified. Flagged here so whoever next touches
+  `scoring.test.ts` knows the fixture is ~2 weeks stale as of this
+  writing, not that it was missed.
+- **What's still not verified**: the actual Vercel Lambda invocation of
+  `api/products.ts` itself (auth to Airtable, the ~10min in-memory
+  cache, the stale-cache-on-failure fallback) — same category of gap
+  Milestone 6 already noted for `api/analyze.ts`. The normalization
+  *logic* is proven against live data (above); the serverless
+  *transport* around it is not re-proven here.
+
 ## Open questions / risks to raise with Nya
 
 - **Mineral-oil sensitivity is currently unenforced.** No Airtable column
@@ -349,16 +475,19 @@ matching "the photo never persists" as originally intended.
   moment a column is added and mapped in `FIELD_MAP` — no `scoring.ts`
   change needed — but until then, a user who reports this sensitivity
   gets `unenforcedSensitivities: ["mineral_oil"]` and no actual
-  filtering. Prompt 4 must surface this honestly, not silently.
-- **No products are tagged 2A, 2B, or 2C anywhere in the catalog** (as of
-  2026-08-07 — 51 records), while the quiz offers those curl-type
-  answers. Any 2A/2B or 2C/3A user hits relaxation immediately, on day
-  one. Verified directly in `scoring.test.ts`.
-- **Newly found while testing this prompt: Mousse and Oil/Sealant have
-  zero protein-free products** (0 of 6, and 0 of 4, respectively).
-  Relaxation can't fix this — it never touches sensitivity exclusions by
-  design — so a protein-sensitive user correctly gets an empty result
-  for those two categories today. Worth flagging to Nya as a catalog gap
+  filtering, and the results page now says so explicitly (Spike A, Part
+  D, edge case #4).
+- **No products are tagged 2A, 2B, or 2C anywhere in the catalog**
+  (re-verified live 2026-08-18 — still true against 50 current records),
+  while the quiz offers those curl-type answers. Any 2A/2B or 2C/3A user
+  hits relaxation immediately, on day one. Verified directly in
+  `scoring.test.ts` and again live via Spike A's verification pass.
+- **Mousse and Oil/Sealant still have zero protein-free products**
+  (0 of 6, and 0 of 4 — re-verified live 2026-08-18, unchanged from
+  Prompt 2). Relaxation can't fix this — it never touches sensitivity
+  exclusions by design — so a protein-sensitive user correctly gets an
+  empty result for those two categories today (screenshotted directly
+  during Spike A verification). Worth flagging to Nya as a catalog gap
   alongside the curl-type one above.
 - **Unchecked free-from checkboxes conflate "contains it" with
   "unverified."** Handled conservatively today (both treated as unsafe —
@@ -370,7 +499,22 @@ matching "the photo never persists" as originally intended.
   three-state field (Yes / No / Unverified) rather than a plain
   checkbox, once volume makes manual verification of every row
   impractical.
-- **Products with `price: null`** (10 of 50 currently) are never
+- **Products with `price: null`** (9 of 50 as of 2026-08-18, down from
+  10 on 2026-08-07 — Nya added a price to one row since) are never
   excluded, but always rank slightly below an otherwise-identical
-  in-budget product. Prompt 4 needs to render "price unavailable" (or
-  similar) rather than "$0" or "null" for these.
+  in-budget product. The results page omits the price line entirely for
+  these rather than showing "$0"/"null" (Spike A, Part D, edge case #3).
+- **New (Spike A): the checked-in scoring test fixture is stale.**
+  `src/lib/products/__fixtures__/catalog.json` was captured 2026-08-07;
+  live verification on 2026-08-18 found 18 of 50 products have since
+  changed (mostly Nya widening porosity tags after re-reviewing
+  ingredients — see the verification write-up above). The existing
+  scoring tests still pass against the old fixture, so nothing is
+  broken, but anyone re-tuning `SCORING_WEIGHTS` or adding scoring test
+  cases should pull a fresh fixture first rather than assume the
+  checked-in one still reflects Nya's current data.
+- **New (Spike A): no image URL column exists yet**, so
+  `ScanResults.tsx`'s per-card image logic is written but has never
+  rendered a real image — worth a specific check once Nya adds one,
+  since it's only been exercised via the `product.imageUrl` absence
+  path.

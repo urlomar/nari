@@ -5,11 +5,11 @@ import { useScrollReveal } from "@/styles/useScrollReveal";
 const STEPS = [
   {
     title: "Scan",
-    body: "Snap three quick photos — front, back, and a close-up of your strands.",
+    body: "Answer a few quick questions about your hair, then add a photo if you'd like.",
   },
   {
     title: "Analyze",
-    body: "We analyze your hair texture, porosity, and condition. No guesswork.",
+    body: "We match your answers — porosity, curl type, goals, and more — to real products. No guesswork.",
   },
   {
     title: "Your routine",

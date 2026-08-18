@@ -2,14 +2,15 @@ import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { track } from "@/lib/analytics";
-import { getRecommendations } from "@/lib/dataSource";
+import { getRecommendations, prefetchProducts } from "@/lib/dataSource";
 import { compressImage } from "@/lib/compressImage";
-import type { RecommendationSet } from "@/lib/schemas";
+import type { ScoredRecommendationSet } from "@/lib/products/scoring";
 import { fadeUp } from "@/styles/motionVariants";
 import { ScanBackground } from "./components/ScanBackground";
 import { ScanProgress } from "./components/ScanProgress";
 import { IntroStep } from "./steps/IntroStep";
 import { PhotoStep } from "./steps/PhotoStep";
+import { ProfileStep } from "./steps/ProfileStep";
 import { QuizStep } from "./steps/QuizStep";
 import { AnalyzingStep } from "./steps/AnalyzingStep";
 import {
@@ -73,13 +74,27 @@ export default function ScannerRoute() {
   // The moment the user leaves the quiz, its sessionStorage snapshot is
   // stale forever (the write effect above only fires while step === "quiz",
   // so it's frozen at the last quiz question, not "the user finished all
-  // 9"). Without this, refreshing on the photo step would read that stale
-  // blob and bounce the user back into the last quiz question instead of
-  // leaving them on photo — sessionStorage is only ever consulted at mount
+  // 9"). Without this, refreshing on the profile step (the step
+  // immediately after the quiz) would read that stale blob and bounce the
+  // user back into the last quiz question instead of leaving them on the
+  // profile summary — sessionStorage is only ever consulted at mount
   // (createInitialScannerState), so clearing it here doesn't affect normal
-  // in-app Back navigation, which uses the reducer's in-memory state.
+  // in-app Back navigation, which uses the reducer's in-memory state, and
+  // self-heals if the user backs into the quiz again (the write effect
+  // just fires again).
   useEffect(() => {
-    if (step === "photo") clearPersistedQuizProgress();
+    if (step === "profile") clearPersistedQuizProgress();
+  }, [step]);
+
+  // Prefetch the catalog the moment the quiz starts, not at the results
+  // page — scoring itself is milliseconds, the network fetch is the slow
+  // part. The user spends minutes on 9 questions, so this warms the cache
+  // well before getRecommendations() needs it (see dataSource.ts).
+  // Deliberately NOT precomputing scoreProducts() here — the user can still
+  // go back and change answers, and invalidating a cached score isn't
+  // worth it for a millisecond-cheap pure function.
+  useEffect(() => {
+    if (step === "quiz") prefetchProducts();
   }, [step]);
 
   useEffect(() => {
@@ -89,7 +104,7 @@ export default function ScannerRoute() {
     (async () => {
       const diagnosticAnswers = toDiagnosticAnswers(state.quizAnswers);
       try {
-        const recommendations: RecommendationSet = await getRecommendations(diagnosticAnswers);
+        const recommendations: ScoredRecommendationSet = await getRecommendations(diagnosticAnswers);
         if (cancelled) return;
         track("scan_completed");
         clearPersistedQuizProgress();
@@ -121,6 +136,13 @@ export default function ScannerRoute() {
     dispatch({ type: "SET_QUIZ_ANSWER", questionId, value });
   }
 
+  function handleStartOver() {
+    const confirmed = window.confirm("Start over? This will discard your answers and photo.");
+    if (!confirmed) return;
+    clearPersistedQuizProgress();
+    dispatch({ type: "RESET" });
+  }
+
   let stepContent: ReactNode = null;
   let stepKey: string = step;
 
@@ -139,6 +161,15 @@ export default function ScannerRoute() {
         onBack={() => dispatch({ type: "BACK" })}
       />
     );
+  } else if (step === "profile") {
+    stepContent = (
+      <ProfileStep
+        quizAnswers={state.quizAnswers}
+        onBack={() => dispatch({ type: "BACK" })}
+        onContinue={() => dispatch({ type: "NEXT" })}
+        onStartOver={handleStartOver}
+      />
+    );
   } else if (step === "photo") {
     stepContent = (
       <PhotoStep
@@ -149,6 +180,7 @@ export default function ScannerRoute() {
         onRetake={() => dispatch({ type: "CLEAR_PHOTO" })}
         onBack={() => dispatch({ type: "BACK" })}
         onNext={() => dispatch({ type: "NEXT" })}
+        onSkip={() => dispatch({ type: "SKIP_PHOTO" })}
       />
     );
   } else if (step === "analyzing") {

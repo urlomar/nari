@@ -55,12 +55,21 @@ catalog) => RecommendationSet`) is Prompt 2's deliverable, not this one.
    unavailable must not break the results page.
 4. **`src/lib/dataSource.ts`**'s `getProducts()` is the only sanctioned
    way for the client to reach this data — no component should call
-   `/api/products` directly. `getRecommendations()` still returns mock
-   data until Prompt 4 wires the real scoring function in.
+   `/api/products` directly. `getProducts()` caches its own in-flight/
+   resolved promise at module scope, so repeat callers (the quiz's
+   prefetch, the analyzing step, `/debug/products`) share one request
+   instead of re-fetching. **`getRecommendations(answers)`** (Spike A)
+   fetches the catalog via `getProducts()` and runs the real
+   `scoreProducts()` (`src/lib/products/scoring.ts`) against it — no
+   mock data left in this path. See "Product Scoring" below and
+   DECISIONS.md for the prefetch-at-quiz-start timing.
 5. **`/debug/products`** (dev-only, gated by `import.meta.env.DEV` the
    same way `/dev/swatches` is) renders the parsed catalog + normalization
-   report as JSON — the verification surface for this pipeline. Temporary;
-   Prompt 4 removes or gates it once the real results page is live.
+   report as JSON — the verification surface for this pipeline. Kept
+   deliberately even now that the real results page is live (Spike A) —
+   still the fastest way to inspect a raw normalization report when
+   chasing a catalog data issue; excluded from production builds either
+   way via the `import.meta.env.DEV` guard, so keeping it costs nothing.
 
 ### Server code boundary — why normalization lives under `api/_lib/`, not `src/lib/`
 `api/products.ts` originally imported its normalization code from
@@ -358,8 +367,15 @@ were dropped and why `PhaseBar` wasn't ported.
   function, `QuizAnswers → DiagnosticAnswers` (the type
   `src/lib/products/scoring.ts`'s `scoreProducts()` expects). Confirms the
   two literals Prompt 2 flagged as inferred (`budgetMax`'s bucket
-  mapping, `blackOwnedPref`'s casing) — see DECISIONS.md. Does **not**
-  call `scoreProducts()` — that's Prompt 4's wiring.
+  mapping, `blackOwnedPref`'s casing) — see DECISIONS.md. Still doesn't
+  call `scoreProducts()` itself — `ScannerRoute.tsx` calls it, then passes
+  the result to `getRecommendations()` (see "Product Data Pipeline" above).
+- **`quiz/quizLabels.ts`** (Spike A) — `getOptionLabel`/`getOptionDisplay`/
+  `formatAnswerDisplay`, the shared value→label lookup against
+  `QUIZ_QUESTIONS`. Used by both the profile summary step (below) and
+  `ScanResults.tsx`'s "why we picked this" humanizer, so neither has to
+  re-derive the mapping from a raw answer value back to Nya's option
+  copy.
 
 ### How to add or edit a quiz question
 1. Edit (or add an entry to) the `QUIZ_QUESTIONS` array in
@@ -391,6 +407,118 @@ were dropped and why `PhaseBar` wasn't ported.
    question updates the progress bar automatically; only revisit
    `INTERSTITIAL_AFTER_INDEX` if the new question count changes where the
    "almost there" beat should land.
+
+## Scanner Flow: Profile Step, Photo Honesty, Results (Spike A)
+
+The scanner flow now ends-to-end for real: quiz → profile summary → photo
+(optional) → scored results from the live catalog. `STEP_ORDER` in
+`steps.ts` is `["intro", "quiz", "profile", "photo", "analyzing"]` — the
+profile step was inserted between quiz and photo, not appended at the
+end. See DECISIONS.md's Spike A section for the reasoning behind each
+piece below.
+
+### Profile step (`src/features/scanner/steps/ProfileStep.tsx`)
+Ports the spirit of Nya's "done" screen from `nya-quiz-reference.jsx`
+("Your Nari profile / Nari's got you, sis. 🌿") — restyled in Nari
+tokens, both themes. Renders every answered question with its human
+label via `quiz/quizLabels.ts` (never a raw value like `"fine_low"`).
+Two actions per her design (plus a standard Back, for consistency with
+every other step): primary **Continue** → photo step, and **Start
+over**, which confirms via `window.confirm` before clearing all scanner
+state (`RESET` action) and the persisted quiz sessionStorage blob —
+handled in `ScannerRoute.tsx`'s `handleStartOver`, not inside the
+reducer, since sessionStorage is a side effect the reducer itself
+shouldn't own (same convention as the existing photo-step clear effect).
+`scannerReducer.ts`'s `BACK` case now special-cases leaving "profile"
+(returns to the quiz's last question) rather than leaving "photo" — a
+consequence of profile now sitting between them, not a new pattern.
+
+### Photo step honesty fix (launch-blocking, per the brief)
+The old copy claimed photos were "analyzed and immediately deleted" —
+untrue today, since `api/analyze.ts` is deployed but never called from
+this flow (still true post-Spike-A; wiring it is explicitly out of
+scope). Fixed everywhere the claim appeared:
+- `PhotoStep.tsx`: heading now reads "(optional)"; body copy is *"Photo
+  analysis is coming soon — add a photo to try the flow, or skip
+  straight to your results. Your photo isn't stored or shared."*
+- `CTA.tsx`'s landing trust line: dropped to "Your photos are never
+  stored or shared." (still true, no longer promising analysis).
+- `Features.tsx`'s "Scan"/"Analyze" step copy: also corrected a second,
+  separate stale claim found in the same pass — "Snap three quick
+  photos" (the flow has taken exactly one *optional* photo since before
+  Spike A; nothing about this specific number was ever updated when the
+  flow changed) and "We analyze your hair texture..." (implies photo
+  vision analysis that isn't wired). Now: "Answer a few quick questions
+  about your hair, then add a photo if you'd like" / "We match your
+  answers... to real products. No guesswork."
+- **Two distinct capture options, not one input with `capture` set**:
+  `PhotoCapture.tsx`'s `capture` prop is now optional
+  (`"environment" | "user" | undefined`) instead of hardcoded to
+  `"environment"`. `PhotoStep.tsx` renders it twice — "Take a photo"
+  (`capture="environment"`, jumps to the camera on mobile) and "Choose a
+  photo" (no `capture` attr, opens the OS file/photo picker) — a single
+  input with `capture` set gives no way to pick an existing shot.
+- **"Skip for now"** is a new `SKIP_PHOTO` reducer action (clears any
+  photo AND advances in one dispatch, rather than two separate
+  dispatches) — always available regardless of whether a photo was
+  already captured. The photo is optional end to end: `state.photo`
+  being `null` was already handled everywhere downstream (scoring never
+  touches the photo — see "Product Scoring" above), so this needed no
+  changes past the step itself.
+
+### Results page (`src/pages/ScanResults.tsx` + `.module.css`)
+Fully rebuilt to render a real `ScoredRecommendationSet` (from
+`src/lib/products/scoring.ts`) instead of the retired mock
+`RecommendationSet`. **Routine-ordered tabs**, not an arbitrary list —
+`scoring.ts`'s own `CATEGORIES` constant is already
+Shampoo→Conditioner→Leave-in→Cream→Mousse→Oil/Sealant, so the results
+page just renders `categories` in the order `scoreProducts()` returns it
+with no re-sorting. Each tab shows a count badge (`category.picks.length`,
+shown even when 0); the first category is open by default.
+
+- **Product cards**: name, brand, category badge, price (formatted via a
+  local `formatPrice` — no forced `.00` on whole-dollar prices), buy
+  link (`target="_blank" rel="noopener noreferrer"`, omitted entirely if
+  the product has none — 13 of 50 currently don't), and an image only if
+  `product.imageUrl` exists (no product does yet — see "Product Data
+  Pipeline" — so this path is written but unexercised against real data
+  today; no reserved space when absent).
+- **"Why we picked this"**: a per-card expandable button/panel
+  (collapsed by default) that humanizes `scoring.ts`'s raw
+  `matchReasons` strings (e.g. `"goal: frizz"`) into plain language via
+  a small parser (`humanizeMatchReason` in `ScanResults.tsx`), reusing
+  `quiz/quizLabels.ts`'s `getOptionLabel` so a goal/frustration reads as
+  Nya's own option copy ("your frizz control goal") rather than the raw
+  catalog tag. Deliberately does **not** invent a sensitivity-driven
+  callout (e.g. "protein-free") since `scoring.ts`'s hard filters don't
+  produce a matchReason for what they excluded — noted as a Spike B
+  deepening opportunity, not implemented here, to keep this the "cheap
+  version" the brief asked for.
+- **The five locked edge cases**, all verified with real screenshots
+  against live Airtable data (see DECISIONS.md for the reasoning behind
+  each):
+  1. Empty category → tab stays visible with a "0" badge; panel shows
+     "No matches in this category yet — we're adding products."
+  2. Relaxed matches → a banner names exactly what was dropped ("Closest
+     match — no products tagged for your curl type yet"), built from
+     `category.relaxedConstraints`. **Only rendered when the category
+     also has ≥1 pick** — a relaxed-but-still-empty category (e.g.
+     Mousse for a protein-sensitive user) would otherwise show a
+     self-contradictory "closest match" banner next to "no matches."
+  3. `price === null` → the price line is omitted entirely, never
+     `"$0"`/`"null"`.
+  4. `unenforcedSensitivities` non-empty → a page-level banner names
+     what wasn't checked ("we can't verify mineral oil..."), built
+     dynamically from `getOptionLabel("sensitivities", ...)` — auto-
+     resolves the moment a real column exists, no hardcoding.
+  5. Email capture (`EmailCapture`, reusing the existing `useSubscribe`
+     hook) renders unconditionally after the tabs/products — no modal,
+     no blur-until-email gate.
+- **Tabs are plain buttons**, not a full WAI-ARIA roving-tabindex
+  tablist (`role="tab"`/`"tabpanel"`/`aria-selected` are set, but arrow-
+  key navigation between tabs isn't implemented) — keyboard-reachable
+  via Tab/Enter like any button, just not the full authoring-practices
+  pattern. Flagged for Spike B, not done here.
 
 ## Design System Notes
 

@@ -573,3 +573,95 @@ the full reasoning writeup.
   regressions) throughout the whole quiz.
 - Next: Prompt 4 (results page + wiring `scoreProducts()` into the real
   flow, replacing the mock `getRecommendations()`).
+
+## Spike A — End-to-end results (Day 1 of 2)
+**Status: done.** The product works end to end for the first time: quiz
+→ profile summary → photo (optional) → real scored recommendations from
+the live Airtable catalog. See CLAUDE.md's "Product Data Pipeline" and
+new "Scanner Flow: Profile Step, Photo Honesty, Results" sections for
+the file-by-file breakdown, and DECISIONS.md's "Spike A" section for the
+reasoning behind the prefetch timing, the five locked edge cases, the
+photo-honesty fix, and how this was verified without a `.env.local` in
+this sandbox.
+
+- **Part A — Real data wiring.** `dataSource.ts`'s `getRecommendations()`
+  now fetches the live catalog via `getProducts()` and runs the real
+  `scoreProducts()` — no mock data left in this path. `getProducts()`
+  caches its own promise so repeat callers share one request.
+  `prefetchProducts()` (new) is called from `ScannerRoute.tsx` the
+  moment the quiz starts, not at the results page — see DECISIONS.md for
+  why precomputing the score itself was deliberately not done. The old
+  placeholder `RecommendationSet`/`ProductPick`/`RecommendationCategory`
+  types (`src/lib/schemas.ts`) and the mock JSON
+  (`src/lib/mock/recommendations.json`) were retired — nothing else
+  referenced them once `ScanResults.tsx` moved onto the real
+  `ScoredRecommendationSet` type.
+- **Part B — Profile summary step (new).** `ProfileStep.tsx`, inserted
+  into `STEP_ORDER` between "quiz" and "photo" — ports Nya's "Your Nari
+  profile / Nari's got you, sis. 🌿" done-screen, restyled in Nari
+  tokens, both themes, showing every answered question's human label
+  (`quiz/quizLabels.ts`, new shared helper — also used by the results
+  page's "why we picked this"). Two actions per her design (Continue →
+  photo, Start over → confirm then clear everything) plus a standard
+  Back for consistency with the rest of the flow. `scannerReducer.ts`
+  gained a `RESET` action and a simplified `BACK` case (leaving
+  "profile," not "photo," is now the special case that returns to the
+  quiz's last question).
+- **Part C — Photo step honesty fix (launch-blocking).** Grepped for and
+  corrected every instance of the "analyzed and immediately deleted"
+  claim (`CTA.tsx`'s landing trust line, `PhotoStep.tsx`'s copy) — none
+  of it was true, since `api/analyze.ts` still isn't wired into this
+  flow. Also fixed a second, adjacent stale claim in `Features.tsx`
+  ("Snap three quick photos" — the flow has taken one optional photo for
+  a while now). The photo step is now explicitly optional: a "Skip for
+  now" button (new `SKIP_PHOTO` reducer action) advances cleanly with a
+  null photo, and "Take a photo" (camera) / "Choose a photo" (file
+  picker) are two distinct buttons (`PhotoCapture.tsx`'s `capture` prop
+  is now optional instead of hardcoded), not one input that jumps
+  straight to the camera with no way to pick an existing shot.
+- **Part D — Results page.** `ScanResults.tsx` rebuilt to render a real
+  `ScoredRecommendationSet` as routine-ordered tabs (Shampoo →
+  Conditioner → Leave-in → Cream → Mousse → Oil/Sealant — already
+  `scoring.ts`'s own category order, no re-sorting needed) with a count
+  badge per tab, first tab open by default. Product cards show name,
+  brand, category, price (omitted if null), buy link (omitted if
+  absent), image if a URL exists (none do yet), and an expandable "why
+  we picked this" that humanizes `scoring.ts`'s raw `matchReasons` into
+  plain language. All five locked edge cases implemented and
+  screenshot-verified against live data — see DECISIONS.md. One bug
+  found and fixed during verification, not anticipated up front: a
+  category that's both relaxed and still empty rendered a
+  self-contradictory "closest match" banner next to "no matches" —
+  fixed with a one-line guard.
+- **Part E — Documentation.** DECISIONS.md and CLAUDE.md both updated;
+  this entry.
+- **Verification.** `npm run typecheck` clean; all 18 existing tests
+  (14 scoring + 4 toDiagnosticAnswers) still pass, untouched. Full flow
+  walked end to end twice (once with a photo, once skipping) in both
+  light/dark and desktop/390px, via a temporary local Playwright install
+  (not a project dependency, removed after) — zero console errors across
+  every run. **This sandbox has no `.env.local`**, so `api/products.ts`
+  couldn't literally be invoked as a Vercel function here; instead, the
+  live Airtable catalog was pulled via the Airtable MCP connector and
+  run through the actual `api/_lib/schema.ts` normalization code (a
+  temporary, unshipped Vitest file), then served to the real running app
+  through a temporary, gated Vite dev-middleware (reverted immediately
+  after) — so every screenshot reflects genuine live Airtable data
+  through the real normalization logic, not mocks or hand-written
+  fixtures. This also surfaced that the checked-in scoring test fixture
+  (`__fixtures__/catalog.json`, 2026-08-07) has drifted from live data
+  (18/50 products changed, mostly Nya widening porosity tags) — flagged
+  in DECISIONS.md, deliberately left unfixed since updating a Prompt 2
+  test fixture is out of this spike's scope and the existing tests still
+  pass against it as-is.
+- **Handled crudely, flagged for Spike B**: the results page's tabs are
+  plain buttons with correct ARIA roles/states but no roving-tabindex
+  arrow-key navigation; "why we picked this" only humanizes
+  `scoring.ts`'s existing matchReasons (no sensitivity-driven callout
+  like "protein-free," since hard filters don't produce a matchReason
+  for what they excluded); the actual Vercel Lambda transport for
+  `api/products.ts` (auth, cache, stale-fallback) is unverified in this
+  sandbox, same pre-existing gap Milestone 6 already noted for
+  `api/analyze.ts`.
+- Next: Spike B (Day 2) — thorough error handling, automated tests for
+  the new UI, and a review pass.

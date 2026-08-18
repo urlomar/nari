@@ -55,8 +55,8 @@ export function clearPersistedQuizProgress(): void {
   }
 }
 
-export function createInitialScannerState(): ScannerState {
-  const base: ScannerState = {
+function emptyScannerState(): ScannerState {
+  return {
     stepIndex: 0,
     photo: null,
     quizAnswers: {},
@@ -66,6 +66,10 @@ export function createInitialScannerState(): ScannerState {
     analysisError: null,
     analysisAttempt: 0,
   };
+}
+
+export function createInitialScannerState(): ScannerState {
+  const base = emptyScannerState();
 
   const restored = readPersistedQuizProgress();
   if (!restored || Object.keys(restored.quizAnswers).length === 0) return base;
@@ -82,11 +86,13 @@ export function createInitialScannerState(): ScannerState {
 export type ScannerAction =
   | { type: "SET_PHOTO"; file: File }
   | { type: "CLEAR_PHOTO" }
+  | { type: "SKIP_PHOTO" }
   | { type: "SET_QUIZ_ANSWER"; questionId: string; value: QuizAnswerValue }
   | { type: "ADVANCE_QUIZ" }
   | { type: "DISMISS_INTERSTITIAL" }
   | { type: "NEXT" }
   | { type: "BACK" }
+  | { type: "RESET" }
   | { type: "ANALYSIS_FAILED"; message: string }
   | { type: "RETRY_ANALYSIS" };
 
@@ -97,6 +103,11 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
 
     case "CLEAR_PHOTO":
       return { ...state, photo: null };
+
+    // "Skip for now" — advances past the (optional) photo step with no
+    // photo, regardless of whatever was already captured.
+    case "SKIP_PHOTO":
+      return { ...state, photo: null, stepIndex: Math.min(state.stepIndex + 1, STEP_ORDER.length - 1) };
 
     // Only records the answer — does NOT move quizIndex. Single-select
     // questions auto-advance (QuizStep schedules a separate ADVANCE_QUIZ
@@ -110,7 +121,7 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
       const nextIndex = state.quizIndex + 1;
 
       if (nextIndex >= QUIZ_QUESTION_COUNT) {
-        return { ...state, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("photo") };
+        return { ...state, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("profile") };
       }
 
       const showInterstitial = nextIndex === INTERSTITIAL_AFTER_INDEX && !state.interstitialShown;
@@ -136,15 +147,25 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
       if (STEP_ORDER[state.stepIndex] === "quiz" && state.quizIndex > 0) {
         return { ...state, quizIndex: state.quizIndex - 1 };
       }
-      // Backing up out of "photo" re-enters the quiz at its last question,
-      // not step index - 1 blindly — quizIndex was already advanced to
-      // QUIZ_QUESTION_COUNT (out of range) the moment the 9th question was
-      // answered, since that's what triggers the move to "photo".
-      if (STEP_ORDER[state.stepIndex] === "photo") {
+      // Backing up out of "profile" re-enters the quiz at its last
+      // question, not step index - 1 blindly — quizIndex was already
+      // advanced to QUIZ_QUESTION_COUNT (out of range) the moment the 9th
+      // question was answered, since that's what triggers the move to
+      // "profile". Backing up out of "photo" just needs stepIndex - 1
+      // (STEP_ORDER's default case below), which lands on "profile" —
+      // no special case needed now that profile sits between them.
+      if (STEP_ORDER[state.stepIndex] === "profile") {
         return { ...state, stepIndex: STEP_ORDER.indexOf("quiz"), quizIndex: QUIZ_QUESTION_COUNT - 1 };
       }
       return { ...state, stepIndex: Math.max(state.stepIndex - 1, 0) };
     }
+
+    // "Start over" from the profile step — clears all progress and returns
+    // to the very beginning. The sessionStorage side of this (clearing the
+    // persisted quiz blob) is handled by the caller before dispatching,
+    // same as the CLEAR-on-reaching-"photo" effect in ScannerRoute.
+    case "RESET":
+      return emptyScannerState();
 
     case "ANALYSIS_FAILED":
       return { ...state, analysisError: action.message };

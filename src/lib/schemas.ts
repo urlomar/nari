@@ -92,33 +92,13 @@ export const AnalyzeRequestSchema = z.object({
 });
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
-// --- Mock recommendations output (src/lib/dataSource.ts) ---
-//
 // The quiz's own input types (QuizAnswers/QuizQuestionConfig) live in
-// src/features/scanner/quiz/quizTypes.ts, and the scoring engine's input
-// type (DiagnosticAnswers) lives in src/lib/products/scoring.ts — see
-// DECISIONS.md for why neither reuses a shared schema here. This file
-// keeps only the recommendation *output* shape, since ScanResults.tsx
-// (Prompt 4 territory) still consumes it from the mock data source.
-
-export const ProductPickSchema = z.object({
-  name: z.string(),
-  category: z.string(),
-  why: z.string(),
-  imageUrl: z.string().optional(),
-});
-export type ProductPick = z.infer<typeof ProductPickSchema>;
-
-export const RecommendationCategorySchema = z.object({
-  name: z.string(),
-  picks: z.array(ProductPickSchema).min(1),
-});
-export type RecommendationCategory = z.infer<typeof RecommendationCategorySchema>;
-
-export const RecommendationSetSchema = z.object({
-  categories: z.array(RecommendationCategorySchema).min(1),
-});
-export type RecommendationSet = z.infer<typeof RecommendationSetSchema>;
+// src/features/scanner/quiz/quizTypes.ts; the scoring engine's input/output
+// types (DiagnosticAnswers/ScoredRecommendationSet) live in
+// src/lib/products/scoring.ts — see DECISIONS.md for why neither reuses a
+// shared schema here. The old placeholder ProductPick/RecommendationCategory/
+// RecommendationSet types that used to live in this section were retired
+// once ScanResults.tsx and dataSource.ts moved onto the real scoring engine.
 
 // CTA.tsx / results-page email capture — shared by useSubscribe.
 export const SubscribeInputSchema = z.object({

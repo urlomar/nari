@@ -6,17 +6,24 @@ export interface PhotoCaptureProps {
   onError: (message: string) => void;
   label?: string;
   disabled?: boolean;
+  /**
+   * "environment" jumps straight to the device camera on mobile.
+   * Omitted/undefined opens the OS's file/photo picker instead — an
+   * existing photo, not a fresh capture. PhotoStep renders one of each as
+   * distinct options; a single input with `capture` set gives no way to
+   * choose an existing shot.
+   */
+  capture?: "environment" | "user";
 }
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 /**
- * Native file input styled as a button. `capture="environment"` opens the
- * device camera on mobile; on desktop it's a plain file picker. A live
- * webcam preview can replace the input internally later without callers
- * changing — the onSelect/onError contract stays the same.
+ * Native file input styled as a button. A live webcam preview can replace
+ * the input internally later without callers changing — the
+ * onSelect/onError contract stays the same.
  */
-export function PhotoCapture({ onSelect, onError, label = "Take or upload a photo", disabled }: PhotoCaptureProps) {
+export function PhotoCapture({ onSelect, onError, label = "Take or upload a photo", disabled, capture }: PhotoCaptureProps) {
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
@@ -39,7 +46,7 @@ export function PhotoCapture({ onSelect, onError, label = "Take or upload a phot
         className={s.input}
         type="file"
         accept="image/*"
-        capture="environment"
+        capture={capture}
         onChange={handleChange}
         disabled={disabled}
       />

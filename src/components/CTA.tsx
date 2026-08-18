@@ -39,7 +39,7 @@ export default function CTA() {
       <GradientRibbon variant="accent" />
       <div className={s.wrap}>
         <motion.p ref={trustLine.ref} style={trustLine.style} className={s.trustLine}>
-          Your photos are analyzed and immediately deleted — never stored or shared.
+          Your photos are never stored or shared.
         </motion.p>
 
         <motion.h2 id="cta-title" ref={heading.ref} style={heading.style}>

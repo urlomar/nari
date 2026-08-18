@@ -11,12 +11,16 @@ const PHOTO_LABEL = "Your photo";
 
 function activeSection(step: StepId, quizIndex: number): string | null {
   if (step === "quiz") return QUIZ_QUESTIONS[quizIndex]?.phase ?? QUIZ_PHASES[0];
+  if (step === "profile") return "Your profile";
   if (step === "photo" || step === "analyzing") return PHOTO_LABEL;
   return null;
 }
 
 function currentUnit(step: StepId, quizIndex: number): number {
   if (step === "quiz") return Math.min(quizIndex + 1, QUIZ_QUESTION_COUNT);
+  // Profile sits between the quiz and photo without its own unit — all 9
+  // quiz questions are done, photo's +1 isn't yet.
+  if (step === "profile") return QUIZ_QUESTION_COUNT;
   if (step === "photo") return QUIZ_QUESTION_COUNT + 1;
   if (step === "analyzing") return TOTAL_PROGRESS_UNITS;
   return 0;
