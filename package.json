@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest --globals --environment jsdom",
+    "test": "vitest",
     "typecheck": "tsc -b"
   },
   "dependencies": {

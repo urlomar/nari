@@ -157,7 +157,7 @@ export interface ScoredRecommendationSet {
   journey: string;
 }
 
-const CATEGORIES = ["Shampoo", "Conditioner", "Leave-in", "Cream", "Mousse", "Oil/Sealant"] as const;
+export const CATEGORIES = ["Shampoo", "Conditioner", "Leave-in", "Cream", "Mousse", "Oil/Sealant"] as const;
 
 // ---------------------------------------------------------------------------
 // Weights — the priority ranking. Expected to be tuned; this is the only
@@ -250,38 +250,74 @@ interface HardFilterResult {
 }
 
 /**
+ * Which of `requested` this one product fails — empty means it's safe.
  * Conservative rule: only a POSITIVELY marked free-from field counts as
  * safe. An unchecked box sometimes means "contains it," sometimes means
  * "unverified" (see the Supercurl product's notes in the live catalog —
  * its sulfate/silicone/protein status is explicitly flagged as inferred
  * from marketing, not independently verified, and its checkboxes are
  * correctly left unchecked as a result). Omitting a product is a smaller
- * harm than causing a reaction, so both cases are excluded identically —
- * this happens for free via ProductSchema's existing `false`-when-absent
- * default, not anything special in this function.
+ * harm than causing a reaction, so both cases fail identically — this
+ * happens for free via ProductSchema's existing `false`-when-absent
+ * default, not anything special in this function. Shared by
+ * `applyHardFilters` (the real pipeline) and `debugHardFilterExclusions`
+ * (the /debug/scoring instrument) so the two can never drift apart.
  */
+function failingSensitivities(
+  product: Product,
+  requested: Exclude<SensitivityAnswer, "none">[],
+  mineralOilEnforced: boolean
+): SensitivityAnswer[] {
+  const failed: SensitivityAnswer[] = [];
+  for (const sensitivity of requested) {
+    if (sensitivity === "mineral_oil") {
+      if (mineralOilEnforced && getMineralOilFree(product) !== true) failed.push(sensitivity);
+      continue;
+    }
+    const field = SENSITIVITY_FIELD[sensitivity];
+    if (field && product[field] !== true) failed.push(sensitivity);
+  }
+  return failed;
+}
+
 function applyHardFilters(catalog: Product[], sensitivities: SensitivityAnswer[]): HardFilterResult {
   const requested = sensitivities.filter((s): s is Exclude<SensitivityAnswer, "none"> => s !== "none");
   const unenforcedSensitivities: SensitivityAnswer[] = [];
-  let survivors = catalog;
 
-  for (const sensitivity of requested) {
-    if (sensitivity === "mineral_oil") {
-      const anyProductCarriesField = catalog.some((p) => getMineralOilFree(p) !== undefined);
-      if (!anyProductCarriesField) {
-        unenforcedSensitivities.push("mineral_oil");
-        continue;
-      }
-      survivors = survivors.filter((p) => getMineralOilFree(p) === true);
-      continue;
-    }
-
-    const field = SENSITIVITY_FIELD[sensitivity];
-    if (!field) continue;
-    survivors = survivors.filter((p) => p[field] === true);
+  const mineralOilRequested = requested.includes("mineral_oil");
+  const mineralOilEnforced = mineralOilRequested && catalog.some((p) => getMineralOilFree(p) !== undefined);
+  if (mineralOilRequested && !mineralOilEnforced) {
+    unenforcedSensitivities.push("mineral_oil");
   }
 
+  const survivors = catalog.filter((p) => failingSensitivities(p, requested, mineralOilEnforced).length === 0);
+
   return { survivors, unenforcedSensitivities };
+}
+
+export interface HardFilterExclusion {
+  product: Product;
+  failedSensitivities: SensitivityAnswer[];
+}
+
+/**
+ * Debug-only: every product Stage 1 removed, and specifically why — powers
+ * /debug/scoring's "excluded by hard filters" list (see CLAUDE.md). Not
+ * called anywhere in the real scoring pipeline; reuses the same
+ * `failingSensitivities` helper `applyHardFilters` uses so this can never
+ * silently drift from what actually gets excluded.
+ */
+export function debugHardFilterExclusions(catalog: Product[], sensitivities: SensitivityAnswer[]): HardFilterExclusion[] {
+  const requested = sensitivities.filter((s): s is Exclude<SensitivityAnswer, "none"> => s !== "none");
+  const mineralOilRequested = requested.includes("mineral_oil");
+  const mineralOilEnforced = mineralOilRequested && catalog.some((p) => getMineralOilFree(p) !== undefined);
+
+  const exclusions: HardFilterExclusion[] = [];
+  for (const product of catalog) {
+    const failedSensitivities = failingSensitivities(product, requested, mineralOilEnforced);
+    if (failedSensitivities.length > 0) exclusions.push({ product, failedSensitivities });
+  }
+  return exclusions;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,27 +355,60 @@ function blackOwnedScore(pref: BlackOwnedPref, product: Product): number {
   return SCORING_WEIGHTS.blackOwnedNoPreference;
 }
 
-function scoreProduct(product: Product, answers: DiagnosticAnswers): RecommendedProduct {
-  let score = 0;
+/** One product's score, split by dimension — see `scoreProductBreakdown` below. */
+export interface ScoreBreakdown {
+  porosity: number;
+  curlType: number;
+  goals: number;
+  frustrations: number;
+  density: number;
+  budget: number;
+  blackOwned: number;
+  /** EWG score + community sentiment, combined — neither is individually meaningful enough to warrant its own column. */
+  tiebreakers: number;
+  total: number;
+}
+
+/**
+ * The actual scoring math, shared by `scoreProduct` (the real pipeline,
+ * which only needs the total + human-readable reasons) and
+ * `scoreProductBreakdown` (the /debug/scoring instrument, which needs the
+ * per-dimension split) — one implementation so the two can't drift apart.
+ */
+function computeScoreBreakdown(
+  product: Product,
+  answers: DiagnosticAnswers
+): { breakdown: ScoreBreakdown; matchReasons: string[] } {
   const matchReasons: string[] = [];
+  const breakdown: ScoreBreakdown = {
+    porosity: 0,
+    curlType: 0,
+    goals: 0,
+    frustrations: 0,
+    density: 0,
+    budget: 0,
+    blackOwned: 0,
+    tiebreakers: 0,
+    total: 0,
+  };
 
   // Porosity — "unsure" skips the dimension entirely (never penalize, never guess).
   if (answers.porosity !== "unsure" && product.porosity.includes(answers.porosity)) {
-    score += SCORING_WEIGHTS.porosity;
+    breakdown.porosity += SCORING_WEIGHTS.porosity;
     matchReasons.push(`porosity: ${answers.porosity}`);
   }
 
   // Curl type — any overlap between expanded tags and the product's hairTypes.
   const curlOverlap = expandCurlType(answers.curlType).filter((tag) => product.hairTypes.includes(tag));
   if (curlOverlap.length > 0) {
-    score += SCORING_WEIGHTS.curlType;
+    breakdown.curlType += SCORING_WEIGHTS.curlType;
     matchReasons.push(`curl type: ${curlOverlap.join(", ")}`);
   }
 
   // Goals — equal weight per match, up to 3.
   for (const goal of answers.goals) {
     if (product.goals.includes(goal)) {
-      score += SCORING_WEIGHTS.goalMatch;
+      breakdown.goals += SCORING_WEIGHTS.goalMatch;
       matchReasons.push(`goal: ${goal}`);
     }
   }
@@ -349,14 +418,14 @@ function scoreProduct(product: Product, answers: DiagnosticAnswers): Recommended
     if (frustration === "nothing") return;
     if (!product.frustrations.includes(frustration)) return;
     const rankMultiplier = 3 - Math.min(index, 2); // rank 0 -> 3x, rank 1 -> 2x, rank 2+ -> 1x
-    score += SCORING_WEIGHTS.frustrationUnit * rankMultiplier;
+    breakdown.frustrations += SCORING_WEIGHTS.frustrationUnit * rankMultiplier;
     matchReasons.push(`frustration #${index + 1}: ${frustration}`);
   });
 
   // Density — quiz's fine/thick low/high collapse before comparing.
   const densityTag = DENSITY_COLLAPSE[answers.density];
   if (product.density.includes(densityTag)) {
-    score += SCORING_WEIGHTS.density;
+    breakdown.density += SCORING_WEIGHTS.density;
     matchReasons.push(`density: ${densityTag}`);
   }
 
@@ -364,33 +433,58 @@ function scoreProduct(product: Product, answers: DiagnosticAnswers): Recommended
   // penalty instead of being treated as free or excluded.
   if (answers.budgetMax !== null) {
     if (product.price === null) {
-      score += SCORING_WEIGHTS.nullPricePenalty;
+      breakdown.budget += SCORING_WEIGHTS.nullPricePenalty;
     } else if (product.price <= answers.budgetMax) {
-      score += SCORING_WEIGHTS.budgetInRange;
+      breakdown.budget += SCORING_WEIGHTS.budgetInRange;
       matchReasons.push(`within budget ($${product.price} ≤ $${answers.budgetMax})`);
     } else {
-      score += SCORING_WEIGHTS.budgetOutOfRange;
+      breakdown.budget += SCORING_WEIGHTS.budgetOutOfRange;
     }
   }
 
   // Black-owned preference — soft, never excludes.
   const boScore = blackOwnedScore(answers.blackOwnedPref, product);
   if (boScore > 0) {
-    score += boScore;
+    breakdown.blackOwned += boScore;
     matchReasons.push("black-owned brand");
   }
 
   // Tiebreakers only.
   if (product.ewgScore !== null) {
-    score += (10 - product.ewgScore) * SCORING_WEIGHTS.ewgTiebreakPerPoint;
+    breakdown.tiebreakers += (10 - product.ewgScore) * SCORING_WEIGHTS.ewgTiebreakPerPoint;
   }
   if (product.communitySentiment === "Loved") {
-    score += SCORING_WEIGHTS.communitySentimentLoved;
+    breakdown.tiebreakers += SCORING_WEIGHTS.communitySentimentLoved;
   } else if (product.communitySentiment === "Mixed") {
-    score += SCORING_WEIGHTS.communitySentimentMixed;
+    breakdown.tiebreakers += SCORING_WEIGHTS.communitySentimentMixed;
   }
 
-  return { product, score, matchReasons };
+  breakdown.total =
+    breakdown.porosity +
+    breakdown.curlType +
+    breakdown.goals +
+    breakdown.frustrations +
+    breakdown.density +
+    breakdown.budget +
+    breakdown.blackOwned +
+    breakdown.tiebreakers;
+
+  return { breakdown, matchReasons };
+}
+
+function scoreProduct(product: Product, answers: DiagnosticAnswers): RecommendedProduct {
+  const { breakdown, matchReasons } = computeScoreBreakdown(product, answers);
+  return { product, score: breakdown.total, matchReasons };
+}
+
+/**
+ * Debug-only: the full per-dimension point breakdown for one product —
+ * powers /debug/scoring's comparison tables (reading across two rows shows
+ * exactly which dimension decided the ranking). Not used by the real
+ * pipeline; calls the same `computeScoreBreakdown` `scoreProduct` does.
+ */
+export function scoreProductBreakdown(product: Product, answers: DiagnosticAnswers): ScoreBreakdown {
+  return computeScoreBreakdown(product, answers).breakdown;
 }
 
 // ---------------------------------------------------------------------------
@@ -479,6 +573,67 @@ function buildCategoryRecommendation(category: string, hardFilteredCatalog: Prod
   };
 }
 
+export interface DebugCategoryRow {
+  product: Product;
+  breakdown: ScoreBreakdown;
+  matchReasons: string[];
+  /** Whether this row survived the brand-diversity cap and made the real top-3 picks. */
+  picked: boolean;
+}
+
+export interface DebugCategoryDetail {
+  category: string;
+  relaxed: boolean;
+  relaxedConstraints: CategoryRecommendation["relaxedConstraints"];
+  /** Every hard-filter survivor that also meets the (possibly-relaxed) required dimensions — the exact candidate pool `selectForCategory` picked from — sorted by score descending. */
+  eligible: DebugCategoryRow[];
+}
+
+/**
+ * Debug-only: re-derives one category's full ranked candidate pool (not
+ * just the final top-3 `picks`) with a per-dimension breakdown for every
+ * row — powers /debug/scoring's comparison tables. Deliberately re-walks
+ * `buildCategoryRecommendation`'s exact steps (same hard filters, same
+ * relaxation loop, same `selectForCategory`) rather than a re-implemented
+ * shortcut, specifically so this can never show a ranking the real
+ * pipeline wouldn't actually produce.
+ */
+export function debugScoreCategory(category: string, catalog: Product[], answers: DiagnosticAnswers): DebugCategoryDetail {
+  const { survivors } = applyHardFilters(catalog, answers.sensitivities);
+  const scoredAll = survivors
+    .filter((p) => p.category === category)
+    .map((p) => {
+      const { breakdown, matchReasons } = computeScoreBreakdown(p, answers);
+      return { product: p, breakdown, matchReasons };
+    });
+
+  const required = requiredDimensionsFor(answers);
+  const relaxedConstraints: RelaxableDimension[] = [];
+  let eligible = scoredAll.filter((c) => meetsRequiredDimensions(c.product, answers, required));
+
+  for (const dimension of RELAXATION_ORDER) {
+    if (eligible.length >= MIN_PICKS_BEFORE_RELAXATION) break;
+    if (!required.has(dimension)) continue;
+    required.delete(dimension);
+    relaxedConstraints.push(dimension);
+    eligible = scoredAll.filter((c) => meetsRequiredDimensions(c.product, answers, required));
+  }
+
+  const picks = selectForCategory(
+    eligible.map((e) => ({ product: e.product, score: e.breakdown.total, matchReasons: e.matchReasons }))
+  );
+  const pickedIds = new Set(picks.map((p) => p.product.id));
+
+  const sorted = [...eligible].sort((a, b) => b.breakdown.total - a.breakdown.total);
+
+  return {
+    category,
+    relaxed: relaxedConstraints.length > 0,
+    relaxedConstraints,
+    eligible: sorted.map((row) => ({ ...row, picked: pickedIds.has(row.product.id) })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -493,4 +648,71 @@ export function scoreProducts(answers: DiagnosticAnswers, catalog: Product[]): S
   const categories = CATEGORIES.map((category) => buildCategoryRecommendation(category, survivors, answers));
 
   return { categories, unenforcedSensitivities, journey: answers.journey };
+}
+
+// ---------------------------------------------------------------------------
+// User-facing match checklist (Spike B, Part C)
+// ---------------------------------------------------------------------------
+
+export type MatchChecklistItem =
+  | { key: "porosity"; matched: boolean; value: PorosityAnswer }
+  | { key: "curlType"; matched: boolean; value: CurlTypeAnswer }
+  | { key: "sensitivities"; matched: true; values: Exclude<SensitivityAnswer, "none">[] }
+  | { key: "budget"; matched: boolean; price: number | null; budgetMax: number }
+  | { key: "blackOwned"; matched: boolean; pref: Exclude<BlackOwnedPref, "no_pref"> };
+
+/**
+ * Per-product ✓/✗ against the (up to) 5 dimensions users actually care
+ * about, for the results page's "checks and X's" — deliberately never a
+ * numeric score (see DECISIONS.md for why). A dimension is only included
+ * when the user actually expressed a preference for it — no porosity row
+ * for "unsure," no black-owned row for "no_pref," etc. — an omitted row
+ * reads as "not applicable," which is honest; a fabricated ✓ or ✗ for a
+ * dimension nobody asked about would not be.
+ *
+ * Sensitivities are always `matched: true` when the row is shown at all:
+ * every product reaching this function already survived Stage 1's hard
+ * filter, so by construction it doesn't violate anything it was checked
+ * against. `unenforcedSensitivities` is threaded through specifically so
+ * this never falsely claims a sensitivity was checked when it wasn't
+ * (mineral_oil today) — that gets the page-level banner instead, not a
+ * misleading green check here.
+ */
+export function buildMatchChecklist(
+  product: Product,
+  answers: DiagnosticAnswers,
+  unenforcedSensitivities: SensitivityAnswer[]
+): MatchChecklistItem[] {
+  const items: MatchChecklistItem[] = [];
+
+  if (answers.porosity !== "unsure") {
+    items.push({ key: "porosity", matched: product.porosity.includes(answers.porosity), value: answers.porosity });
+  }
+
+  if (answers.curlType.trim() !== "") {
+    const matched = expandCurlType(answers.curlType).some((tag) => product.hairTypes.includes(tag));
+    items.push({ key: "curlType", matched, value: answers.curlType });
+  }
+
+  const enforcedSensitivities = answers.sensitivities.filter(
+    (s): s is Exclude<SensitivityAnswer, "none"> => s !== "none" && !unenforcedSensitivities.includes(s)
+  );
+  if (enforcedSensitivities.length > 0) {
+    items.push({ key: "sensitivities", matched: true, values: enforcedSensitivities });
+  }
+
+  if (answers.budgetMax !== null) {
+    items.push({
+      key: "budget",
+      matched: product.price !== null && product.price <= answers.budgetMax,
+      price: product.price,
+      budgetMax: answers.budgetMax,
+    });
+  }
+
+  if (answers.blackOwnedPref !== "no_pref") {
+    items.push({ key: "blackOwned", matched: product.blackOwned, pref: answers.blackOwnedPref });
+  }
+
+  return items;
 }

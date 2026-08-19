@@ -468,6 +468,360 @@ passes) across light/dark and desktop/390px.
   *logic* is proven against live data (above); the serverless
   *transport* around it is not re-proven here.
 
+## Spike B — Hardening, tests, and scoring transparency (Day 2 of 2)
+
+Spike A shipped the flow end to end but "handled crudely" a few things
+(see PLAN.md's Spike A entry) and left error handling, automated tests, and
+scoring transparency for this pass. Per the brief, this section takes
+priority over anything below it that conflicts.
+
+### Error handling
+
+**Every failure in the analyzing step funnels through one message, and
+that's fine — the pipeline genuinely only has one I/O call.**
+`scoreProducts()` is pure/synchronous; the only network operation between
+"quiz done" and "results shown" is the catalog fetch (`getProducts()`). So
+rather than build a taxonomy of error types, the analyzing step's catch
+block just names that reality directly: *"We couldn't load the product
+database — check your connection and try again."* Retry (`RETRY_ANALYSIS`)
+re-invokes the same effect without touching `quizAnswers`/`photo`, so it's
+a real retry, not a flow restart — and `dataSource.ts`'s `getProducts()`
+already clears its cached promise on failure (`productsPromise = null` in
+the `.catch`), so retry genuinely re-fetches rather than replaying the same
+rejection. Verified directly in `dataSource.test.ts` by mocking `fetch` to
+fail once then succeed and asserting the second call actually hits the
+network again — this is also what proves a **cold-cache** failure (no
+stale cache for `api/products.ts` to fall back on) is recoverable, not just
+a warm-cache one.
+- **What would change it:** if a second, genuinely distinct I/O path gets
+  added to this step (e.g. photo analysis actually gets wired in per
+  DECISIONS.md's existing open note on `api/analyze.ts`), the error
+  messages would need to differentiate again.
+
+**sessionStorage quiz-resume was verified, not assumed.**
+The brief specifically asked to walk this failure path rather than trust
+the existing comments. `scannerReducer.test.ts` (new) exercises
+`createInitialScannerState()` against a real write-then-restore, a
+corrupted-JSON blob (`"{not valid json"` — confirms the existing try/catch
+in `readPersistedQuizProgress` actually degrades to a fresh state rather
+than throwing), and an explicit `clearPersistedQuizProgress()` call. All
+pass against the existing implementation — this was already correct, the
+gap was purely in verification, not the code.
+
+**"Scoring returns empty everywhere" gets a distinct, page-level banner —
+not six copies of the same per-category message.**
+`ScanResults.tsx` now checks `categories.every(c => c.picks.length === 0)`
+before rendering the per-category tabs and shows: *"Your filters are very
+specific, so we don't have a match yet in any category. Try loosening your
+sensitivities or budget — or scan again with different answers."* plus a
+Scan-again button. Deliberately does **not** attempt to jump the user back
+into the quiz with their answers pre-filled — sessionStorage is
+intentionally cleared the moment `getRecommendations()` succeeds (and
+never populated for a failed one, since the user never left the analyzing
+step), so there's no persisted state to resume into by the time results
+render. Re-scanning from scratch is a real cost but an honest one, not a
+half-built resume feature.
+- **What would change it:** if this turns out to be a common outcome in
+  practice (not just an edge case), a "go back and adjust just your
+  sensitivities/budget" shortcut would be worth the extra plumbing to keep
+  the rest of the quiz answers alive across the trip back to results.
+
+**Fixed a real "Something went wrong" violation.**
+`useSubscribe.ts`'s non-JSON-error fallback literally read `"Something
+went wrong. Please try again."` — banned copy per this spike's own
+principle, found while auditing every error string in the flow, not
+anticipated up front. Changed to *"We couldn't add you to the waitlist —
+please try again in a moment."* The network-failure branch right below it
+already had actionable copy ("Network error. Please check your connection
+and try again.") and was left as-is.
+
+**Oversized/invalid photo uploads were already mostly handled — the real
+gap was an uncaught rejection, not missing validation.**
+`PhotoCapture.tsx` already rejected non-image types and files over 10MB
+with a friendly message before this spike. What wasn't handled: a file
+that passes that check (a valid `image/*` MIME type, under 10MB — e.g.
+HEIC on a non-Safari browser, which many browsers report as `image/heic`
+but can't actually decode via `<img>`) and then fails inside
+`compressImage()`'s `loadImage()`, whose promise rejects on `img.onerror`.
+`ScannerRoute.tsx`'s `handleCapture` had no `catch` around the `await
+compressImage(file)` call at all — the rejection would silently
+unhandled-promise-reject, `dispatch` never fired, and the user was left
+looking at a spinner that vanished with no photo and no explanation.
+Fixed: `handleCapture` now catches and sets a friendly message ("We
+couldn't process that photo. Try a JPG or PNG, or skip this step for
+now…"); the error is lifted from `PhotoStep`'s old local `useState` up to
+`ScannerRoute` (`photoError`) so both PhotoCapture's immediate validation
+and this async compression failure surface through the same UI, and
+`PhotoStep` is now a fully controlled component for its error state.
+
+**Deep-link to `/scan/results` with no state was already handled** — Spike
+A's `ScanResults()` already checked for a missing `recommendations` and
+showed a graceful "Start a scan" card. No change needed; confirmed via a
+new render test rather than re-trusting the existing comment.
+
+**A second real, live-verified honesty bug, outside this spike's original
+scope but the same class of problem Spike A's "photo step honesty fix"
+was for.** Driving the actual running app surfaced that `Hero.tsx`'s
+subline — the single most prominent line of copy on the entire site,
+above the fold on `/` — still read *"Three photos, a diagnostic, and
+custom recommendations built for your strands."* The flow has taken
+exactly one *optional* photo since before Spike A (see "Photo step
+honesty fix" above); Spike A's copy audit fixed the same claim in
+`Features.tsx` and `PhotoStep.tsx`/`CTA.tsx` but never checked `Hero.tsx`
+for it. Fixed to *"A quick diagnostic and custom recommendations built for
+your strands."* Found only because this spike's verification pass
+actually rendered the real hero and read it, not because it was in scope
+of the brief's checklist — a reminder that "walk the failure path, don't
+assume" applies to copy audits too, not just error handling.
+
+### Why the results page never shows a numeric score (Part C)
+
+`buildMatchChecklist()` (new, `scoring.ts`) returns per-dimension
+✓/✗ booleans, never the underlying point value. **Deliberate, per the
+brief:** a number like "82.5" implies a precision the scoring model
+doesn't actually have — the weights are a hair-science judgment call (see
+"Scoring weights" above), not a calibrated measurement, and exposing them
+invites exactly the wrong question from a user ("why 82.5 and not 85?")
+instead of the right one ("does this actually fit what I told you?"). A
+checkmark answers the right question directly. The five dimensions shown
+(porosity, curl type, sensitivities, budget, black-owned) are the ones a
+user can independently verify against what they typed into the quiz — the
+weighted tiebreakers (EWG score, community sentiment) and rank-weighted
+goals/frustrations aren't included in the checklist for the same reason a
+score isn't: they're real inputs to *ranking*, not binary yes/no facts a
+user can sanity-check, and including them would either need to be
+misleadingly binary or would reintroduce the "why does this count more
+than that" question the checklist is designed to avoid. They're still
+available via the existing "why we picked this" expandable, in prose form.
+
+**A dimension is omitted entirely, not shown as a false ✓, when the user
+never expressed a preference on it** (porosity "unsure", empty curl type,
+sensitivities "none", no budget cap, black-owned "no preference"). An
+omitted row reads as "not applicable"; a fabricated checkmark for
+something nobody asked about would be a lie by a different route than a
+fake number. **Sensitivities are always ✓ when shown** — every displayed
+product already survived Stage 1's hard filter, so by construction it
+can't violate anything it was actually checked against; anything in
+`unenforcedSensitivities` (mineral oil today) is deliberately excluded
+from the checklist row too, so this can never claim a filter ran that
+didn't (that's what the existing page-level unenforced-sensitivities
+banner is for).
+
+**`answers` now rides along in `/scan/results`'s router state**
+(`ScannerRoute.tsx`'s `navigate()` call), not just `recommendations` —
+`matchReasons` alone only records what a product *did* match, never what
+it *didn't*, so there was no way to render an honest ✗ without the
+original answers to compare against. Typed as optional on
+`ScanResultsLocationState` and the checklist silently doesn't render if
+missing, rather than crashing — covers a stale cached history entry from
+before this field existed.
+
+### Scoring debug view (Part D)
+
+**Gated server-side (`api/debug-scoring.ts`), not by a client-bundled
+secret.** `/debug/scoring` is a normal client-rendered React route — it
+has to be, since the whole app is a Vite SPA with no server-side page
+rendering — so the actual gating comparison can't happen in the bundle
+(CLAUDE.md: secrets never ship as `VITE_`-prefixed values, and *any*
+client-side comparison is extractable from the shipped JS regardless of
+variable naming). Instead, the page calls a tiny serverless function with
+the `?key=` query param; the function compares it to
+`process.env.ONYAPROJECTX` server-side and returns 404 on any mismatch
+(including a missing/empty key or unset env var). The React page renders
+the literal `<NotFound />` component on that 404 — not a bespoke "access
+denied" page, which would itself leak that the route exists and is
+gated. On success it renders nothing special either — just the real tool.
+- **The catalog data itself isn't secret** — it's already public,
+  unauthenticated, at `/api/products`. This endpoint gates access to the
+  debug *instrument*, not to any data that isn't already exposed elsewhere.
+- **What would change it:** if Nya needs to share this with someone else
+  (a contractor, a hair-science advisor), the key can just be given to
+  them directly — no per-user accounts exist or are planned for this.
+
+**The comparison tables reuse the real pipeline's internal functions
+rather than re-implementing scoring for display.** `scoring.ts` gained
+three new exports for this — `scoreProductBreakdown` (per-dimension point
+split, built by refactoring the old monolithic `scoreProduct` into a
+shared `computeScoreBreakdown` both now call), `debugHardFilterExclusions`
+(reuses the same `failingSensitivities` helper `applyHardFilters` calls),
+and `debugScoreCategory` (walks the identical hard-filter → relaxation →
+`selectForCategory` steps `buildCategoryRecommendation` does, just also
+keeping the intermediate ranked pool instead of discarding it down to the
+top 3). All three were verified not to change `scoreProducts()`'s actual
+output — the full existing 14-test suite passed unmodified immediately
+after the refactor, before any new tests were added.
+- **Why this matters:** a debug view built by re-deriving scores with
+  separate, similar-but-not-identical logic is worse than no debug view —
+  it can show a ranking the real app would never actually produce, and
+  nobody would know to distrust it. Sharing the exact internal functions
+  makes that class of bug structurally impossible.
+
+**A real gate bug found and fixed during live verification, not
+anticipated up front.** The first implementation checked only
+`res.ok` on the `/api/debug-scoring` response to decide authorization.
+Driving the actual running app (temporary local Playwright, same
+not-a-project-dependency approach as prior spikes) against a plain `vite
+dev` server — which doesn't execute `api/*.ts` serverless functions at
+all, and falls back to serving `index.html` with a `200` for *any*
+unmatched path, including `/api/debug-scoring` — exposed that `res.ok`
+alone would treat that fallback `200` as authorized, rendering the real
+debug tool with **no key at all**. This specific failure mode can't occur
+on a real Vercel deploy (`/api/*` is routed to the actual function, never
+the SPA fallback, even if misconfigured) — but the fix is a strictly
+better, defense-in-depth check regardless: the client now parses the JSON
+body and requires `data.ok === true` explicitly, so any unexpected `200`
+with the wrong shape fails closed rather than open. Re-verified after the
+fix: `/debug/scoring` with no key now renders byte-identical `innerText`
+to a genuinely nonexistent route.
+
+**Built-in example profiles were checked against the real (if slightly
+stale) catalog fixture before being written, not assumed from the docs.**
+A temporary probe test (deleted after use, same pattern as Spike A's
+verification approach) confirmed `curlType: "2c3a"` genuinely triggers
+curl-type+density relaxation on every one of the 6 categories against the
+checked-in fixture, and that `curlType: "4a"` genuinely triggers none —
+these became the "relaxation" and "easy" built-in profiles specifically
+*because* they were confirmed to demonstrate what their names claim,
+rather than picked from the DECISIONS.md prose and hoped to still hold.
+
+**Query-param overrides replace the profile list entirely rather than
+appending to it.** `?profile=demanding&budgetMax=5` (or any bare field
+override with no `profile` at all) shows exactly one profile — the
+override target, clearly labeled — instead of a 5th row bolted onto the 4
+built-ins. Ad hoc checking is the point of the override feature; mixing it
+with the standing 4-profile overview would make neither view clean.
+
+### Two small fixes (Part E)
+
+**Dark mode is now the default for a first-time visitor.** Inverted from
+the previous "light unless localStorage says dark" to "dark unless
+localStorage says light" — both the blocking inline script in `index.html`
+and the comments in `useTheme.tsx` were updated together so they can't
+drift apart on what the default actually is. Still deliberately ignores
+OS `prefers-color-scheme` in both directions — this is a product decision
+(Nya wants dark-first), not a system-preference passthrough, consistent
+with the original light-first decision also having been a deliberate
+override of the OS signal rather than a default inherited from it.
+- **What would change it:** if Nya later wants the OS preference honored
+  for users who've never explicitly toggled, that's a one-line change to
+  the same inline script (check `matchMedia('(prefers-color-scheme:
+  light)')` as a second fallback after the explicit-choice check) — not
+  implemented here since it wasn't asked for.
+
+**Results-page email copy now matches what actually happens.** "Get your
+full routine" / "Send it to me" / "we'll email your full routine" all
+promised a personalized routine email that was never built — the endpoint
+behind the button (`/api/subscribe`) only adds the user to the waitlist
+and sends the same generic confirmation `CTA.tsx`'s landing-page form
+sends. Changed to "Join the waitlist for launch updates" / "Join waitlist"
+/ "we'll email you launch updates" — matching `CTA.tsx`'s existing,
+already-honest copy for the same underlying action. **Emailing an actual
+personalized routine is a real, reasonable post-launch feature** (the
+scored recommendations already exist server-side by the time this form
+renders — this would mean extending `api/subscribe.ts` to accept and
+either email or store the `ScoredRecommendationSet`, plus building the
+email template) — logged here rather than built now, since building it
+was explicitly out of scope for this fix.
+
+### Post-launch refactor candidates (Part F)
+
+Identified only — nothing below was changed beyond what's already
+described above. Rationale for not touching any of this now: two of three
+production incidents so far came from moving/restructuring files (see the
+"Server code boundary" section above), and a structural refactor days
+before launch, in a codebase that didn't have this spike's tests until
+today, is not a good trade. Revisit once this spike's test suite has had
+time to prove itself as a safety net.
+
+1. **`ScanResults.tsx`'s `humanizeMatchReason` regex-parses strings that
+   `scoring.ts` builds by hand** (`reason.match(/^porosity: (.+)$/)`,
+   `reason.startsWith("within budget")`, etc.) to turn `matchReasons` back
+   into English. This is a stringly-typed contract between two files with
+   no compiler safety net — a wording change in `scoring.ts` (e.g.
+   `"porosity: high"` → `"porosity match: high"`) would silently stop
+   matching every regex here instead of failing a type check.
+   **Where:** `src/pages/ScanResults.tsx`'s `humanizeMatchReason`,
+   matched against `matchReasons` strings built throughout
+   `scoreProduct`/`computeScoreBreakdown` in `scoring.ts`.
+   **Fix:** replace `matchReasons: string[]` with a typed discriminated
+   union (`{ kind: "porosity"; value: PorosityAnswer } | { kind: "goal";
+   value: GoalAnswer } | ...`) that the UI switches on instead of
+   regex-parsing.
+   **Risk of changing:** moderate — `matchReasons` is read by
+   `scoring.test.ts`'s `printResult` debug logging and is part of the
+   public `RecommendedProduct` type other code could come to depend on;
+   changing its shape is a breaking change to that type, not a
+   same-file cleanup.
+
+2. **`ScannerRoute.tsx` has grown into the app's one God component.** It
+   now owns: reducer wiring, the beforeunload/navigation blocker, two
+   separate sessionStorage effects (write-while-on-quiz,
+   clear-on-reaching-profile), the catalog prefetch effect, the
+   analyzing/`getRecommendations()` effect (with its own retry counter),
+   photo compression *and* its error handling (added this spike), and a
+   five-branch step-to-component dispatch chain — all in one ~230-line
+   file with no unit tests of its own (the reducer it wraps is now
+   tested; the effects and dispatch logic aren't).
+   **Where:** `src/features/scanner/ScannerRoute.tsx`.
+   **Fix:** extract the sessionStorage effects and the analyzing-step
+   fetch-and-navigate logic into dedicated hooks
+   (`useQuizPersistence(...)`, `useRecommendationFetch(...)`), leaving
+   `ScannerRoute` as pure step-dispatch wiring.
+   **Risk of changing:** high — this file has already produced two real,
+   independently-discovered bugs across Spikes A and 3 (the photo-step
+   sessionStorage staleness bug, and this spike's uncaught
+   `compressImage` rejection). It's clearly the most bug-prone file in
+   the codebase, which argues both for extracting it (smaller units are
+   easier to reason about) and against doing so blind, right before
+   launch, without effect-level tests written first.
+
+3. **This spike itself added a second, parallel "translate scoring into
+   English" system in the same file**, alongside the one in finding #1.
+   `buildMatchChecklist`/`formatChecklistLabel` (structured, typed) now
+   sits next to `humanizeMatchReason`/`buildWhyText` (string-parsed) in
+   `ScanResults.tsx` — the checklist covers the 5 dimensions the brief
+   named as "matter most," and the older expandable still covers
+   goals/frustrations detail the checklist deliberately excludes (see
+   "Why the results page never shows a numeric score" above for why they
+   weren't merged into one). Not a mistake, but worth being honest that
+   there are now two humanization code paths in one file rather than one.
+   **Where:** `src/pages/ScanResults.tsx`.
+   **Fix:** once finding #1's typed-reasons refactor lands, both could
+   likely read from the same typed source instead of one reading a typed
+   checklist and the other regex-parsing strings.
+   **Risk of changing:** low on its own, but blocked on finding #1 first
+   — doing it before that would mean building a second typed system
+   instead of consolidating onto one.
+
+4. **`api/_lib/schemas.ts` is a hand-maintained duplicate of a subset of
+   `src/lib/schemas.ts`**, kept in sync manually (see CLAUDE.md's "Server
+   code boundary" section, which documents this as deliberate). Real, but
+   already-accepted-tradeoff drift risk: if `HairAnalysisSchema` changes
+   in the client copy and someone forgets the server copy, `api/analyze.ts`
+   would validate Claude's response against a stale schema with no
+   automated check catching the gap.
+   **Where:** `api/_lib/schemas.ts` vs. `src/lib/schemas.ts`.
+   **Fix:** a small build-time or test-time check that fails if the two
+   diverge (e.g. a test importing both and comparing their Zod shapes),
+   short of the cross-directory-import fix that caused the original
+   production incident this duplication exists to avoid.
+   **Risk of changing:** medium — touches `api/analyze.ts`, which per
+   Milestone 6/PLAN.md has still never been confirmed working end-to-end
+   against a real Vercel deploy. Not a good file to experiment on blind.
+
+5. **Duplicated synthetic-product test factories within
+   `scoring.test.ts`.** Two near-identical `makeProduct()` helper
+   functions exist in separate `describe` blocks (brand diversity, budget)
+   — this spike's new guarantee tests reused the pattern rather than
+   adding a third copy, but didn't consolidate the existing two.
+   **Where:** `src/lib/products/scoring.test.ts`.
+   **Fix:** hoist one shared `makeProduct()` factory to the top of the
+   file.
+   **Risk of changing:** low — test-only code, no production behavior at
+   stake. Left alone purely because "change nothing beyond trivially safe
+   fixes" was the instruction for this pass, and a multi-site find/replace
+   in a test file, however safe, is a step beyond that line.
+
 ## Open questions / risks to raise with Nya
 
 - **Mineral-oil sensitivity is currently unenforced.** No Airtable column
@@ -518,3 +872,17 @@ passes) across light/dark and desktop/390px.
   rendered a real image — worth a specific check once Nya adds one,
   since it's only been exercised via the `product.imageUrl` absence
   path.
+- **New (Spike B): `ONYAPROJECTX` must be set in Vercel's production env
+  vars before `/debug/scoring` can be used post-deploy** — it isn't in
+  `.env.local` in this sandbox (no `.env.local` exists here at all — see
+  Spike A's verification note), so `api/debug-scoring.ts`'s gate has only
+  been exercised via its unit-testable logic, not a real deployed request.
+  Pick a long random string when setting it; see CLAUDE.md for how to use
+  the resulting URL.
+- **New (Spike B): emailing an actual personalized routine is a real,
+  reasonable post-launch feature, not built here.** The results-page email
+  capture now honestly promises only "launch updates" (see "Two small
+  fixes" above) — but the scored recommendations already exist
+  server-side at the moment that form renders, so wiring `api/subscribe.ts`
+  to actually email the routine is a scoped, buildable follow-up whenever
+  Nya wants it, not a research problem.

@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import type { CategoryRecommendation, RecommendedProduct, ScoredRecommendationSet, SensitivityAnswer } from "@/lib/products/scoring";
+import type {
+  CategoryRecommendation,
+  DiagnosticAnswers,
+  MatchChecklistItem,
+  RecommendedProduct,
+  ScoredRecommendationSet,
+  SensitivityAnswer,
+} from "@/lib/products/scoring";
+import { buildMatchChecklist } from "@/lib/products/scoring";
 import { getOptionLabel } from "@/features/scanner/quiz/quizLabels";
 import { useSubscribe } from "@/lib/useSubscribe";
 import { track } from "@/lib/analytics";
@@ -10,6 +18,12 @@ import s from "@/styles/ScanResults.module.css";
 
 interface ScanResultsLocationState {
   recommendations?: ScoredRecommendationSet;
+  /**
+   * Optional for backward compatibility (an older cached history entry from
+   * before this field existed) — the checklist and "loosen your filters"
+   * banner degrade gracefully rather than crash if it's ever missing.
+   */
+  answers?: DiagnosticAnswers;
 }
 
 function joinWithAnd(items: string[]): string {
@@ -72,6 +86,30 @@ function unenforcedSensitivityLabel(sensitivity: SensitivityAnswer): string {
   return getOptionLabel("sensitivities", sensitivity).toLowerCase();
 }
 
+const SENSITIVITY_FREE_LABEL: Partial<Record<SensitivityAnswer, string>> = {
+  protein: "protein-free",
+  sulfates: "sulfate-free",
+  silicones: "silicone-free",
+  fragrance: "fragrance-free",
+  mineral_oil: "mineral-oil-free",
+};
+
+/** Short, plain-language label for one checklist row — see buildMatchChecklist's brief for the "why" behind each phrasing. */
+function formatChecklistLabel(item: MatchChecklistItem): string {
+  switch (item.key) {
+    case "porosity":
+      return item.matched ? "your porosity" : "not your porosity";
+    case "curlType":
+      return item.matched ? "your curl type" : "not your curl type";
+    case "sensitivities":
+      return joinWithAnd(item.values.map((v) => SENSITIVITY_FREE_LABEL[v] ?? `${v}-free`));
+    case "budget":
+      return item.matched ? "in your budget" : "over your budget";
+    case "blackOwned":
+      return item.matched ? "Black-owned" : "not Black-owned";
+  }
+}
+
 function slugify(value: string): string {
   return value.replace(/[^a-zA-Z0-9]+/g, "-");
 }
@@ -84,7 +122,8 @@ function formatPrice(price: number): string {
 export default function ScanResults() {
   const location = useLocation();
   const navigate = useNavigate();
-  const recommendations = (location.state as ScanResultsLocationState | null)?.recommendations;
+  const state = location.state as ScanResultsLocationState | null;
+  const recommendations = state?.recommendations;
 
   if (!recommendations) {
     return (
@@ -104,20 +143,29 @@ export default function ScanResults() {
     );
   }
 
-  return <ScanResultsContent recommendations={recommendations} onScanAgain={() => navigate("/scan")} />;
+  return (
+    <ScanResultsContent
+      recommendations={recommendations}
+      answers={state?.answers}
+      onScanAgain={() => navigate("/scan")}
+    />
+  );
 }
 
 function ScanResultsContent({
   recommendations,
+  answers,
   onScanAgain,
 }: {
   recommendations: ScoredRecommendationSet;
+  answers?: DiagnosticAnswers;
   onScanAgain: () => void;
 }) {
   // First tab open by default, per the brief.
   const [activeCategory, setActiveCategory] = useState(recommendations.categories[0]?.category ?? "");
   const active =
     recommendations.categories.find((c) => c.category === activeCategory) ?? recommendations.categories[0];
+  const allEmpty = recommendations.categories.every((c) => c.picks.length === 0);
 
   return (
     <div className={s.screen}>
@@ -127,6 +175,21 @@ function ScanResultsContent({
           <h1 className={s.heading}>Built for your hair</h1>
           <p className={s.body}>Based on your diagnostic, here&rsquo;s a routine you can try tomorrow.</p>
         </motion.div>
+
+        {/* Every category came back empty — over-narrow filters, not a bug.
+            A distinct, prominent banner rather than six copies of the same
+            per-category "no matches" line. */}
+        {allEmpty && (
+          <motion.div className={s.emptyAllBanner} role="alert" variants={fadeUp}>
+            <p>
+              Your filters are very specific, so we don&rsquo;t have a match yet in any category. Try loosening your
+              sensitivities or budget — or scan again with different answers.
+            </p>
+            <button type="button" className={s.secondaryButton} onClick={onScanAgain}>
+              Scan again
+            </button>
+          </motion.div>
+        )}
 
         {/* Edge case #4 — never claim a filter ran that didn't. */}
         {recommendations.unenforcedSensitivities.length > 0 && (
@@ -179,7 +242,12 @@ function ScanResultsContent({
             ) : (
               <ul className={s.productGrid}>
                 {active.picks.map((pick) => (
-                  <ProductCard key={pick.product.id} pick={pick} />
+                  <ProductCard
+                    key={pick.product.id}
+                    pick={pick}
+                    answers={answers}
+                    unenforcedSensitivities={recommendations.unenforcedSensitivities}
+                  />
                 ))}
               </ul>
             )}
@@ -208,9 +276,24 @@ function ScanResultsContent({
   );
 }
 
-function ProductCard({ pick }: { pick: RecommendedProduct }) {
+function ProductCard({
+  pick,
+  answers,
+  unenforcedSensitivities,
+}: {
+  pick: RecommendedProduct;
+  answers?: DiagnosticAnswers;
+  unenforcedSensitivities: SensitivityAnswer[];
+}) {
   const { product } = pick;
   const [whyOpen, setWhyOpen] = useState(false);
+
+  // Backward-compat only (see ScanResultsLocationState) — in normal use
+  // `answers` always rides along from ScannerRoute.
+  const checklist = answers ? buildMatchChecklist(product, answers, unenforcedSensitivities) : [];
+  // Matches first so a card with one or two honest X's still reads as a
+  // good recommendation at a glance, not a wall of red (per the brief).
+  const orderedChecklist = [...checklist].sort((a, b) => Number(b.matched) - Number(a.matched));
 
   return (
     <li className={s.productCard}>
@@ -222,6 +305,22 @@ function ProductCard({ pick }: { pick: RecommendedProduct }) {
 
       {/* Edge case #3 — omit entirely for null-priced products, never "$0"/"null". */}
       {product.price !== null && <p className={s.productPrice}>{formatPrice(product.price)}</p>}
+
+      {orderedChecklist.length > 0 && (
+        <ul className={s.checklist} aria-label="How this matches what you told us">
+          {orderedChecklist.map((item) => (
+            <li
+              key={item.key}
+              className={`${s.checklistItem} ${item.matched ? s.checklistYes : s.checklistNo}`}
+            >
+              <span className={s.checklistIcon} aria-hidden="true">
+                {item.matched ? "✓" : "✗"}
+              </span>
+              {formatChecklistLabel(item)}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {product.buyLink && (
         <a href={product.buyLink} target="_blank" rel="noopener noreferrer" className={s.buyLink}>
@@ -266,14 +365,14 @@ function EmailCapture() {
   if (success) {
     return (
       <div className={s.captureBox}>
-        <p className={s.captureSuccess}>You&rsquo;re on the list — check your email for your full routine.</p>
+        <p className={s.captureSuccess}>You&rsquo;re on the waitlist — we&rsquo;ll email you when Nari launches.</p>
       </div>
     );
   }
 
   return (
     <form className={s.captureBox} onSubmit={onSubmit} aria-describedby="capture-help">
-      <h2 className={s.captureHeading}>Get your full routine</h2>
+      <h2 className={s.captureHeading}>Join the waitlist for launch updates</h2>
       <div className={s.captureRow}>
         <label className="sr-only" htmlFor="results-firstName">
           First name
@@ -315,11 +414,11 @@ function EmailCapture() {
           disabled={loading}
         />
         <button type="submit" className={s.captureButton} disabled={loading}>
-          {loading ? "Sending..." : "Send it to me"}
+          {loading ? "Joining..." : "Join waitlist"}
         </button>
       </div>
       <p id="capture-help" className={s.captureHelp}>
-        We&rsquo;ll email your full routine and launch updates. Unsubscribe anytime.
+        We&rsquo;ll email you launch updates. Unsubscribe anytime.
       </p>
       {error && (
         <p role="alert" className={s.captureError}>

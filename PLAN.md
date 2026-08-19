@@ -665,3 +665,93 @@ this sandbox.
   `api/analyze.ts`.
 - Next: Spike B (Day 2) — thorough error handling, automated tests for
   the new UI, and a review pass.
+
+## Spike B — Hardening, Tests & Scoring Transparency (Day 2 of 2)
+**Status: done.** See CLAUDE.md's new "Spike B" section for the file-by-file
+breakdown and DECISIONS.md's "Spike B" section for the full reasoning
+behind every piece, including the review pass's 5 refactor candidates.
+
+- **Part A — Error handling.** Catalog-fetch failures (cold cache
+  included) now show specific, actionable copy with a real retry (verified
+  via mocked-fetch tests in `dataSource.test.ts`, not just read); quiz
+  sessionStorage resume was verified end-to-end rather than trusted
+  (`scannerReducer.test.ts`), including a corrupted-blob case; an
+  all-categories-empty results page now shows a distinct "loosen your
+  filters" banner instead of six copies of the per-category message; a
+  real "Something went wrong" copy violation was found and fixed in
+  `useSubscribe.ts`; a real uncaught-rejection bug was found and fixed in
+  the photo-capture path (an undecodable HEIC on a non-Safari browser
+  silently killed the compress step with no user-visible error — see
+  DECISIONS.md); the `/scan/results` deep-link-with-no-state case was
+  already handled from Spike A, confirmed via a new render test.
+- **Part B — Automated tests (none existed before this pass).** 82 tests
+  across 6 files: extended scoring guarantee tests (porosity/sensitivity
+  honesty, no fabricated products, relaxation order, determinism), new
+  Airtable normalization tests (`api/_lib/schema.test.ts`), a new
+  quiz→scoring "contract" test that actually calls `scoreProducts()`
+  rather than just type-checking the boundary, new scanner-persistence
+  tests, new catalog-fetch-failure tests, and new results-page render
+  tests. `vite.config.ts` gained a `test` block (jsdom + jest-dom matchers
+  via a new `src/test/setup.ts`) so `npm test` needs no CLI flags anymore.
+- **Part C — Scoring transparency for users.** Every product card shows a
+  compact ✓/✗ checklist against up to 5 dimensions the user actually
+  expressed a preference on (porosity, curl type, sensitivities, budget,
+  black-owned) — matches first, deliberately no numeric score anywhere
+  (see DECISIONS.md). New `buildMatchChecklist()` export in `scoring.ts`;
+  `ScannerRoute.tsx` now passes `answers` through to `/scan/results`'s
+  router state alongside `recommendations` so the checklist has something
+  to compare against.
+- **Part D — Scoring debug view.** `/debug/scoring`, production-accessible,
+  gated by `api/debug-scoring.ts` checking `?key=` against
+  `process.env.ONYAPROJECTX` server-side (never a client-bundled secret);
+  a wrong/missing key renders the literal same `NotFound` component the
+  wildcard route does. Comparison tables reuse the real pipeline's
+  internal functions via three new debug-only `scoring.ts` exports
+  (`scoreProductBreakdown`, `debugHardFilterExclusions`,
+  `debugScoreCategory`) rather than a second, driftable implementation.
+  4 built-in example profiles, each verified against the real catalog
+  fixture to actually demonstrate what its name claims; query-param
+  overrides for ad hoc checking. **Not yet verified against a real Vercel
+  deploy** — this sandbox has no way to actually deploy and hit the
+  production key gate; see DECISIONS.md's open questions.
+- **Part E — Two small fixes.** Dark mode is now the default for a
+  first-time visitor (inverted from the prior light-first default, per
+  Nya); the results-page email capture's copy no longer promises a
+  personalized routine email that was never built ("Join the waitlist for
+  launch updates" instead of "Get your full routine") — logged as a real,
+  scoped post-launch feature in DECISIONS.md rather than built now.
+- **Part F — Review pass.** Top 5 findings written to DECISIONS.md's "Post-
+  launch refactor candidates": a stringly-typed `matchReasons` contract
+  between `scoring.ts` and `ScanResults.tsx`; `ScannerRoute.tsx` as a God
+  component (and the app's most bug-prone file); this spike's own
+  checklist feature adding a second, parallel humanization code path
+  alongside the first finding; `api/_lib/schemas.ts`'s hand-maintained
+  duplication of `src/lib/schemas.ts`; and duplicated test factories in
+  `scoring.test.ts`. Nothing refactored beyond what Parts A-E already
+  needed — see DECISIONS.md for the "why not now" rationale (two of three
+  production incidents so far came from moving files).
+- **Verification**: `npm run typecheck` clean; all 82 tests pass (18
+  pre-existing + 64 new). Full flow driven end to end against the actual
+  running app (temporary local Playwright install, same
+  not-a-project-dependency approach as prior passes; a temporary, gated
+  Vite dev-middleware served the checked-in catalog fixture at
+  `/api/products` since this sandbox has no `.env.local` — reverted
+  immediately after, same pattern Spike A used) across light/dark themes
+  and desktop/390px: dark-by-default confirmed, light-mode toggle
+  confirmed still rendering correctly, full quiz → profile → photo (both
+  an invalid-file rejection and skip) → results walked with zero console
+  errors, the results-page checklist and corrected email copy both
+  confirmed rendering, the catalog-fetch failure path confirmed showing
+  the specific error copy with a working "Try again," and the
+  `/debug/scoring` no-key case confirmed rendering byte-identical to a
+  genuinely nonexistent route. **Two real bugs were found and fixed by
+  this live verification pass, not anticipated from reading the code**:
+  the debug-scoring auth check trusted `res.ok` alone (see Part D above);
+  and `Hero.tsx`'s subline still claimed "Three photos..." — the same
+  class of honesty bug Spike A's photo-step fix addressed elsewhere, just
+  never checked in this specific file. Both documented in DECISIONS.md.
+  **Not verified**: `/debug/scoring` against a real production deploy (no
+  deploy target in this sandbox), and the actual Vercel Lambda transport
+  for `api/debug-scoring.ts`/`api/products.ts` itself (same pre-existing
+  category of gap already noted for `api/analyze.ts`) — `ONYAPROJECTX`
+  must be set in Vercel before the gate will open post-deploy.

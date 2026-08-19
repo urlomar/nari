@@ -4,18 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Runs before first paint so a returning dark-mode visitor never sees
-         a light flash. New visitors get no localStorage entry, so this is a
-         no-op and they fall through to the default light theme (:root with
-         no data-theme attribute) — intentional per spec, not a bug: every
-         new visitor sees light regardless of OS prefers-color-scheme. -->
+    <!-- Runs before first paint so there's never a flash of the wrong theme.
+         Dark is now the default for every new visitor (per Nya) — this only
+         stays light if localStorage holds an EXPLICIT prior "light" toggle.
+         Still deliberately ignores OS prefers-color-scheme either way: the
+         default is a product decision (dark-first), not a media-query
+         passthrough. -->
     <script>
       (function () {
         try {
-          if (localStorage.getItem('nari-theme') === 'dark') {
+          if (localStorage.getItem('nari-theme') !== 'light') {
             document.documentElement.setAttribute('data-theme', 'dark');
           }
-        } catch (e) {}
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
       })();
     </script>
     <title>Nari — Personalized Hair Care for Curly & Coily Hair</title>

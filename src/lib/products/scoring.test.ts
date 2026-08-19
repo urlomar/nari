@@ -13,7 +13,14 @@
  * these isolate one variable at a time on purpose.
  */
 import { describe, it, expect } from "vitest";
-import { scoreProducts, type DiagnosticAnswers } from "./scoring";
+import {
+  scoreProducts,
+  scoreProductBreakdown,
+  debugHardFilterExclusions,
+  buildMatchChecklist,
+  SENSITIVITY_VALUES,
+  type DiagnosticAnswers,
+} from "./scoring";
 import type { Product } from "../../../api/_lib/schema";
 import catalogFixture from "./__fixtures__/catalog.json";
 
@@ -256,5 +263,252 @@ describe("scoreProducts — relaxation (real catalog gap: no 2A/2B/2C products e
         expect(pick.product.proteinFree).toBe(true);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spike B, Part B — guarantee tests. These assert invariants that must hold
+// for ANY answer/catalog combination, not just the two required profiles —
+// the kind of thing that fails silently (a quietly-wrong recommendation)
+// rather than loudly, which is exactly what's worth guarding here.
+// ---------------------------------------------------------------------------
+
+describe("scoreProducts — porosity is honest when not relaxed", () => {
+  it("a low-porosity user never gets a product tagged only for high porosity, and vice versa (real catalog)", () => {
+    const low = scoreProducts({ ...baseAnswers, porosity: "low" }, catalog);
+    for (const category of low.categories) {
+      if (category.relaxedConstraints.includes("porosity")) continue;
+      for (const pick of category.picks) {
+        expect(pick.product.porosity).toContain("low");
+        expect(pick.product.porosity).not.toEqual(["high"]);
+      }
+    }
+
+    const high = scoreProducts({ ...baseAnswers, porosity: "high" }, catalog);
+    for (const category of high.categories) {
+      if (category.relaxedConstraints.includes("porosity")) continue;
+      for (const pick of category.picks) {
+        expect(pick.product.porosity).toContain("high");
+        expect(pick.product.porosity).not.toEqual(["low"]);
+      }
+    }
+  });
+
+  it("controlled case: a product tagged only 'high' is never picked for a 'low' porosity user, and vice versa", () => {
+    function makeProduct(overrides: Partial<Product>): Product {
+      return {
+        id: overrides.id ?? "id",
+        name: "Test",
+        brand: overrides.brand ?? "Brand",
+        category: "Shampoo",
+        ounces: 8,
+        price: 15,
+        hairTypes: [],
+        porosity: [],
+        density: ["medium"],
+        sulfateFree: true,
+        siliconeFree: true,
+        proteinFree: true,
+        fragranceFree: true,
+        blackOwned: false,
+        ewgScore: null,
+        goals: [],
+        frustrations: [],
+        ...overrides,
+      };
+    }
+    const highOnly = makeProduct({ id: "high-only", brand: "A", porosity: ["high"] });
+    const lowOnly = makeProduct({ id: "low-only", brand: "B", porosity: ["low"] });
+
+    const lowUser = scoreProducts({ ...baseAnswers, porosity: "low", density: "medium" }, [highOnly, lowOnly]);
+    const lowShampoo = lowUser.categories.find((c) => c.category === "Shampoo")!;
+    if (!lowShampoo.relaxedConstraints.includes("porosity")) {
+      expect(lowShampoo.picks.map((p) => p.product.id)).not.toContain("high-only");
+    }
+
+    const highUser = scoreProducts({ ...baseAnswers, porosity: "high", density: "medium" }, [highOnly, lowOnly]);
+    const highShampoo = highUser.categories.find((c) => c.category === "Shampoo")!;
+    if (!highShampoo.relaxedConstraints.includes("porosity")) {
+      expect(highShampoo.picks.map((p) => p.product.id)).not.toContain("low-only");
+    }
+  });
+});
+
+describe("scoreProducts — no product violating a stated sensitivity ever appears", () => {
+  const sensitivityToField: Record<string, keyof Product> = {
+    protein: "proteinFree",
+    sulfates: "sulfateFree",
+    silicones: "siliconeFree",
+    fragrance: "fragranceFree",
+  };
+
+  for (const sensitivity of SENSITIVITY_VALUES) {
+    if (sensitivity === "none" || sensitivity === "mineral_oil") continue; // mineral_oil has its own dedicated tests below
+    it(`never returns a product that fails the "${sensitivity}" filter (real catalog)`, () => {
+      const result = scoreProducts({ ...baseAnswers, sensitivities: [sensitivity] }, catalog);
+      const field = sensitivityToField[sensitivity];
+      for (const category of result.categories) {
+        for (const pick of category.picks) {
+          expect(pick.product[field]).toBe(true);
+        }
+      }
+    });
+  }
+
+  it("combining multiple sensitivities never returns a product violating any of them", () => {
+    const result = scoreProducts({ ...baseAnswers, sensitivities: ["protein", "sulfates", "silicones"] }, catalog);
+    for (const category of result.categories) {
+      for (const pick of category.picks) {
+        expect(pick.product.proteinFree).toBe(true);
+        expect(pick.product.sulfateFree).toBe(true);
+        expect(pick.product.siliconeFree).toBe(true);
+      }
+    }
+  });
+});
+
+describe("scoreProducts — every returned product exists in the catalog (no fabrication)", () => {
+  it.each([
+    ["Demanding", demandingAnswers],
+    ["Easy", easyAnswers],
+    ["baseline", baseAnswers],
+  ])("%s profile: every picked product id is present in the input catalog", (_label, answers) => {
+    const catalogIds = new Set(catalog.map((p) => p.id));
+    const result = scoreProducts(answers, catalog);
+    for (const category of result.categories) {
+      for (const pick of category.picks) {
+        expect(catalogIds.has(pick.product.id)).toBe(true);
+        // Not just the id — the whole object must be a reference from the
+        // catalog, never a synthesized/partial one.
+        expect(catalog).toContain(pick.product);
+      }
+    }
+  });
+});
+
+describe("scoreProducts — relaxation order is always density -> curlType -> porosity, never sensitivities", () => {
+  it("relaxedConstraints is always a prefix of [density, curlType, porosity], across many trigger scenarios", () => {
+    const order = ["density", "curlType", "porosity"];
+    const scenarios: DiagnosticAnswers[] = [
+      { ...baseAnswers, curlType: "2a2b", porosity: "high", density: "thick_high" },
+      { ...baseAnswers, curlType: "2c3a", porosity: "normal", density: "medium" },
+      { ...baseAnswers, curlType: "3b3c", porosity: "low", density: "fine_low" },
+      { ...baseAnswers, curlType: "nonexistent-tag", porosity: "high", density: "thick_high", sensitivities: ["protein", "sulfates"] },
+    ];
+    for (const answers of scenarios) {
+      const result = scoreProducts(answers, catalog);
+      for (const category of result.categories) {
+        const constraints = category.relaxedConstraints;
+        expect(order.slice(0, constraints.length)).toEqual(constraints);
+        // TypeScript's type already prevents a sensitivity value here, but
+        // assert it at runtime too — this is the guarantee that actually matters.
+        for (const c of constraints) expect(["density", "curlType", "porosity"]).toContain(c);
+      }
+    }
+  });
+});
+
+describe("scoreProducts — ranking is deterministic", () => {
+  it("identical answers and catalog (fresh object references) produce identical output", () => {
+    const answersA: DiagnosticAnswers = { ...demandingAnswers, goals: [...demandingAnswers.goals], frustrations: [...demandingAnswers.frustrations], sensitivities: [...demandingAnswers.sensitivities] };
+    const answersB: DiagnosticAnswers = { ...demandingAnswers, goals: [...demandingAnswers.goals], frustrations: [...demandingAnswers.frustrations], sensitivities: [...demandingAnswers.sensitivities] };
+    const catalogCopy = catalog.map((p) => ({ ...p }));
+
+    const resultA = scoreProducts(answersA, catalog);
+    const resultB = scoreProducts(answersB, catalogCopy);
+
+    expect(resultA.categories.map((c) => ({ category: c.category, ids: c.picks.map((p) => p.product.id), scores: c.picks.map((p) => p.score) }))).toEqual(
+      resultB.categories.map((c) => ({ category: c.category, ids: c.picks.map((p) => p.product.id), scores: c.picks.map((p) => p.score) }))
+    );
+  });
+
+  it("running the same call twice in a row gives byte-identical picks order", () => {
+    const first = scoreProducts(easyAnswers, catalog);
+    const second = scoreProducts(easyAnswers, catalog);
+    expect(first).toEqual(second);
+  });
+});
+
+describe("scoreProductBreakdown — per-dimension breakdown sums to the same total scoreProducts() uses", () => {
+  it("breakdown's total matches the score scoreProducts() assigns the same product", () => {
+    const result = scoreProducts(demandingAnswers, catalog);
+    const shampoo = result.categories.find((c) => c.category === "Shampoo")!;
+    for (const pick of shampoo.picks) {
+      const breakdown = scoreProductBreakdown(pick.product, demandingAnswers);
+      expect(breakdown.total).toBeCloseTo(pick.score, 5);
+      const summed =
+        breakdown.porosity +
+        breakdown.curlType +
+        breakdown.goals +
+        breakdown.frustrations +
+        breakdown.density +
+        breakdown.budget +
+        breakdown.blackOwned +
+        breakdown.tiebreakers;
+      expect(breakdown.total).toBeCloseTo(summed, 5);
+    }
+  });
+});
+
+describe("debugHardFilterExclusions", () => {
+  it("excludes exactly the products scoreProducts() would exclude via hard filters, and no others", () => {
+    const sensitivities: DiagnosticAnswers["sensitivities"] = ["protein"];
+    const exclusions = debugHardFilterExclusions(catalog, sensitivities);
+    const excludedIds = new Set(exclusions.map((e) => e.product.id));
+
+    for (const product of catalog) {
+      if (excludedIds.has(product.id)) {
+        expect(product.proteinFree).toBe(false);
+        expect(exclusions.find((e) => e.product.id === product.id)!.failedSensitivities).toContain("protein");
+      } else {
+        expect(product.proteinFree).toBe(true);
+      }
+    }
+  });
+
+  it("returns nothing when the user reported no sensitivities", () => {
+    expect(debugHardFilterExclusions(catalog, ["none"])).toEqual([]);
+  });
+});
+
+describe("buildMatchChecklist", () => {
+  const product = catalog.find((p) => p.proteinFree && p.porosity.length > 0)!;
+
+  it("omits a dimension the user didn't express a preference on", () => {
+    const items = buildMatchChecklist(product, baseAnswers, []); // baseAnswers: porosity unsure, curlType "", budgetMax null, blackOwnedPref no_pref, sensitivities none
+    expect(items).toEqual([]);
+  });
+
+  it("includes a sensitivities row (always matched) when the user reported one that was enforced", () => {
+    const items = buildMatchChecklist(product, { ...baseAnswers, sensitivities: ["protein"] }, []);
+    const sensitivityItem = items.find((i) => i.key === "sensitivities");
+    expect(sensitivityItem).toBeDefined();
+    expect(sensitivityItem!.matched).toBe(true);
+  });
+
+  it("omits the sensitivities row entirely when that sensitivity is unenforced (never a false green check)", () => {
+    const items = buildMatchChecklist(product, { ...baseAnswers, sensitivities: ["mineral_oil"] }, ["mineral_oil"]);
+    expect(items.find((i) => i.key === "sensitivities")).toBeUndefined();
+  });
+
+  it("reports an honest mismatch (matched: false) rather than omitting the row when the product doesn't qualify", () => {
+    const cheapProduct = catalog.find((p) => p.price !== null && p.price > 5)!;
+    const items = buildMatchChecklist(cheapProduct, { ...baseAnswers, budgetMax: 1 }, []);
+    const budgetItem = items.find((i) => i.key === "budget");
+    expect(budgetItem).toBeDefined();
+    expect(budgetItem!.matched).toBe(false);
+  });
+
+  it("omits the black-owned row when the user expressed no preference", () => {
+    const items = buildMatchChecklist(product, { ...baseAnswers, blackOwnedPref: "no_pref" }, []);
+    expect(items.find((i) => i.key === "blackOwned")).toBeUndefined();
+  });
+
+  it("includes the black-owned row when the user expressed a preference, honestly reflecting the product", () => {
+    const nonBlackOwnedProduct = catalog.find((p) => !p.blackOwned)!;
+    const items = buildMatchChecklist(nonBlackOwnedProduct, { ...baseAnswers, blackOwnedPref: "yes" }, []);
+    const item = items.find((i) => i.key === "blackOwned");
+    expect(item).toBeDefined();
+    expect(item!.matched).toBe(false);
   });
 });

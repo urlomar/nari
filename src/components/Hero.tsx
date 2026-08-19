@@ -54,7 +54,7 @@ export default function Hero() {
             Your hair, <span className={s.accent}>finally understood.</span>
           </motion.h1>
           <motion.p className={s.subtitle} variants={fadeUp}>
-            Three photos, a diagnostic, and custom recommendations built for your strands.
+            A quick diagnostic and custom recommendations built for your strands.
           </motion.p>
           <motion.div className={s.ctas} variants={fadeUp}>
             <Link to="/scan" className={s.primary} onClick={() => track("click_start_scan_from_hero")}>

@@ -520,6 +520,97 @@ shown even when 0); the first category is open by default.
   via Tab/Enter like any button, just not the full authoring-practices
   pattern. Flagged for Spike B, not done here.
 
+## Spike B — Hardening, Tests & Scoring Transparency (Day 2 of 2)
+
+Error handling across the whole flow, an automated test suite (none
+existed before this pass), a per-product match checklist on the results
+page, a production-accessible debug view for tuning `SCORING_WEIGHTS`, and
+two small fixes (dark-mode default, results-page email copy). See
+DECISIONS.md's "Spike B" section for the full reasoning behind each piece
+below, including the review pass's refactor candidates.
+
+### Running the tests
+`npm test` runs the full Vitest suite (`vite.config.ts` now carries a
+`test` block — `environment: "jsdom"`, `globals: true`, a setup file that
+registers `@testing-library/jest-dom`'s matchers — so `npm test` alone is
+enough; no CLI flags needed anymore). Test files, by area:
+- `src/lib/products/scoring.test.ts` — the scoring engine, including the
+  Spike B guarantee tests (porosity/sensitivity honesty, no fabricated
+  products, relaxation order, determinism) and coverage for the three new
+  debug-only exports.
+- `api/_lib/schema.test.ts` (new) — Airtable normalization: malformed rows
+  skip instead of crashing, case normalization, missing-price-becomes-null,
+  unmapped/missing-field reporting.
+- `src/features/scanner/toDiagnosticAnswers.test.ts` — including a new
+  "contract" section that actually calls `scoreProducts()` with the
+  converted answers against the real catalog fixture (not just a type
+  check) for every real quiz option value across the 5 scored dimensions.
+- `src/features/scanner/scannerReducer.test.ts` (new) — sessionStorage
+  quiz-resume, including a corrupted-blob case.
+- `src/lib/dataSource.test.ts` (new) — catalog-fetch failure/retry/dedupe,
+  with `fetch` mocked (each test does a fresh `vi.resetModules()` +
+  dynamic import, since `getProducts()`'s cache is module-level state).
+- `src/pages/ScanResults.test.tsx` (new) — render tests for the empty-
+  category, relaxed-match, null-price, all-categories-empty, and
+  no-router-state edge cases, via React Testing Library + `MemoryRouter`.
+
+### Scoring transparency checklist (Part C)
+Each product card on the results page now shows a compact, always-visible
+✓/✗ row for up to 5 dimensions — porosity, curl type, sensitivities,
+budget, and black-owned (only when the user actually expressed a
+preference on that dimension; an inapplicable one is omitted, never faked).
+Matches render first so a couple of honest ✗'s don't make a good pick read
+as bad. Built from `scoring.ts`'s new `buildMatchChecklist(product,
+answers, unenforcedSensitivities)` export — pure, typed, no numeric score
+anywhere (see DECISIONS.md for why). Rendering lives in `ScanResults.tsx`'s
+`ProductCard`/`formatChecklistLabel`; needs `answers`
+(`DiagnosticAnswers`), which `ScannerRoute.tsx` now passes through
+`navigate()`'s router state alongside `recommendations`.
+
+### Scoring debug view (Part D)
+**`/debug/scoring`** — works in production, key-gated, not linked anywhere
+in the UI.
+- **To use it**: visit `/debug/scoring?key=<value of the ONYAPROJECTX env
+  var>`. Wrong or missing key renders the literal same `<NotFound />`
+  component the wildcard route does (see router.tsx — the route lives
+  inside `RootLayout`'s children, next to `"*"`, specifically so this is
+  pixel-identical, not a distinguishable "access denied" page).
+  `api/debug-scoring.ts` does the actual server-side comparison against
+  `process.env.ONYAPROJECTX` — set that env var in Vercel (a long random
+  string) for the gate to open in production; it isn't set anywhere in
+  this sandbox's env, so the endpoint 404s everything until it is.
+- **What it shows**: the current `SCORING_WEIGHTS` object; per profile,
+  every product excluded by hard filters and why; per category, a full
+  ranked comparison table (one row per eligible product, one column per
+  scoring dimension, a highlighted "biggest gap vs next" line between
+  consecutive ranks) with the actual top-3 picks marked; and, when
+  relaxation fired, exactly which constraint(s) were dropped.
+- **Ships 4 built-in profiles** (Demanding/protein-sensitive,
+  2C/3A-triggers-relaxation, Easy/no-relaxation, Black-owned-preference) —
+  each verified against the real catalog fixture to actually demonstrate
+  what its name claims (see DECISIONS.md) before being hardcoded.
+  `?profile=<name>` narrows to just one; any individual field override
+  (`?curlType=4c&budgetMax=10&sensitivities=protein,sulfates`, etc.), with
+  or without `profile`, narrows to a single ad hoc custom profile instead
+  of showing all 4 — see `ScoringDebug.tsx`'s `OVERRIDE_KEYS` for every
+  overridable field.
+- **How it stays in sync with the real pipeline, always**: the comparison
+  tables don't re-implement scoring — `scoreProductBreakdown`,
+  `debugHardFilterExclusions`, and `debugScoreCategory` (all new exports
+  in `scoring.ts`) call the exact same internal functions
+  (`computeScoreBreakdown`, `failingSensitivities`,
+  `requiredDimensionsFor`/`meetsRequiredDimensions`/`selectForCategory`)
+  the real `scoreProducts()` pipeline does. There is no second
+  implementation to drift out of sync.
+
+### Changing the weights (unchanged process, now with a better instrument)
+Still just edit `SCORING_WEIGHTS` in `scoring.ts` and run `npm test` to
+eyeball `scoring.test.ts`'s printed picks-per-category output (see
+"Product Scoring" above) — `/debug/scoring` is the complementary
+non-engineer-facing view of the same change: tune the number, redeploy,
+screenshot the debug view for Nya instead of (or alongside) reading test
+output.
+
 ## Design System Notes
 
 ### Token file
@@ -560,17 +651,19 @@ a parallel dark stylesheet.
   without support just swap the attribute instantly — the toggle itself
   never blocks on a feature check.
 - **No-flash on load**: a blocking inline `<script>` at the very top of
-  `index.html`'s `<head>` (before any CSS/font links) reads
-  `localStorage.getItem('nari-theme')` and sets `data-theme="dark"` on
-  `<html>` immediately if present — this runs before React or even the
-  stylesheet finishes loading, so a returning dark-mode visitor never sees
-  a light flash. **Every new visitor still defaults to light regardless of
-  OS `prefers-color-scheme`** — the script only ever acts on an *explicit*
-  prior toggle (localStorage), never on `matchMedia('(prefers-color-scheme:
-  dark)')`, which is intentional per spec (protects the ribbon/hero as the
-  first impression). `ThemeProvider`'s initial React state is read from the
-  DOM attribute the script already set, not defaulted to a fixed value, so
-  the two never disagree.
+  `index.html`'s `<head>` (before any CSS/font links) sets
+  `data-theme="dark"` on `<html>` immediately unless
+  `localStorage.getItem('nari-theme')` is explicitly `'light'` — this runs
+  before React or even the stylesheet finishes loading, so there's never a
+  flash of the wrong theme either direction. **Dark is the default for
+  every new visitor (Spike B, per Nya) regardless of OS
+  `prefers-color-scheme`** — inverted from this project's original
+  light-first default; the script only checks for an *explicit* prior
+  "light" toggle in localStorage, never `matchMedia('(prefers-color-scheme:
+  light)')`. `ThemeProvider`'s initial React state is read from the DOM
+  attribute the script already set, not defaulted to a fixed value, so the
+  two never disagree. See DECISIONS.md's Spike B section for why this
+  flipped and what would change it again.
 - **If you add a new component**: just use the semantic token aliases as
   normal. The only time you need to think about dark mode explicitly is
   when something needs *real* pixel data per theme (a canvas/WebGL texture,

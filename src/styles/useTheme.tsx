@@ -12,11 +12,11 @@ function readInitialTheme(): Theme {
 
 /**
  * Wraps the app so any component can read/toggle the theme. Every new
- * visitor defaults to light regardless of OS `prefers-color-scheme` — the
- * blocking inline script in index.html only sets data-theme="dark" if
- * localStorage already holds an explicit prior toggle, and React never runs
- * before that script does, so the initial DOM read here is always "light"
- * for a first-time visitor.
+ * visitor defaults to dark (per Nya) regardless of OS `prefers-color-scheme`
+ * — the blocking inline script in index.html sets data-theme="dark" unless
+ * localStorage already holds an explicit prior "light" toggle, and React
+ * never runs before that script does, so the initial DOM read here always
+ * matches what the script already decided.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(readInitialTheme);

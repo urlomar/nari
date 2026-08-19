@@ -10,6 +10,7 @@ const ScannerRoute = lazy(() => import("./features/scanner/ScannerRoute"));
 const ScanResults = lazy(() => import("./pages/ScanResults"));
 const SwatchesLazy = lazy(() => import("./pages/dev/Swatches"));
 const ProductsDebugLazy = lazy(() => import("./pages/dev/ProductsDebug"));
+const ScoringDebugLazy = lazy(() => import("./pages/debug/ScoringDebug"));
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,11 @@ const router = createBrowserRouter([
       { path: "/app", element: <Navigate to="/scan" replace /> },
       { path: "/about", element: <About /> },
       { path: "/contact", element: <Contact /> },
+      // Production-accessible but key-gated (see api/debug-scoring.ts) —
+      // deliberately placed alongside "*" so a missing/wrong ?key renders
+      // through the exact same NotFound the wildcard route would, not a
+      // custom "access denied" page that would confirm the route exists.
+      { path: "/debug/scoring", element: <ScoringDebugLazy /> },
       { path: "*", element: <NotFound /> }
     ]
   },

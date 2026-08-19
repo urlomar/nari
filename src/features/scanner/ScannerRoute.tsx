@@ -28,6 +28,7 @@ import s from "./scanner.module.css";
 export default function ScannerRoute() {
   const [state, dispatch] = useReducer(scannerReducer, undefined, createInitialScannerState);
   const [compressing, setCompressing] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const navigate = useNavigate();
   const previewUrl = usePhotoPreview(state.photo);
 
@@ -108,10 +109,21 @@ export default function ScannerRoute() {
         if (cancelled) return;
         track("scan_completed");
         clearPersistedQuizProgress();
-        navigate("/scan/results", { state: { recommendations }, replace: true });
+        // `answers` rides along so the results page can render an honest
+        // per-product match checklist (porosity/curl type/sensitivities/
+        // budget/black-owned) — matchReasons alone only records what DID
+        // match, not what the user actually asked for.
+        navigate("/scan/results", { state: { recommendations, answers: diagnosticAnswers }, replace: true });
       } catch {
+        // The only I/O this step does is the catalog fetch (scoreProducts()
+        // itself is pure and synchronous) — so in practice every failure
+        // here is a products-database problem, cold cache included. Name
+        // that specifically rather than a generic "something went wrong."
         if (!cancelled) {
-          dispatch({ type: "ANALYSIS_FAILED", message: "We couldn't build your results. Please try again." });
+          dispatch({
+            type: "ANALYSIS_FAILED",
+            message: "We couldn't load the product database — check your connection and try again.",
+          });
         }
       }
     })();
@@ -123,10 +135,18 @@ export default function ScannerRoute() {
   }, [step, state.analysisAttempt]);
 
   async function handleCapture(file: File) {
+    setPhotoError(null);
     setCompressing(true);
     try {
       const compressed = await compressImage(file);
       dispatch({ type: "SET_PHOTO", file: compressed });
+    } catch {
+      // Most commonly a format the browser's <img>/canvas pipeline can't
+      // decode (e.g. HEIC on a non-Safari browser) — compressImage's own
+      // loadImage() rejects rather than silently producing a blank canvas.
+      setPhotoError(
+        "We couldn't process that photo. Try a JPG or PNG, or skip this step for now — you can always add a photo later."
+      );
     } finally {
       setCompressing(false);
     }
@@ -176,11 +196,19 @@ export default function ScannerRoute() {
         file={state.photo}
         previewUrl={previewUrl}
         compressing={compressing}
+        error={photoError}
+        onErrorChange={setPhotoError}
         onCapture={handleCapture}
-        onRetake={() => dispatch({ type: "CLEAR_PHOTO" })}
+        onRetake={() => {
+          setPhotoError(null);
+          dispatch({ type: "CLEAR_PHOTO" });
+        }}
         onBack={() => dispatch({ type: "BACK" })}
         onNext={() => dispatch({ type: "NEXT" })}
-        onSkip={() => dispatch({ type: "SKIP_PHOTO" })}
+        onSkip={() => {
+          setPhotoError(null);
+          dispatch({ type: "SKIP_PHOTO" });
+        }}
       />
     );
   } else if (step === "analyzing") {

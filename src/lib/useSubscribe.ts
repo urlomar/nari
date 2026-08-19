@@ -37,7 +37,7 @@ export function useSubscribe() {
       });
 
       if (!res.ok) {
-        let message = "Something went wrong. Please try again.";
+        let message = "We couldn't add you to the waitlist — please try again in a moment.";
         try {
           const data = await res.json();
           if (data?.error) message = data.error;

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { PhotoCapture } from "../components/PhotoCapture";
 import s from "../scanner.module.css";
 
@@ -6,6 +5,9 @@ export interface PhotoStepProps {
   file: File | null;
   previewUrl: string | null;
   compressing: boolean;
+  /** Lifted to ScannerRoute — compressImage() failures (e.g. an undecodable HEIC) surface here too, not just PhotoCapture's own validation. */
+  error: string | null;
+  onErrorChange: (message: string | null) => void;
   onCapture: (file: File) => void;
   onRetake: () => void;
   onBack: () => void;
@@ -13,11 +15,20 @@ export interface PhotoStepProps {
   onSkip: () => void;
 }
 
-export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, onBack, onNext, onSkip }: PhotoStepProps) {
-  const [error, setError] = useState<string | null>(null);
-
+export function PhotoStep({
+  file,
+  previewUrl,
+  compressing,
+  error,
+  onErrorChange,
+  onCapture,
+  onRetake,
+  onBack,
+  onNext,
+  onSkip,
+}: PhotoStepProps) {
   function handleSelect(selected: File) {
-    setError(null);
+    onErrorChange(null);
     onCapture(selected);
   }
 
@@ -41,8 +52,8 @@ export function PhotoStep({ file, previewUrl, compressing, onCapture, onRetake, 
         </div>
       ) : (
         <div className={s.captureButtons}>
-          <PhotoCapture capture="environment" label="Take a photo" onSelect={handleSelect} onError={setError} />
-          <PhotoCapture label="Choose a photo" onSelect={handleSelect} onError={setError} />
+          <PhotoCapture capture="environment" label="Take a photo" onSelect={handleSelect} onError={onErrorChange} />
+          <PhotoCapture label="Choose a photo" onSelect={handleSelect} onError={onErrorChange} />
         </div>
       )}
 
