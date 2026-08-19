@@ -10,7 +10,9 @@
   This replaced an earlier dark-purple theme; if you see dark hardcoded hex
   values in a component, that's a bug — move the value into tokens
 - Serverless: api/ folder, Vercel conventions (see api/subscribe.ts) — deployed and working, do not move. Verified live end-to-end during the design sprint (real Sheets row + real confirmation email). Note: `GOOGLE_SHEET_RANGE` in `.env.local` is currently `Sheet1!A:D` (4 cols) but the code writes 5 — harmless (Sheets auto-expands) but should be updated to `Sheet1!A:E` to stop drifting
+- `api/send-results.ts` (Final Spike) emails a user their scan results and logs to a separate `Results` sheet tab — see "Results Email" below. Needs `GOOGLE_RESULTS_RANGE` (defaults to `Results!A:E` if unset, same fallback pattern as `GOOGLE_SHEET_RANGE`) in addition to the existing Google/Resend vars
 - Secrets via process.env, never VITE\_-prefixed
+- **This sandbox's local env files are missing their leading dot** (`env.local`/`env.example` at the repo root, not `.env.local`/`.env.example` — a real, separately-tracked `.env.example` also exists and is the one Vite/Vercel actually look for). Neither Vite nor `vercel dev` load a dotless `env.local` automatically — treat any "verified against real credentials" claim in this sandbox with that in mind; every serverless-function check so far has relied on typecheck + a per-file transpile/Node-ESM-resolution harness (see "Server code boundary" below) rather than an actual invocation with live secrets
 - Commands: npm run dev / npm run typecheck / npm test — typecheck must stay green
 - Build plan: read PLAN.md, execute milestone by milestone
 - 3D deps (Spike 2, Part F): `three` + `@react-three/fiber@^8` +
@@ -611,6 +613,69 @@ non-engineer-facing view of the same change: tune the number, redeploy,
 screenshot the debug view for Nya instead of (or alongside) reading test
 output.
 
+## Results Email (Final Spike)
+
+The results page's "Join the waitlist" form was replaced with an option to
+**email the user their actual recommendations** — `api/send-results.ts`,
+following `api/subscribe.ts`'s conventions exactly (handler signature, env
+var access, `.js`-suffixed relative imports, self-contained within `api/`).
+See DECISIONS.md's "Final Spike" section for the full reasoning; this is
+the quick-reference version.
+
+- **Request shape is a display projection, not the full
+  `ScoredRecommendationSet`.** `{ email, curlType, porosity, recommendations
+  }`, where each pick is just `{ name, brand, price, buyLink, matchLine }`
+  — `matchLine` (e.g. `"✓ your porosity · ✗ not Black-owned"`) is a
+  finished string built **client-side**, in `ScanResults.tsx`'s
+  `buildMatchLine()`/`buildSendResultsPayload()`, reusing the exact same
+  `buildMatchChecklist()` the on-screen checklist already calls. The
+  endpoint never recomputes a match verdict — it only ever renders what
+  it's given. Validated by `api/_lib/resultsSchema.ts`'s
+  `SendResultsRequestSchema` (Zod), which deliberately does **not** reuse
+  `api/_lib/schema.ts`'s full `ProductSchema` — the email doesn't need
+  `hairTypes`/`porosity`/etc., just the 4 display fields.
+- **Email is required; sheet logging is best-effort, attempted only after
+  a confirmed send.** Mirrors `subscribe.ts`'s own asymmetric tolerance
+  with the roles reversed — there, Sheets is required and email is
+  best-effort/logged-only; here, email is required (a Resend failure
+  returns a real error, e.g. 502, and the UI must show it — never a false
+  success) and both Sheets appends (Results tab + waitlist tab) are
+  logged-but-non-fatal if they fail, since the user already has their
+  email by that point.
+- **Two sheet writes, one spreadsheet, two tabs.** `GOOGLE_SHEET_ID` +
+  `GOOGLE_RESULTS_RANGE` (default `Results!A:E`) for a new row —
+  **Email | Curl Type | Porosity | Products Sent | Timestamp** (`Products
+  Sent` is the total pick count across all categories, not a product
+  list). `GOOGLE_SHEET_ID` + `GOOGLE_SHEET_RANGE` (same var/default
+  `subscribe.ts` uses) for a waitlist row — **one-directional**: results
+  recipients get added to the waitlist too (First/Last blank, no name
+  collected on this form; Hair Type gets the real `curlType`), but
+  waitlist signups from `subscribe.ts` never receive results.
+- **Abuse guard**: an in-memory `Map` rejects a repeat request for the
+  same email within 60 seconds (429) — set optimistically before calling
+  Resend (so a duplicate submit can't even reach it), cleared again if the
+  send fails (so a real retry is never blocked by the guard).
+- **No shared helper file with `subscribe.ts`.** The ~15 lines of Google
+  auth setup are duplicated, not extracted — `subscribe.ts` is explicitly
+  "deployed and working, do not move" and this is the last spike before
+  launch; see DECISIONS.md for the full tradeoff (same reasoning as
+  `api/_lib/schemas.ts`'s existing hand-duplication of a subset of
+  `src/lib/schemas.ts`).
+- **Client side**: `src/lib/useSendResults.ts` (mirrors `useSubscribe.ts`'s
+  loading/error/success shape) + `src/pages/ScanResults.tsx`'s
+  `SendResultsCapture` component (replaces the old `EmailCapture`). Email
+  field only, no name. Fires a `results_emailed` analytics event on
+  success; `scan_completed` already fires from `ScannerRoute.tsx` the
+  moment `getRecommendations()` resolves (predates this spike — confirmed
+  still correct, not duplicated).
+- **Verified via the same esbuild-transform + Node-ESM-resolver harness**
+  used to catch the original two production import bugs (see "Server code
+  boundary" above) — confirms `./_lib/resultsSchema.js` resolves the way
+  Vercel's per-file transpilation would produce it. **Not verified**:
+  an actual invocation with live Resend/Google credentials (this
+  sandbox's env files are dotless — see the top of this file); that's the
+  user's to run post-deploy per PLAN.md's verification checklist.
+
 ## Design System Notes
 
 ### Token file
@@ -985,13 +1050,35 @@ autonomous ship decision. Upgraded from the original 3-photo checkpoint to
 choreography — see PLAN.md's "Spike 2 continuation" entry for the full
 list; this section covers the pieces worth knowing before touching the
 file again.
-- **Photo pool is exactly 5 images** (`pic-1/2/3/5/6`) — don't add more
-  from `src/assets/photos/` without checking them first. Several images
-  dropped into that folder turned out to be identifiable celebrities at
-  real branded press events (paparazzi/red-carpet photography, not stock)
-  — a publicity-rights/copyright risk, not a style call. If new files show
-  up there, look at them before using them; don't assume "in the photos
-  folder" means "cleared for use."
+- **Photo pool refreshed (Final Spike)** — 5 faces now come from
+  `src/assets/photos/images/` (a 12-image drop, all clean stock
+  photography this time — see DECISIONS.md's "Cube photo refresh"):
+  `image3` (front), `image2` (left), `image9` (top), `image6` (right),
+  `image11` (back). `image1` is reserved for the About page;
+  `image4/5/7/8/10/12` are unused/available. The older `afro-pic-*` files
+  in `src/assets/photos/` (not the `images/` subfolder) are no longer
+  referenced by the cube or About page but weren't deleted — check before
+  assuming they're dead if you see them elsewhere (e.g. Hero's fallback).
+  **Still don't add new files from either location without checking them
+  first** — two of the four photo drops so far (`afro-pic-4`, and the
+  6-image `afro-pic-7`–`12` batch) turned out to be identifiable
+  celebrities at real branded press events (paparazzi/red-carpet
+  photography, not stock), a publicity-rights/copyright risk, not a style
+  call. **Known gap**: none of the current 12 images include a man, though
+  Nya's direction asked for a mix that does — flagged, not fixed.
+- **Curl mark changed** (cube-only — `Logo.tsx`/the navbar-footer wordmark
+  are untouched). `CURL_PATH_2D` is now a self-intersecting limaçon
+  (`r = b + a·cos θ`, `a > b`) rather than the original tight logarithmic
+  spiral — closer to Nya's "flipped ➰" direction, picked from 4 generated
+  variants (see DECISIONS.md's "Cube curl mark"). `makeLogoFaceTexture`'s
+  positioning also changed: the curl is now placed from its own bottom
+  edge (`curlBottomLocal = Math.max(...CURL_PATH_2D.map(([, y]) => y))`,
+  then offset by a proportional `clearanceGap = fontSize * 0.09`) instead
+  of a blind center offset — the old formula could put the curl's lowest
+  point *past* the stem's top for some shapes (confirmed true of the
+  original spiral, ~12px of real overlap at the cube's actual size).
+  **If you swap `CURL_PATH_2D` again**, the positioning formula doesn't
+  need retuning — it derives the gap from whatever shape is there.
 - **Every photo is center-cropped to square in code**
   (`cropToSquareTexture`), never stretched — source images are portrait,
   not square. Cover-fit math (scale by the larger of width/height ratios,

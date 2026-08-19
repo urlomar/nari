@@ -755,3 +755,84 @@ behind every piece, including the review pass's 5 refactor candidates.
   for `api/debug-scoring.ts`/`api/products.ts` itself (same pre-existing
   category of gap already noted for `api/analyze.ts`) — `ONYAPROJECTX`
   must be set in Vercel before the gate will open post-deploy.
+
+## Final Spike — Results Email, Cube Photos, About Page
+**Status: Parts A, B, and C done. Deploy + live verification still
+pending (see below).** See CLAUDE.md's new "Results Email" section and
+DECISIONS.md's "Final Spike" section for full detail; this is the status
+summary.
+
+- **Part A — Results email.** New `api/send-results.ts` (+
+  `api/_lib/resultsSchema.ts`, `src/lib/useSendResults.ts`) emails a user
+  their actual scan recommendations (all 6 categories, no trimming, plain
+  HTML + text fallback) and, only after a confirmed send, logs to a new
+  `Results` sheet tab and joins the same waitlist `api/subscribe.ts`
+  writes to (one-directional). Replaces the old waitlist-only
+  `EmailCapture` on `ScanResults.tsx` with `SendResultsCapture` — email
+  field only, plain-language success/loading/error states, a
+  `results_emailed` analytics event on success. `scan_completed` was
+  already firing from `ScannerRoute.tsx` before this spike — confirmed,
+  not duplicated.
+  - 82 pre-existing tests still pass unmodified; 6 new tests for
+    `SendResultsRequestSchema`. `npm run typecheck` clean.
+  - Verified via the esbuild-transform + Node-ESM-resolver harness (same
+    one that caught the original two production import bugs — see
+    CLAUDE.md "Server code boundary") — confirms the new endpoint's
+    `.js`-suffixed relative import resolves the way Vercel's per-file
+    transpilation would produce it.
+  - **Not verified**: an actual send/receive against live Resend/Google
+    credentials — this sandbox's env files are dotless
+    (`env.local`/`env.example`, not `.env.local`/`.env.example`), so
+    neither Vite nor a local `vercel dev` would load them; a real email
+    send, a deliberate-failure check, and confirming both sheet rows
+    appear are the user's to run post-deploy, per this spike's own
+    verification checklist. `GOOGLE_RESULTS_RANGE` needs to be set in
+    Vercel (defaults to `Results!A:E` locally if unset).
+- **Part B — Cube photos.** All 12 newly-dropped images
+  (`src/assets/photos/images/`) were visually inspected before use — the
+  first photo drop in this project that needed **zero** exclusions (unlike
+  the two prior drops, both of which turned out to be identifiable public
+  figures at press events). 5 faces swapped in: `image3` (front), `image2`
+  (left), `image9` (top), `image6` (right), `image11` (back); `image1`
+  reserved for the About page; `image4/5/7/8/10/12` unused/available.
+  **Real gap found, not fixed**: none of the 12 include a man, though
+  Nya's direction asked for a mix that does — flagged for a future photo
+  drop.
+- **Part B — Cube curl mark.** Diagnosed the "too close to the stem"
+  complaint as a real, measurable overlap (the old formula could position
+  the curl's bottom edge ~12px *past* the stem's top edge at the cube's
+  actual size, not just tight spacing) and fixed the positioning approach
+  (gap measured from the shape's own bottom edge, not a blind center
+  offset) — applies to whichever variant ships. Generated and screenshotted
+  4 parametric curl variants (open loop CW, its literal mirror, a
+  self-intersecting limaçon double-loop closest to ➰, and a loose loop with
+  a long tail), rendered through the exact production draw code at both
+  full texture resolution and the cube's real ~170px on-screen face size,
+  published as an artifact for review. **Variant C (double loop) picked
+  and applied** — `CURL_PATH_2D` + the positioning formula both updated in
+  `Cube.tsx`; `tsc -b` clean, zero errors driving the real landing page
+  post-change. `Logo.tsx`/the site-wide wordmark were never touched
+  (cube-only scope, as specified).
+- **Part C — About page.** Photo swapped to `image1` (same rights check,
+  cleared). Heading changed from "About Nari" to just "Nari" (the small
+  "About" eyebrow above it already said "About," so the H1 repeating it
+  was redundant) with more vertical room between the eyebrow and the H1
+  (`--space-sm` → `--space-lg`) — the brief flagged the "which two
+  elements" question as ambiguous and asked for a reported interpretation;
+  see DECISIONS.md for the reasoning and the alternative reading
+  considered. Nav "Get updates" link (desktop + mobile sheet) verified
+  already pointing at `/#mailing` — fixed in an earlier pass (Spike 2 Part
+  C), confirmed not regressed, no change needed.
+- **Verification**: `npm run typecheck` clean; full test suite (88 tests:
+  82 pre-existing + 6 new) passes. Full quiz → skip photo → results flow
+  driven for real (temporary gated Vite dev-middleware serving the checked-
+  in catalog fixture, same pattern as Spikes A/B, reverted after) across
+  both themes and desktop/390px mobile — zero console errors in any
+  combination; the new email form's success state, failure state (via a
+  second temporary middleware pass simulating a Resend failure), and both
+  themes/viewports all screenshot-confirmed. About page and the landing-
+  page cube (new photos + new curl mark) also driven live, zero console
+  errors, both themes. **Not verified**: an actual send/receive against
+  live Resend/Google credentials (this sandbox's env files are dotless —
+  see CLAUDE.md) and a real Vercel deploy — both are the user's to run,
+  per this spike's own verification checklist.

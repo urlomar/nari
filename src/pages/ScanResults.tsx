@@ -11,7 +11,7 @@ import type {
 } from "@/lib/products/scoring";
 import { buildMatchChecklist } from "@/lib/products/scoring";
 import { getOptionLabel } from "@/features/scanner/quiz/quizLabels";
-import { useSubscribe } from "@/lib/useSubscribe";
+import { useSendResults, type SendResultsPayload } from "@/lib/useSendResults";
 import { track } from "@/lib/analytics";
 import { fadeUp, staggerChildren } from "@/styles/motionVariants";
 import s from "@/styles/ScanResults.module.css";
@@ -108,6 +108,46 @@ function formatChecklistLabel(item: MatchChecklistItem): string {
     case "blackOwned":
       return item.matched ? "Black-owned" : "not Black-owned";
   }
+}
+
+/** Plain-text match line for the results email, e.g. "✓ your porosity · ✗ not Black-owned" — same checklist data and labels as the on-screen list, just joined into one line instead of rendered as separate items. */
+function buildMatchLine(checklist: MatchChecklistItem[]): string {
+  const ordered = [...checklist].sort((a, b) => Number(b.matched) - Number(a.matched));
+  return ordered.map((item) => `${item.matched ? "✓" : "✗"} ${formatChecklistLabel(item)}`).join(" · ");
+}
+
+/**
+ * Builds api/send-results.ts's request body from data already on screen.
+ * Deliberately sends a display-shaped projection (name/brand/price/buyLink
+ * + a precomputed matchLine), not the full Product/ScoredRecommendationSet
+ * — the endpoint never re-derives a match verdict itself, so the email can
+ * never show a different checkmark than what the user is looking at right
+ * now. See api/_lib/resultsSchema.ts.
+ */
+function buildSendResultsPayload(
+  recommendations: ScoredRecommendationSet,
+  answers: DiagnosticAnswers,
+  email: string
+): SendResultsPayload {
+  return {
+    email,
+    curlType: answers.curlType,
+    porosity: answers.porosity,
+    recommendations: {
+      categories: recommendations.categories.map((category) => ({
+        category: category.category,
+        relaxed: category.relaxed,
+        relaxedConstraints: category.relaxedConstraints,
+        picks: category.picks.map((pick) => ({
+          name: pick.product.name,
+          brand: pick.product.brand,
+          price: pick.product.price,
+          buyLink: pick.product.buyLink || undefined,
+          matchLine: buildMatchLine(buildMatchChecklist(pick.product, answers, recommendations.unenforcedSensitivities)),
+        })),
+      })),
+    },
+  };
 }
 
 function slugify(value: string): string {
@@ -260,7 +300,7 @@ function ScanResultsContent({
 
         {/* Edge case #5 — offered after results, never gating them. */}
         <motion.div variants={fadeUp}>
-          <EmailCapture />
+          <SendResultsCapture recommendations={recommendations} answers={answers} />
         </motion.div>
 
         <motion.div className={s.footerActions} variants={fadeUp}>
@@ -348,57 +388,52 @@ function ProductCard({
   );
 }
 
-function EmailCapture() {
-  const { submit, loading, error, success } = useSubscribe();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+/**
+ * Replaces the old waitlist-only EmailCapture (Spike A/B) — see
+ * DECISIONS.md. Emails the user their actual recommendations via
+ * api/send-results.ts, which also joins the waitlist server-side
+ * (one-directional: results recipients join the waitlist, waitlist
+ * signups never get results). No name field — lower friction, and the
+ * endpoint doesn't need one.
+ */
+function SendResultsCapture({
+  recommendations,
+  answers,
+}: {
+  recommendations: ScoredRecommendationSet;
+  answers?: DiagnosticAnswers;
+}) {
+  const { submit, loading, error, success } = useSendResults();
   const [email, setEmail] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await submit({ firstName, lastName, email });
+    if (!answers) return;
+    const ok = await submit(buildSendResultsPayload(recommendations, answers, email));
     if (ok) {
-      track("email_captured", { email_hint: email.slice(0, 3) + "***" });
+      track("results_emailed", { email_hint: email.slice(0, 3) + "***" });
     }
   }
+
+  // Backward-compat only (see ScanResultsLocationState) — a stale cached
+  // history entry from before `answers` existed can't build match lines
+  // or the sheet's curl-type/porosity columns, so the form doesn't render
+  // rather than send an email with no way to honestly fill those in.
+  if (!answers) return null;
 
   if (success) {
     return (
       <div className={s.captureBox}>
-        <p className={s.captureSuccess}>You&rsquo;re on the waitlist — we&rsquo;ll email you when Nari launches.</p>
+        <p className={s.captureSuccess}>
+          Check your inbox — we just sent your recommendations. You&rsquo;re also on our list for launch updates.
+        </p>
       </div>
     );
   }
 
   return (
     <form className={s.captureBox} onSubmit={onSubmit} aria-describedby="capture-help">
-      <h2 className={s.captureHeading}>Join the waitlist for launch updates</h2>
-      <div className={s.captureRow}>
-        <label className="sr-only" htmlFor="results-firstName">
-          First name
-        </label>
-        <input
-          id="results-firstName"
-          type="text"
-          placeholder="First name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-          disabled={loading}
-        />
-        <label className="sr-only" htmlFor="results-lastName">
-          Last name
-        </label>
-        <input
-          id="results-lastName"
-          type="text"
-          placeholder="Last name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-          disabled={loading}
-        />
-      </div>
+      <h2 className={s.captureHeading}>Get your recommendations by email</h2>
       <div className={s.captureRow}>
         <label className="sr-only" htmlFor="results-email">
           Email
@@ -414,11 +449,11 @@ function EmailCapture() {
           disabled={loading}
         />
         <button type="submit" className={s.captureButton} disabled={loading}>
-          {loading ? "Joining..." : "Join waitlist"}
+          {loading ? "Sending..." : "Email my results"}
         </button>
       </div>
       <p id="capture-help" className={s.captureHelp}>
-        We&rsquo;ll email you launch updates. Unsubscribe anytime.
+        We&rsquo;ll send your full routine to this email. You&rsquo;ll also be added to our list for launch updates.
       </p>
       {error && (
         <p role="alert" className={s.captureError}>

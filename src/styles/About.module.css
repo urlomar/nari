@@ -21,7 +21,10 @@
 }
 
 .eyebrow {
-  margin: 0 0 var(--space-sm);
+  /* Extra room below, per Nya's note — was --space-sm (12px), which read
+     cramped against the title once the title stopped repeating "About"
+     itself. See DECISIONS.md "About page heading". */
+  margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-sm);

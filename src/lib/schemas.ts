@@ -100,7 +100,7 @@ export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 // RecommendationSet types that used to live in this section were retired
 // once ScanResults.tsx and dataSource.ts moved onto the real scoring engine.
 
-// CTA.tsx / results-page email capture — shared by useSubscribe.
+// CTA.tsx / results-page waitlist form — shared by useSubscribe.
 export const SubscribeInputSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
@@ -108,3 +108,13 @@ export const SubscribeInputSchema = z.object({
   hairType: z.string().max(80, "Hair type description is too long.").optional(),
 });
 export type SubscribeInput = z.infer<typeof SubscribeInputSchema>;
+
+// ScanResults.tsx's "email me my results" form — shared by useSendResults.
+// Only the email needs client-side validation; the recommendations payload
+// is built from data already on screen, not user-typed, so it's just
+// forwarded as-is (api/_lib/resultsSchema.ts is the real validation for
+// that part, server-side).
+export const SendResultsInputSchema = z.object({
+  email: z.string().email("Please enter a valid email address."),
+});
+export type SendResultsInput = z.infer<typeof SendResultsInputSchema>;

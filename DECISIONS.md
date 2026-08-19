@@ -886,3 +886,264 @@ time to prove itself as a safety net.
   server-side at the moment that form renders, so wiring `api/subscribe.ts`
   to actually email the routine is a scoped, buildable follow-up whenever
   Nya wants it, not a research problem.
+- **Resolved (Final Spike): the personalized-routine email above is now
+  built** — see "Final Spike" below.
+
+## Final Spike — Results Email, Cube Photos, About Page
+
+### Results email (Part A)
+
+**The wire payload is a display-shaped projection, not the literal
+`ScoredRecommendationSet`, and the match line is a precomputed string, not
+structured data the server re-derives.**
+`api/send-results.ts` accepts `{ email, curlType, porosity, recommendations
+}` where `recommendations.categories[].picks[]` is just `{ name, brand,
+price, buyLink, matchLine }` — not the full `Product`/`RecommendedProduct`
+shape, and `matchLine` is already the finished string (`"✓ your porosity ·
+✗ not Black-owned"`), built client-side in `ScanResults.tsx` via the exact
+same `buildMatchChecklist()` + `formatChecklistLabel()` the on-screen
+checklist already uses (new `buildMatchLine()`/`buildSendResultsPayload()`
+helpers there).
+- **Why:** the email only ever displays 4 product fields plus a match
+  verdict — sending the full catalog record (hairTypes, porosity, density,
+  every free-from flag) would be dead weight, and worse, would tempt the
+  endpoint into recomputing the checklist itself. DECISIONS.md/PLAN.md
+  already flag this codebase's real risk of accumulating parallel
+  "translate scoring into English" implementations (Spike B's Part F,
+  finding #3: `humanizeMatchReason` vs. `buildMatchChecklist`, both in
+  `ScanResults.tsx`). Building a *third* one server-side — even a small,
+  duplicated one — would be the same mistake again, and would open a real
+  gap where the email could show a different verdict than the screen did
+  (e.g. if the two implementations' rounding/edge-case handling drifted).
+  Sending the finished string instead makes that structurally impossible:
+  the email can only ever say what the screen already said, because it's
+  the same computed value, not a re-derivation.
+- **What would change it:** if the email needs a match dimension the
+  on-screen checklist doesn't show, that's a `ScanResults.tsx` change
+  first (extend what the client computes), not a reason to add scoring
+  logic to `api/`.
+
+**Email-first, sheets-after — and a Sheets failure never flips a
+successful response into a failure.**
+Ordering matches the brief exactly: Resend is called first; the two
+`sheets.spreadsheets.values.append()` calls only happen after a confirmed
+send. Less obvious: if the *email* succeeds but a subsequent Sheets write
+throws (bad creds, API outage), the endpoint still returns `200 { ok: true
+}` — the Sheets failure is logged (`console.error`) and swallowed, not
+surfaced to the user.
+- **Why:** the user's deliverable is the email, which they already have by
+  that point. Sheets logging is our own internal usage-counting, not
+  something the user is waiting on or would understand a failure message
+  about ("we sent your results but our spreadsheet broke" is not a useful
+  thing to tell them). This is a deliberate mirror of `subscribe.ts`'s own
+  asymmetric tolerance — there, Sheets is the required action and the
+  confirmation email is best-effort/logged-only; here the roles are
+  reversed (email required, Sheets best-effort/logged-only), same
+  principle both times: the response reflects whether the user's actual
+  ask was fulfilled, not whether every side effect fired.
+- **What would change it:** if Sheets logging becomes load-bearing for
+  something user-facing (e.g. a "you've already gotten your results"
+  dedupe check that reads the sheet), it would need to move from
+  best-effort into the critical path.
+
+**Rate limit is optimistic-set-then-clear-on-failure, not
+set-only-on-success.**
+`recentRequests.set(email, Date.now())` happens *before* calling Resend,
+immediately after the request passes validation — so two rapid submits for
+the same email get the second one rejected with a 429 before it can hit
+Resend at all (the actual point: protecting the Resend account from a
+retry loop). If the send then fails, the entry is deleted before returning
+the error, so the user's next click — a legitimate retry — isn't blocked
+by the rate limiter guarding against a request that never actually
+delivered anything.
+- **Why:** the guard exists to stop *repeated successful-or-in-flight*
+  requests from piling up, not to punish a failed attempt. Blocking a
+  retry after a real failure would contradict "Failure must be specific
+  and retryable" from the brief.
+- **What would change it:** if abuse in practice turns out to be
+  failed-request spam rather than successful-request spam, the guard would
+  need to key on attempt count instead of last-timestamp.
+
+**One-directional waitlist relationship, and no separate shared helper
+file for the Google Sheets auth boilerplate.**
+Results recipients are added to the same waitlist tab `subscribe.ts`
+writes to (First/Last blank — no name is collected on this form; Hair Type
+gets the real `curlType` from the diagnostic, not "N/A," since we actually
+have it). Waitlist signups never receive results — there's no path from
+`subscribe.ts` back into `send-results.ts`. The ~15 lines of Google auth
+setup in `send-results.ts` are a deliberate copy of `subscribe.ts`'s, not
+a shared `api/_lib/googleSheets.ts` helper.
+- **Why:** the brief says "reuse `subscribe.ts`'s proven patterns... follow
+  its conventions exactly" — copy the pattern, don't refactor the file
+  it's copied from. `subscribe.ts` is explicitly called out in CLAUDE.md as
+  "deployed and working, do not move," and this is the last spike before
+  launch. Duplication-over-shared-abstraction is already this codebase's
+  established choice under exactly these conditions (see "Server code
+  boundary" in CLAUDE.md: `api/_lib/schemas.ts` hand-duplicates a subset of
+  `src/lib/schemas.ts` for the identical reason). Extracting a shared
+  helper would touch a file with zero reason to change, days before
+  launch, for a ~15-line savings.
+- **What would change it:** post-launch, once there's a safety net of
+  real production runs behind both endpoints, consolidating the auth
+  boilerplate into `api/_lib/googleSheets.ts` would be a reasonable, low-risk
+  cleanup — just not now.
+
+**Verified with the same esbuild-transform + Node-ESM-resolver harness
+CLAUDE.md documents for the original production incidents**, not just
+`tsc -b`. `api/send-results.ts`'s only relative import
+(`./_lib/resultsSchema.js`) was transpiled individually (no bundling) into
+a `"type":"module"` scratch directory and loaded via Node's real resolver
+— confirmed it resolves cleanly, the same check that would have caught
+both prior `FUNCTION_INVOCATION_FAILED`/`ERR_MODULE_NOT_FOUND` incidents
+before they shipped.
+- **What's still not verified**: an actual Vercel Lambda invocation with
+  real Resend/Google credentials — this sandbox has no working
+  `.env.local` (the `env.local`/`env.example` files present here are
+  missing their leading dot, so neither Vite nor a local `vercel dev`
+  would load them as-is; see "Open questions" below), so a real send and a
+  real deliberate-failure test are the user's to run post-deploy, per the
+  brief's own verification checklist.
+
+### Cube photo refresh (Part B)
+
+**All 12 new images turned out to be clean stock photography — the first
+photo drop in this project's history that needed zero exclusions.**
+Every image was visually inspected before use (plain studio/seamless
+backdrops, no visible event signage, no red-carpet framing, no
+identifiable public figure recognized) — unlike the two prior drops
+(`afro-pic-4`, and the 6-image `afro-pic-7`–`12` batch), nothing here
+needed to be flagged for licensing risk. `image1` was kept out of the cube
+selection and used for the About page instead, per the brief. The other 5
+cube faces (front/left/top/right/back) were picked from `image2`–`image12`
+for skin-tone and styling spread: `image3` (front), `image2` (left),
+`image9` (top), `image6` (right), `image11` (back) — `image4/5/7/8/10/12`
+are unused/available, same "available but not used" status this project
+already gives `afro-pic-3`.
+- **Real gap found, not resolved here: none of the 12 images include a
+  man.** Nya's direction asked for a mix "including at least one man" —
+  this batch is all women. Flagged rather than silently shipping a
+  same-gender refresh; see "Open questions" below.
+- **What would change it:** a future photo drop that includes at least one
+  man would let the cube's 5-face selection be redone to satisfy the
+  original brief fully; not blocking on it now since the rest of the
+  refresh (rights clearance, skin-tone spread) is a real improvement on
+  its own.
+
+### Cube curl mark (Part B)
+
+**The "too close to the stem" complaint was a measurable bug, not just a
+matter of taste — the old formula could position the curl's own bottom
+edge *below* the stem's top edge.**
+`makeLogoFaceTexture`'s old positioning offset the curl's *center* by a
+fixed `stemY - fontSize * 0.16`, without accounting for the specific
+curl shape's own vertical extent. Worked out numerically for the shipped
+spiral: the curl's bottom-most sampled point lands at `stemY + fontSize *
+0.054` — i.e., about 12px *past* the stem's top edge at the cube's actual
+`fontSize=220`, a real overlap, not merely tight spacing.
+- **Fix (applies to every candidate variant, independent of which shape
+  ships):** position by the shape's own bottom edge, not a blind center
+  offset — `curlCy = stemY - clearanceGap - bottomLocal * curlScale`,
+  where `bottomLocal` is that specific path's own max local-Y and
+  `clearanceGap = fontSize * 0.09` is the real, proportional (not
+  fixed-pixel) gap the brief asked for. This guarantees no overlap
+  regardless of a shape's specific bounding box, so it doesn't need
+  re-tuning if the curl geometry changes later.
+- **Why 4 generated variants, not one attempt:** the target ("closer to a
+  flipped ➰") is a subjective visual call, and the brief explicitly asked
+  for a pick, not a unilateral change — same checkpoint discipline as Part
+  F's cube go/no-go. Generated parametrically (Archimedean spirals for
+  open-loop variants, a limaçon curve — `r = b + a·cos θ` with `a > b`,
+  which self-intersects into a real loop-within-a-loop — for the
+  double-loop variant), matching the original curl's own stated rigor
+  ("a sampled logarithmic spiral, not hand-drawn bezier guesses") rather
+  than eyeballed points.
+  - **A** — open loop, clockwise, with a short trailing tail.
+  - **B** — the literal horizontal mirror of A (tests loop-direction/
+    handedness preference directly, since "flipped" most naturally reads
+    as a mirror image).
+  - **C** — a limaçon double-loop, the closest literal match to ➰'s actual
+    crossing-loop shape.
+  - **D** — a looser single loop with a longer trailing tail.
+  All 4 were rendered through the *exact* draw code `makeLogoFaceTexture`
+  uses (text + stem + curl, same constants) — not a rough approximation —
+  at both the full 768px texture resolution and a ~170px tile matching the
+  cube's actual max on-screen face size (`Cube.module.css`'s
+  `max-width:420px` on the whole cube, one face at an angle reads smaller
+  still), specifically because a mark that reads fine at preview size can
+  blur together at the size it actually ships at. Screenshotted via a
+  temporary local Playwright install against a cached Chromium binary
+  already present from a prior spike (same "not a project dependency"
+  approach as every previous visual-verification pass in this project).
+- **Resolved: variant C (double loop) was picked and applied.**
+  `CURL_PATH_2D` in `Cube.tsx` now holds the limaçon's 61 sampled points
+  (same generation formula as the artifact, computed once and hardcoded as
+  a literal array, matching the original curl's own convention — not
+  computed at runtime in the component); `makeLogoFaceTexture`'s
+  positioning now uses the bottom-edge-based `clearanceGap` formula
+  unconditionally (it was already written to work for any shape). Verified
+  post-change: `tsc -b` clean, zero console/runtime errors driving the real
+  landing page and dragging the cube to bring the Logo face into view (the
+  "Nar" text and stem render correctly on the correct face — the curl
+  shape itself was already pixel-verified via the artifact's identical
+  draw code, so this confirmed integration, not re-litigated the shape).
+  `Logo.tsx`/the navbar-footer wordmark were never touched at any point —
+  this was always scoped to the cube's Logo face only.
+
+### About page (Part C)
+
+**Heading interpretation: the H1 drops "About" (now just "Nari"); the
+small eyebrow label keeps saying "About," with more room below it.**
+The brief flagged this as ambiguous and asked for a reported
+interpretation rather than a blind guess. Two readings were weighed:
+(1) remove the eyebrow entirely and turn the H1 into a two-line "About" /
+"Nari" stack, or (2) trim the H1 from "About Nari" down to "Nari" (it was
+redundant — the eyebrow already says "About," and the page is reachable
+only at `/about`) and add space between the *existing* eyebrow and H1.
+Went with (2): it's the reading where "remove the About heading" and "add
+vertical space between About and Nari" describe two different, consistent
+edits to two elements that already exist by those exact names in the DOM
+(the eyebrow literally renders "About," the trimmed H1 literally renders
+"Nari") — no need to delete a label and then recreate a version of it
+inside the H1, which reading (1) would require. `.eyebrow`'s bottom margin
+went from `--space-sm` (12px, cramped once the H1 stopped repeating
+"About") to `--space-lg` (24px).
+- **What would change it:** if this reading is wrong, it's a small,
+  contained fix — swap back to "About Nari" in the H1 and adjust spacing
+  in the eyebrow/H1 pair, or implement reading (1)'s two-line stack
+  instead. Flagged for confirmation rather than shipped silently either
+  way.
+
+**About photo replaced with `image1`** (reserved from the cube selection
+per the brief) — same rights check applied and cleared (see "Cube photo
+refresh" above; `image1` was the very first image reviewed).
+
+**Nav "Get updates" link — verified already correct, not a live bug.**
+Grepped every occurrence of "Get updates" and every remaining `"/contact"`
+reference in `src/`: both the desktop (`RootLayout.tsx`'s `.navLinks`) and
+mobile-sheet (`.mobileLinks`) links already point to `/#mailing`, matching
+the `id="mailing"` anchor in `CTA.tsx`. This was fixed in an earlier pass
+(Spike 2, Part C — see PLAN.md) and never regressed; nothing to change
+here, just confirmed.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **New (Final Spike): no man in the current cube photo pool.** All 12
+  newly-reviewed images are women; Nya's direction asked for a mix
+  including at least one man. Not fixed here — flagged for a future photo
+  drop rather than delaying the rest of this spike's (real, positive)
+  diversity/rights improvement on what's available today.
+- **New (Final Spike): this sandbox's env files are missing their leading
+  dot.** `env.example`/`env.local` exist at the repo root instead of
+  `.env.example`/`.env.local` — neither Vite nor a local `vercel dev` load
+  a dotless `env.local` automatically, so (consistent with every prior
+  spike's note on this) `api/send-results.ts` was verified via typecheck,
+  the full test suite, and the esbuild/Node-ESM import-resolution harness,
+  but never actually invoked against live Resend/Google credentials in
+  this sandbox. The brief's "send a real email, trigger a real failure"
+  verification steps are the user's to run, after confirming
+  `GOOGLE_RESULTS_RANGE` is set in both the real local env and Vercel
+  (defaults to `Results!A:E` if unset, same fallback pattern as
+  `GOOGLE_SHEET_RANGE`).
+- **Resolved (Final Spike): the cube's curl mark is shipped.** Variant C
+  (double loop) picked from the 4 generated options and applied to
+  `Cube.tsx` — see "Cube curl mark" above.

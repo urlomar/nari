@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import s from "@/styles/About.module.css";
 import { useScrollReveal, useScrollParallax } from "@/styles/useScrollReveal";
-import aboutPhoto from "@/assets/photos/afro-pic-2.jpg";
+import aboutPhoto from "@/assets/photos/images/image1.png";
 
 /** About page with mission, inclusion statement, and a real photo. */
 export default function About() {
@@ -16,11 +16,16 @@ export default function About() {
     <section className={s.section}>
       <div className={s.wrap}>
         <div className={s.copy}>
+          {/* The heading itself no longer repeats "About" (redundant with
+              the eyebrow right above it, and with the page already titled
+              About) — just "Nari" now. The eyebrow stays, with more room
+              below it — see DECISIONS.md "About page heading" for the
+              interpretation call. */}
           <motion.p ref={eyebrow.ref} style={eyebrow.style} className={s.eyebrow}>
             About
           </motion.p>
           <motion.h1 ref={title.ref} style={title.style} className={s.title}>
-            About Nari
+            Nari
           </motion.h1>
           <motion.p ref={body1.ref} style={body1.style} className={s.body}>
             Nari is a personalized hair care app for people with curly, coily, and afro-textured

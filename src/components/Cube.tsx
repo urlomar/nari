@@ -7,27 +7,44 @@ import { motion, useReducedMotion, type MotionValue } from "motion/react";
 import s from "./Cube.module.css";
 import { useScrollProgress } from "@/styles/useScrollReveal";
 import { useTheme } from "@/styles/useTheme";
-import photoFront from "@/assets/photos/afro-pic-1.jpg";
-import photoLeft from "@/assets/photos/afro-pic-2.jpg";
-import photoTop from "@/assets/photos/afro-pic-3.jpg";
-import photoRight from "@/assets/photos/afro-pic-5.jpg";
-import photoBack from "@/assets/photos/afro-pic-6.jpg";
+// Refreshed photo pool (12 new images reviewed for rights/diversity — see
+// DECISIONS.md "Cube photo refresh"). All 12 turned out to be clean stock
+// photography (plain studio backdrops, no event backdrops or visible
+// identifiable public figures) — unlike the last two photo drops, nothing
+// here needed to be excluded. image1 is reserved for the About page; these
+// 5 are picked from the remaining 11 for skin-tone and styling spread.
+import photoFront from "@/assets/photos/images/image3.png";
+import photoLeft from "@/assets/photos/images/image2.png";
+import photoTop from "@/assets/photos/images/image9.png";
+import photoRight from "@/assets/photos/images/image6.png";
+import photoBack from "@/assets/photos/images/image11.png";
 
 /**
- * Same spiral polyline as the Logo's "i" curl mark (src/components/Logo.tsx)
- * redrawn onto a canvas texture for the cube's Logo face — one shared brand
- * shape, two renderers (SVG for the wordmark, canvas here, since a WebGL
- * texture can't reference an SVG element directly).
+ * The cube's Logo-face curl mark — cube-only, per Nya's request (does NOT
+ * touch Logo.tsx or the site-wide "i" dot, which keeps its own original
+ * spiral). This is a self-intersecting limaçon (`r = b + a·cos(θ)` with
+ * `a > b`, which loops back and crosses itself once — the closest literal
+ * match to a flipped ➰), generated parametrically and picked from 4
+ * screenshotted variants — see DECISIONS.md "Cube curl mark" for the other
+ * three and the full reasoning, and PLAN.md for which one was chosen.
+ * Replaces the original tight logarithmic spiral, which Nya felt sat too
+ * close to the stem — see makeLogoFaceTexture's clearance fix below, which
+ * applies regardless of which curl shape is in use here.
  */
 const CURL_PATH_2D: Array<[number, number]> = [
-  [3.86, -4.6], [4.49, -3.72], [4.94, -2.77], [5.21, -1.79], [5.29, -0.8],
-  [5.2, 0.16], [4.95, 1.06], [4.54, 1.88], [4.02, 2.59], [3.39, 3.18],
-  [2.68, 3.63], [1.93, 3.94], [1.16, 4.1], [0.39, 4.12], [-0.34, 4.01],
-  [-1.03, 3.78], [-1.64, 3.43], [-2.17, 2.99], [-2.6, 2.48], [-2.92, 1.92],
-  [-3.12, 1.33], [-3.22, 0.72], [-3.2, 0.13], [-3.09, -0.44], [-2.87, -0.96],
-  [-2.58, -1.42], [-2.22, -1.8], [-1.81, -2.11], [-1.36, -2.34], [-0.89, -2.47],
-  [-0.42, -2.52], [0.04, -2.48], [0.47, -2.37], [0.86, -2.18], [1.2, -1.93],
-  [1.49, -1.64], [1.71, -1.31], [1.86, -0.95], [1.95, -0.58], [1.96, -0.22], [1.92, 0.13],
+  [1.57, -4.32], [1.11, -4.45], [0.63, -4.48], [0.15, -4.44], [-0.3, -4.3],
+  [-0.72, -4.09], [-1.09, -3.82], [-1.41, -3.48], [-1.65, -3.1], [-1.81, -2.69],
+  [-1.9, -2.26], [-1.9, -1.84], [-1.83, -1.43], [-1.68, -1.05], [-1.48, -0.72],
+  [-1.22, -0.44], [-0.93, -0.23], [-0.61, -0.09], [-0.28, -0.01], [0.04, 0],
+  [0.34, -0.06], [0.61, -0.18], [0.84, -0.34], [1.02, -0.54], [1.14, -0.77],
+  [1.19, -1], [1.19, -1.23], [1.13, -1.45], [1.02, -1.63], [0.87, -1.78],
+  [0.68, -1.88], [0.48, -1.92], [0.27, -1.91], [0.06, -1.84], [-0.12, -1.71],
+  [-0.27, -1.53], [-0.38, -1.32], [-0.43, -1.07], [-0.43, -0.8], [-0.36, -0.53],
+  [-0.22, -0.27], [-0.03, -0.03], [0.22, 0.17], [0.52, 0.33], [0.86, 0.42],
+  [1.22, 0.44], [1.6, 0.4], [1.97, 0.28], [2.32, 0.08], [2.64, -0.18],
+  [2.91, -0.51], [3.11, -0.89], [3.25, -1.31], [3.31, -1.76], [3.29, -2.22],
+  [3.19, -2.67], [3, -3.1], [2.73, -3.5], [2.4, -3.84], [2.01, -4.12],
+  [1.57, -4.32],
 ];
 
 const FACE_SIZE = 768;
@@ -99,7 +116,16 @@ function makeLogoFaceTexture(theme: "light" | "dark", maxAnisotropy: number) {
 
   const curlScale = fontSize * 0.052;
   const curlCx = stemX + stemW / 2;
-  const curlCy = stemY - fontSize * 0.16;
+  // Positioned from the curl's own bottom edge, not a blind center offset —
+  // the old `stemY - fontSize * 0.16` ignored this specific shape's vertical
+  // extent and could put the curl's lowest point *past* the stem's top
+  // (measured: ~0.054*fontSize of real overlap with the original spiral).
+  // clearanceGap is real, proportional gap between them — this generalizes
+  // to any curl shape without re-tuning, per Nya's "too close to the stem"
+  // note. See DECISIONS.md "Cube curl mark."
+  const curlBottomLocal = Math.max(...CURL_PATH_2D.map(([, y]) => y));
+  const clearanceGap = fontSize * 0.09;
+  const curlCy = stemY - clearanceGap - curlBottomLocal * curlScale;
   ctx.strokeStyle = textColor;
   ctx.lineWidth = fontSize * 0.034;
   ctx.lineCap = "round";
