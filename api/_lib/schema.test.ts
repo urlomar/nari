@@ -23,9 +23,10 @@ describe("normalizeProduct — malformed rows are skipped, never crash the calle
     }
   });
 
-  it("skips a row missing brand", () => {
-    const result = normalizeProduct(record("rec2", { "Product name": "Test Shampoo", Category: "Shampoo" }));
-    expect(result.success).toBe(false);
+  it("validates a row missing brand — Style rows (e.g. 'Wash and Go') legitimately have none", () => {
+    const result = normalizeProduct(record("rec2", { "Product name": "Wash and Go", Category: "Style" }));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.product.brand).toBeUndefined();
   });
 
   it("skips a row missing category", () => {
@@ -116,6 +117,15 @@ describe("normalizeProduct — checkbox fields", () => {
     expect(result.success).toBe(true);
     if (result.success) expect(result.product.sulfateFree).toBe(true);
   });
+
+  it("Mineral Oil Free follows the same absent-means-false pattern as the other free-from checkboxes", () => {
+    const absent = normalizeProduct(record("rec11b", { "Product name": "Test", Brand: "Cantu", Category: "Shampoo" }));
+    const checked = normalizeProduct(
+      record("rec11c", { "Product name": "Test", Brand: "Cantu", Category: "Shampoo", "Mineral Oil Free": true })
+    );
+    expect(absent.success && absent.product.mineralOilFree).toBe(false);
+    expect(checked.success && checked.product.mineralOilFree).toBe(true);
+  });
 });
 
 describe("normalizeProduct — goals alias table", () => {
@@ -131,6 +141,23 @@ describe("normalizeProduct — goals alias table", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.product.goals).toEqual(["scalp", "damage", "moisture"]);
+    }
+  });
+});
+
+describe("normalizeProduct — frustrations alias table", () => {
+  it("rewrites the catalog's 'Breakage/length retention' to the quiz's 'breakage'", () => {
+    const result = normalizeProduct(
+      record("rec12b", {
+        "Product name": "Test",
+        Brand: "Cantu",
+        Category: "Shampoo",
+        Frustrations: ["Dryness", "Breakage/length retention"],
+      })
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.product.frustrations).toEqual(["dryness", "breakage"]);
     }
   });
 });
@@ -175,5 +202,70 @@ describe("buildNormalizationReport", () => {
     const report = buildNormalizationReport(records, results);
     expect(report.unmappedFields).not.toContain("Ounces");
     expect(report.missingMappedFields).not.toContain("Ounces");
+  });
+});
+
+describe("buildNormalizationReport — value drift (post-normalization values that don't match scoring.ts's expected vocabulary)", () => {
+  it("flags a frustration value with no alias and no vocabulary match", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", { "Product name": "A", Brand: "B", Category: "Shampoo", Frustrations: ["Some new phrase"] }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift.frustrations).toEqual(["some new phrase"]);
+  });
+
+  it("does not flag a frustration value that the alias table already resolves", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", { "Product name": "A", Brand: "B", Category: "Shampoo", Frustrations: ["Breakage/length retention"] }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift.frustrations).toEqual([]);
+  });
+
+  it("flags a goal value with no alias and no vocabulary match (e.g. 'length retention')", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", { "Product name": "A", Brand: "B", Category: "Shampoo", "Best For Goals": ["Length retention"] }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift.goals).toEqual(["length retention"]);
+  });
+
+  it("flags an out-of-vocabulary porosity/density/hairType value", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", {
+        "Product name": "A",
+        Brand: "B",
+        Category: "Shampoo",
+        "Best for porosity": ["extreme"],
+        "Best for density": ["chunky"],
+        "Best for hair type": ["5z"],
+      }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift.porosity).toEqual(["extreme"]);
+    expect(report.valueDrift.density).toEqual(["chunky"]);
+    expect(report.valueDrift.hairTypes).toEqual(["5z"]);
+  });
+
+  it("reports no drift when every value matches the expected vocabulary", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", {
+        "Product name": "A",
+        Brand: "B",
+        Category: "Shampoo",
+        "Best for porosity": ["High"],
+        "Best for density": ["Medium"],
+        "Best for hair type": ["4C"],
+        "Best For Goals": ["Moisture"],
+        Frustrations: ["Dryness"],
+      }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift).toEqual({ goals: [], frustrations: [], porosity: [], density: [], hairTypes: [] });
   });
 });

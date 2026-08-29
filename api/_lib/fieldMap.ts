@@ -21,10 +21,14 @@
  * reappears it'll surface in the normalization report's `unmappedFields`
  * rather than being silently lost.
  *
- * No image URL column and no mineral-oil-related column exist yet in the
- * live base (verified again on this pass) — see scoring.ts for how the
- * mineral-oil sensitivity filter is written to activate automatically,
- * with no code change beyond adding a column here, once one exists.
+ * Updated 2026-08-29 (data pipeline fixes pass): Nya added "Mineral Oil
+ * Free" (a checkbox, same pattern as the other free-from fields) — mapped
+ * here to `mineralOilFree`. scoring.ts's mineral-oil sensitivity filter was
+ * deliberately written to activate automatically the moment this column
+ * exists and is mapped (see its `getMineralOilFree` comment) — no
+ * scoring.ts change was needed alongside this.
+ *
+ * No image URL column exists yet in the live base.
  *
  * Server-only: lives under api/_lib (not src/lib) because api/*.ts
  * functions run as standalone Vercel Lambdas and only reliably bundle
@@ -46,6 +50,7 @@ export const FIELD_MAP = {
   "Protein free": "proteinFree",
   "Fragrance Free": "fragranceFree",
   "Blk owned": "blackOwned",
+  "Mineral Oil Free": "mineralOilFree",
   "EWG safety score": "ewgScore",
   "Community sentiment": "communitySentiment",
   "Notes/context": "notes",

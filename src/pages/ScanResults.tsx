@@ -140,7 +140,7 @@ function buildSendResultsPayload(
         relaxedConstraints: category.relaxedConstraints,
         picks: category.picks.map((pick) => ({
           name: pick.product.name,
-          brand: pick.product.brand,
+          brand: pick.product.brand ?? "",
           price: pick.product.price,
           buyLink: pick.product.buyLink || undefined,
           matchLine: buildMatchLine(buildMatchChecklist(pick.product, answers, recommendations.unenforcedSensitivities)),

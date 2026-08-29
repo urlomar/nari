@@ -502,9 +502,9 @@ function selectForCategory(candidates: RecommendedProduct[]): RecommendedProduct
 
   for (const candidate of sorted) {
     if (picks.length >= MAX_PICKS_PER_CATEGORY) break;
-    if (usedBrands.has(candidate.product.brand)) continue;
+    if (usedBrands.has(candidate.product.brand ?? "")) continue;
     picks.push(candidate);
-    usedBrands.add(candidate.product.brand);
+    usedBrands.add(candidate.product.brand ?? "");
   }
 
   // Only fill with repeat brands if diversity alone couldn't reach the cap.

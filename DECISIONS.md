@@ -1147,3 +1147,83 @@ here, just confirmed.
 - **Resolved (Final Spike): the cube's curl mark is shipped.** Variant C
   (double loop) picked from the 4 generated options and applied to
   `Cube.tsx` — see "Cube curl mark" above.
+
+## Data pipeline fixes pass (2026-08-29)
+
+Three live `/api/products` data-loss/scoring bugs, found and fixed — see
+CLAUDE.md's "Data pipeline fixes pass (2026-08-29)" for the reference
+version; this is the reasoning behind the choices made.
+
+**Brand made optional rather than special-casing Style rows.** The 5
+brand-less rows could have been handled by special-casing category
+`"Style"` inside `normalizeProduct` (e.g. skip the brand requirement only
+for that one category value). Rejected: that would hardcode one of Nya's
+category values into validation logic, which is exactly the coupling
+`FIELD_MAP`/`ProductSchema` exist to avoid (see CLAUDE.md's "Updating
+FIELD_MAP" section — Airtable's human-editable values shouldn't leak into
+validation). Making `brand` unconditionally optional is simpler, is
+already how every other legitimately-sometimes-absent field is handled
+(`buyLink`, `communitySentiment`, `notes`), and costs nothing — nothing
+downstream assumed `brand` was always present in a way that would silently
+break (the two call sites that do read it, `scoring.ts`'s brand-dedup and
+`ScanResults.tsx`'s send-results payload, both needed a one-line
+`?? ""` fallback once the type changed, verified via `tsc -b` catching
+both).
+
+**Frustration aliasing as a new `FieldKind`, not a special case inside the
+existing `stringArrayLower` coercion.** Could have kept `frustrations` on
+`"stringArrayLower"` and applied `FRUSTRATION_ALIASES` as a second, later
+pass in `normalizeProduct` itself. Went with a dedicated
+`"frustrationsArray"` kind instead, mirroring `"goalsArray"` exactly — one
+`FieldKind` per field with an alias table keeps `coerce()` a single
+lookup-and-dispatch, and any future field needing its own alias table
+(there will likely be one, given two of four multi-select fields already
+need it) has an established, copy-pasteable pattern rather than a growing
+pile of special cases in one branch.
+
+**Value-drift audit computed post-normalization, not on raw Airtable
+values.** Raw-value auditing would flag things the pipeline already
+handles correctly (casing differences, values an alias table already
+resolves) as false positives, burying the real signal. Computing drift
+from the already-normalized `Product[]` means anything the report flags is
+a genuine, currently-unresolved mismatch — this is what let the audit
+correctly report exactly one residual item (goals' `"length retention"`)
+instead of also re-flagging `"scalp health"`/`"heat or color
+damage"`/`"breakage/length retention"`, all of which the alias tables
+already fix.
+
+**Chose not to auto-fix `"length retention"` (goals) or wire up the
+newly-discovered `Category: "Gel"` products.** Both were found during this
+pass's audit but are outside its three named bugs. `"length retention"`
+only appears on a Style-category row, which — per the brand fix above — is
+already excluded from scoring by category (`CATEGORIES` doesn't include
+`"Style"`), so aliasing it would currently be inert; flagged in the
+normalization report and in CLAUDE.md rather than guessed at. The 8 real
+`Gel` products are a materially bigger finding — a whole category
+invisible on the results page today — but wiring it in is a product
+decision (does a "Gel" tab fit Nari's UX, does `CATEGORIES`'s order need
+Nya's input) not a data-pipeline bug fix, so it's surfaced as an open
+question rather than silently expanding this pass's scope.
+
+**Fixture regenerated from a fresh live pull**, same convention as every
+prior spike (`__fixtures__/catalog.json` copied verbatim from
+`/api/products`, now via the fixed pipeline) — 62 products, up from 50.
+The two "Demanding"/"Easy" test profiles' printed picks changed slightly
+(different specific products in Leave-in/Cream for both profiles) simply
+because the catalog itself grew by 12 real rows; no assertion in
+`scoring.test.ts` depended on the exact product names, only on the
+guarantees (sensitivity honesty, relaxation order, no fabrication, etc.),
+so nothing needed loosening.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **New (data pipeline fixes pass): `Category: "Gel"` has 8 real products
+  invisible on the results page.** Not in `scoring.ts`'s `CATEGORIES`
+  const — never scored, never shown, in any tab. Needs a decision (add a
+  Gel tab? fold Gel into an existing category?) before it's wired in — see
+  CLAUDE.md.
+- **New (data pipeline fixes pass): goals value `"length retention"` has
+  no quiz equivalent or alias**, unlike `"heat or color damage"`/`"scalp
+  health"` which already alias to `"damage"`/`"scalp"`. Currently inert (its
+  one row is a Style entry, already excluded from scoring by category) —
+  low priority unless a future Gel/Style scoring decision changes that.

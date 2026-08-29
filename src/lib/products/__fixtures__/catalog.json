@@ -1,11 +1,11 @@
 [
   {
     "id": "rec1KQdbEzJZOi0HK",
-    "name": "Twist & Define Cream",
+    "name": "Butter Cream Daily Moisturizer",
     "brand": "TGIN",
     "category": "Cream",
-    "ounces": null,
-    "price": null,
+    "ounces": 12,
+    "price": 16.99,
     "hairTypes": [
       "3b",
       "3c",
@@ -27,9 +27,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "CORRECTED: added Low porosity. Formula is coconut oil + Vitamin E only — not butter-heavy like other creams in this category, so I shouldn't have excluded Low by default. Sulfate-free, paraben-free, no artificial colors per brand.",
+    "buyLink": "https://tginatural.com/products/butter-cream-daily-moisturizer-for-natural-hair-12oz-1?_pos=1&_sid=fd3e5396f&_ss=r",
     "goals": [
       "moisture",
       "definition",
@@ -68,6 +70,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": 4,
     "communitySentiment": "Loved",
     "notes": "CORRECTED: Black-owned changed to false. SheaMoisture was founded by Richelieu Dennis as a Black-owned company (Sundial Brands) but was acquired by Unilever in 2017 — no longer independently Black-owned. Shea Butter and Castor Oil are heavy sealants high in the ingredient list — buildup risk for low porosity, tagged Normal-High only. Contains hydrolyzed rice/wheat protein — flag for protein-sensitive users.",
@@ -79,9 +82,33 @@
     ],
     "frustrations": [
       "dryness",
-      "breakage"
+      "breakage",
+      "cost"
     ],
     "keyIngredients": "Shea Butter, Castor Oil, Peppermint Leaf Extract, Hydrolyzed Rice Protein, Hydrolyzed Wheat Protein"
+  },
+  {
+    "id": "rec2mOR3NkuswKOJC",
+    "name": "Braids/Protective Style with Added Hair",
+    "category": "Style",
+    "ounces": null,
+    "price": null,
+    "hairTypes": [],
+    "porosity": [],
+    "density": [],
+    "sulfateFree": false,
+    "siliconeFree": false,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": false,
+    "ewgScore": null,
+    "notes": "Without proper care throughout the style the scalp will suffer and hair can become brittle/dry over the course of time. Incorrect takedown method can lead to increased breakage and extremely tight styling over long periods of time will also cause breakage.",
+    "goals": [],
+    "frustrations": [
+      "detangling",
+      "products"
+    ]
   },
   {
     "id": "rec3HB86jtQyiZ8HR",
@@ -111,16 +138,19 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Lightweight foam, sulfate/silicone/paraben-free per ingredient analysis, contains AHA + Vitamin E. Black-owned (founded by David and Kim Lewis), no acquisition found.",
+    "buyLink": "https://thedoux.com/products/mousse-def-texture-foam?variant=37595848933554",
     "goals": [
       "moisture",
       "definition",
       "affordable"
     ],
     "frustrations": [
-      "frizz"
+      "frizz",
+      "cost"
     ],
     "keyIngredients": "AHA complex, Vitamin E, Silk Protein, natural humectants (full detailed INCI not independently confirmed)"
   },
@@ -140,7 +170,8 @@
     ],
     "porosity": [
       "low",
-      "normal"
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -152,9 +183,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Lightweight mousse, sulfate/silicone/paraben-free confirmed via ingredient analysis, contains Vitamin E and Honey. Black-owned (Janell Stephens), no acquisition found.",
+    "notes": "CORRECTED: added High. Honey (humectant) + Nettle Root + Vitamin E — no AHA or exfoliating actives that would specifically caution against High porosity (unlike The Doux, which has AHA and stays Low-Normal for that reason). No basis to exclude High. Black-owned, no acquisition found.",
+    "buyLink": "https://www.camillerose.com/products/spiked-honey-mousse-4-in-1-styler?variant=37419105353877&country=US&currency=USD&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&gad_source=1&gad_campaignid=20656474936&gbraid=0AAAAAp3yO-hpukMbrkQ6w00w7v4NQrXi_&gclid=CjwKCAjw48TUBhBREiwAK0GnQUwf1TkcFJcwjqk2gxl3GHRY_ZI5TGgnEMtvn1gjlzPwoyoDgD6gnRoCO2AQAvD_BwE",
     "goals": [
       "moisture",
       "definition"
@@ -177,6 +210,8 @@
       "3a"
     ],
     "porosity": [
+      "low",
+      "normal",
       "high"
     ],
     "density": [
@@ -188,12 +223,22 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": 5,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Medium. Water/aloe-based leave-in mist with light oils only (Caprylic/Capric Triglyceride, small amount of Tamanu Oil) — genuinely light formula, no reason to restrict to Fine only.",
+    "notes": "CORRECTED: widened from High-only. This is a light, mostly water/aloe-based leave-in spray with just one light oil (tamanu) — exactly the kind of light foundation layer that works well UNDER a cream/oil for Low porosity in a stacked (LCO) routine, not just High porosity on its own.",
     "buyLink": "https://innersensebeauty.com/products/sweet-spirit?utm_source=google&utm_medium=cpc&utm_campaign=&utm_content=&utm_term=&gad_source=1&gad_campaignid=23710024784&gbraid=0AAAAADF4peQNu6xOtpl2xfZoRw-aY7zis&gclid=EAIaIQobChMI5brIgoG6lQMVijYIBR3ekhcFEAAYASAAEgLM0vD_BwE",
-    "goals": [],
-    "frustrations": [],
+    "goals": [
+      "frizz",
+      "definition",
+      "moisture"
+    ],
+    "frustrations": [
+      "dryness",
+      "frizz",
+      "detangling",
+      "cost"
+    ],
     "keyIngredients": "Water/Aqua/EAU, Aloe Barbadensis Leaf Juice*, Behentrimonium Chloride, Glycerin, Caprylic/Capric Triglyceride, Cetearyl Alcohol, Dipropylene Glycol, Gluconolactone, Natural Fragrance, Sodium Benzoate, Potassium Sorbate, Hydrolyzed Quinoa, Rosmarinus Officinalis (Rosemary) Leaf Oil, Calcium Gluconate, Calophyllum Inophyllum Seed Oil*, Citric Acid, Benzyl Alcohol, Aspalathus Linearis Leaf Extract*, Chamomilla Recutita (Matricaria) Flower Extract, Eucalyptus Globulus Leaf Extract*, Ginkgo Biloba Leaf Extract*, Honey Extract*, Eugenol†, Limonene†."
   },
   {
@@ -223,6 +268,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Contains Amodimethicone (silicone) and Fragrance/Parfum — flag for silicone/fragrance-sensitive users. Rich 8-oil blend (jojoba, castor, avocado, olive, coconut, argan, almond) + honey + shea butter. Bestseller. Brand markets 3A-4C.",
@@ -265,6 +311,7 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": 3,
     "communitySentiment": "Loved",
     "notes": "ERROR CORRECTED: Sulfate-free was incorrectly marked TRUE. Ingredient list shows Sodium C14-16 Olefin Sulfonate as the 2nd ingredient — that IS a sulfate (same compound correctly flagged as a sulfate on the Design Essentials entry). Fixed sulfate-free to false and porosity to Normal-only per sulfate rule. Contains Fragrance/Parfum. Cantu is owned by a larger consumer products portfolio, not independently Black-owned.",
@@ -307,6 +354,7 @@
     "proteinFree": false,
     "fragranceFree": true,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": 3,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Fine. My own notes already described this as 'light-weight, creamy' — excluding Fine contradicted my own research. pH 4.7. True multi-use: conditioner, deep conditioner, leave-in, detangler, pre-poo, daily moisturizer. Contains protein (wheat).",
@@ -336,7 +384,8 @@
     ],
     "porosity": [
       "low",
-      "normal"
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -347,9 +396,10 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Explicitly lightweight hybrid gel-cream, formulated without non-water-soluble silicones, parabens, sulfates, mineral oil, phthalates, petroleum — genuinely low-porosity friendly. Not Black-owned. Full INCI not independently confirmed.",
+    "notes": "CORRECTED: added High. Genuinely lightweight formula (no silicones/sulfates/mineral oil) but 'light' doesn't inherently exclude High porosity — high porosity hair often does well with lighter products applied more frequently since it dries out fast. No ingredient reason to exclude High specifically. Not Black-owned.",
     "buyLink": "https://www.ouidad.com/products/vitalcurl-plus-define-shine-styling-gel-cream",
     "goals": [
       "moisture",
@@ -389,6 +439,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "CORRECTED: was wrongly excluding Low. Ingredients (water, polysorbate 80, glycerin, panthenol, wheat protein) show zero oils or butters — one of the lightest formulas in the table. Contains Wheat Protein + Fragrance/Parfum — flag for protein/fragrance-sensitive users. Not Black-owned (L'Oréal).",
@@ -406,6 +457,68 @@
     "keyIngredients": "Water, Polysorbate 80, Glycerin, Panthenol, Hydrolyzed Wheat Protein, Aloe Barbadensis Leaf Juice, Fragrance"
   },
   {
+    "id": "recH8npH6LWSTnqa6",
+    "name": "Tea Tree Lavendar Mint Defining Gel",
+    "brand": "Paul Mitchell",
+    "category": "Gel",
+    "ounces": 6.8,
+    "price": 24,
+    "hairTypes": [
+      "3a",
+      "3b",
+      "3c",
+      "4a"
+    ],
+    "porosity": [
+      "low",
+      "normal"
+    ],
+    "density": [
+      "fine",
+      "medium"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": false,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Mixed",
+    "notes": "Lightweight, crunch-free salon gel with monoi, pequi and jojoba oils. Best for looser textures and fine hair that gets weighed down — likely too light for 4B/4C wash-and-gos needing real hold. Vegan, paraben- and gluten-free, color-safe. Silicone-free checkbox left UNCHECKED: full INCI not confirmed, needs verification. Mint/tea tree can tingle or irritate sensitive scalps. Expensive per ounce ($3.53/oz). EWG score not published.",
+    "buyLink": "https://www.paulmitchell.com/tea-tree/tea-tree-lavender-mint/lavender-mint-defining-gel",
+    "goals": [
+      "definition",
+      "frizz"
+    ],
+    "frustrations": [
+      "frizz"
+    ],
+    "keyIngredients": "Aqua, Isoceteth-20, Polyquaternium-11, Panthenol, Melaleuca Alternifolia (Tea Tree) Leaf Oil, Lavandula Angustifolia (Lavender) Flower Extract, Mentha Arvensis Leaf Extract, Simmondsia Chinensis (Jojoba) Seed Oil, Carbomer, plus monoi and pequi oils (full INCI not independently confirmed)"
+  },
+  {
+    "id": "recHW6wa4ABZbwCG3",
+    "name": "Blow Out (& Afro)",
+    "category": "Style",
+    "ounces": null,
+    "price": null,
+    "hairTypes": [],
+    "porosity": [],
+    "density": [],
+    "sulfateFree": false,
+    "siliconeFree": false,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": false,
+    "ewgScore": null,
+    "notes": "Would not recommend for those with severe dry scalp or breakage",
+    "goals": [
+      "volume"
+    ],
+    "frustrations": []
+  },
+  {
     "id": "recKhaV0uIhN6f2iz",
     "name": "Almond & Avocado Leave in Conditioner",
     "brand": "Design Essentails",
@@ -413,10 +526,13 @@
     "ounces": 12,
     "price": 13.99,
     "hairTypes": [
-      "4b"
+      "4b",
+      "4a"
     ],
     "porosity": [
-      "normal"
+      "low",
+      "normal",
+      "high"
     ],
     "density": [
       "medium"
@@ -426,15 +542,61 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": 6,
     "communitySentiment": "Mixed",
-    "notes": "Light-weight, creamy, and fluid consistency. Works as a solid base to layer  under 1-2 other products.",
+    "notes": "⚠️ NOT MINERAL OIL FREE — contains Paraffinum Liquidum (mineral oil). Ingredients are mostly light fruit EXTRACTS (not real oils/butters) plus this one occlusive mineral oil ingredient. (Correction: this is one of TWO confirmed mineral oil products in the base — Dabur Amla Hair Oil is the other, and there it's the first ingredient.)",
     "buyLink": "https://designessentialstore.com/product/almond-avocado-leave-in-conditioner-12oz/",
     "goals": [
       "affordable"
     ],
-    "frustrations": [],
+    "frustrations": [
+      "dryness",
+      "detangling",
+      "frizz"
+    ],
     "keyIngredients": "Deionized Water, Glycerin, Methyl Gluceth-10, Polyquaternium-32, Paraffinum Liquidum, PPG-1 Trideceth-6, Phenoxyethanol, Benzoic Acid, Ethylhexylglycerin, Glycereth-2 Cocoate, Prunus Amygdalus Dulcis (Sweet Almond) Fruit Extract, Persea Gratissima (Avocado) Fruit Extract, Butyrospermum Parkii (Shea) Leaf Extract, Olea Europaea (Olive) Fruit Extract, Simmondsia Chinensis (Jojoba) Seed Extract, Theobroma Cacao (Cocoa) Extract, Cocos Nucifera (Coconut) Fruit Extract, Aleuriteus Moluccanus (Kukui) Seed Extract, Fragrance, Benzyl Benzoate, Citral, Geraniol, Linalool, Limonene"
+  },
+  {
+    "id": "recLFXFB80dojMAxF",
+    "name": "Bee Girl Honey Curly Custard",
+    "brand": "The Doux",
+    "category": "Gel",
+    "ounces": 16,
+    "price": 19.99,
+    "hairTypes": [
+      "4a",
+      "4b",
+      "4c"
+    ],
+    "porosity": [
+      "normal",
+      "high"
+    ],
+    "density": [
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": true,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Loved",
+    "notes": "Thick honey-based custard built for tighter curl patterns; strong definition with a soft cast. Contains keratin + silk amino acids, so NOT protein-free — flag for protein-sensitive users. Some retailer reviews mention flaking with heavy application. Also sold in 8 oz (~$15.99). Brand markets as sulfate-free, but one retailer INCI listing includes sodium lauryl sulfate — verify against physical label. Price varies $13–20 by retailer. EWG score not published.",
+    "buyLink": "https://thedoux.com/products/bee-girl-curl-custard",
+    "goals": [
+      "definition",
+      "moisture",
+      "frizz"
+    ],
+    "frustrations": [
+      "frizz",
+      "dryness"
+    ],
+    "keyIngredients": "Aqua (Water), Propanediol, Acrylates Copolymer, Maltodextrin/VP Copolymer, Sorbitol, PVP, Aminomethyl Propanol, Parfum, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Phenoxyethanol, Hydroxypropyltrimonium Honey, Mel (Honey), Panthenol, Sodium Hyaluronate, Keratin Amino Acids, Silk Amino Acids, Ascorbic Acid, Tocopheryl Acetate, Aloe Barbadensis Leaf Juice, Lactic Acid, Ethylhexylglycerin"
   },
   {
     "id": "recLHSDpWVb9HbKma",
@@ -464,13 +626,13 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": 4,
     "communitySentiment": "Loved",
-    "notes": "Contains Dimethicone (silicone) and Fragrance — flag for silicone/fragrance-sensitive users. Black castor oil + biotin formula targets growth and split-end repair. Part of tgin's Miracle RepaiRx strengthening system (pairs with matching shampoo/conditioner).",
+    "notes": "CORRECTED: removed 'growth' goal tag. Ingredients are Castor Oil + Biotin — neither has strong standalone clinical evidence for growth (biotin only helps if deficient; castor oil alone lacks regrowth evidence, only shows real results in rosemary-castor blends per 2025 RCT). No rosemary or peppermint present. This was a marketing-driven tag, not evidence-driven. Black castor oil + biotin formula targets split-end repair, which is real, but 'growth' specifically was overclaimed.",
     "buyLink": "https://tginatural.com/products/miracle-repairx-protective-leave-in-conditioner",
     "goals": [
       "moisture",
-      "growth",
       "definition"
     ],
     "frustrations": [
@@ -484,8 +646,8 @@
     "name": "Coconut Shea Hair Mask Treatment",
     "brand": "Eden Body Works",
     "category": "Conditioner",
-    "ounces": null,
-    "price": null,
+    "ounces": 16,
+    "price": 13.99,
     "hairTypes": [
       "3b",
       "3c",
@@ -506,6 +668,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Full INCI not found — only partial ingredients confirmed (coconut oil, shea butter, aloe vera leaf juice) plus brand claims (sulfate-free, no mineral oil, no dyes, no parabens). Black-owned: founded by Jasmine Lawrence, no evidence found of acquisition — appears to still be independently Black-owned, but flagging since several other 'Black-owned' brands in this table turned out to be acquired (SheaMoisture, Carol's Daughter, Mielle). Deep conditioning masque, rich coconut/shea formula — excluding Low porosity given contact-time richness.",
@@ -520,12 +683,53 @@
     "keyIngredients": "Coconut Oil, Shea Butter, Aloe Vera Leaf Juice (full INCI not published)"
   },
   {
+    "id": "recMvfjNDyndu7K8c",
+    "name": "Ultra Glued Indestructible Styling Gel",
+    "brand": "Got2Be",
+    "category": "Gel",
+    "ounces": 6,
+    "price": 6.97,
+    "hairTypes": [
+      "3c",
+      "4a",
+      "4b",
+      "4c"
+    ],
+    "porosity": [
+      "normal",
+      "low"
+    ],
+    "density": [
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Mixed",
+    "notes": "Maximum-hold styling gel (Henkel/Schwarzkopf). Used in the natural hair community mainly for edges, sleek buns and wig/lace installs — not for wash-and-gos. Contains denatured alcohol, so drying with frequent use; heavy buildup requires shampoo to remove. Manufacturer warns against direct skin/scalp application for wig securing. Recommend as situational styling only, not a routine styler. EWG score not published.",
+    "buyLink": "https://www.got2b.us/styling/glued/ultra-invincible-styling-hair-gel.html",
+    "goals": [
+      "definition",
+      "affordable"
+    ],
+    "frustrations": [
+      "frizz",
+      "cost"
+    ],
+    "keyIngredients": "Aqua, Polyquaternium-69, PVP, Sorbitol, Acrylates/Steareth-20 Methacrylate Crosspolymer, Alcohol Denat., Phenoxyethanol, Aminomethyl Propanol, Caprylyl Glycol, PEG-40 Hydrogenated Castor Oil, Parfum, Panthenol, Ethylhexylglycerin, Benzophenone-4, Sodium Benzoate, Pantolactone"
+  },
+  {
     "id": "recMxu8o3ecYC7TEF",
     "name": "Coconut Hibiscus Curl & Shine",
     "brand": "Shea Mouisture",
     "category": "Conditioner",
-    "ounces": null,
-    "price": null,
+    "ounces": 16,
+    "price": 13.99,
     "hairTypes": [
       "3b",
       "3c",
@@ -546,6 +750,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Deep treatment masque (15+ min contact time), not a quick rinse-out. Heavy sealants (shea butter, coconut oil, multiple fatty alcohols) high in ingredient list — excluding Low porosity despite being rinse-off, since extended contact time with heavy butters risks buildup on tight cuticles. Not Black-owned (Unilever). Contains Hydrolyzed Soy Protein + Fragrance — flag for protein/fragrance-sensitive users.",
@@ -560,12 +765,53 @@
     "keyIngredients": "Water, Cetearyl Alcohol, Shea Butter, Coconut Oil, Behentrimonium Methosulfate, Behentrimonium Chloride, Hibiscus Extract, Neem Oil, Hydrolyzed Soy Protein, Fragrance"
   },
   {
+    "id": "recOhyqOfwEPW99Hi",
+    "name": "Wetline Xtreme",
+    "brand": "Wetline",
+    "category": "Gel",
+    "ounces": 35.26,
+    "price": 13.61,
+    "hairTypes": [
+      "4a",
+      "4b",
+      "4c"
+    ],
+    "porosity": [
+      "low",
+      "normal",
+      "high"
+    ],
+    "density": [
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Mixed",
+    "notes": "Budget hard-hold gel in a 35 oz tub — roughly $0.39/oz, the cheapest cost-per-ounce in the base. Ethyl-alcohol-free, aloe + panthenol. Strong cast; community feedback splits between 'holy grail for slick styles and definition' and flaking/buildup on high-porosity or dry hair. Glycerin-heavy, so behaves inconsistently in very dry or very humid climates. Also sold in 8.8 / 15.87 oz. Price varies widely ($8–17). EWG score not published.",
+    "buyLink": "https://www.walmart.com/ip/Wet-Line-Xtreme-Clear-Professional-Styling-Gel/195341990",
+    "goals": [
+      "definition",
+      "affordable"
+    ],
+    "frustrations": [
+      "frizz",
+      "cost"
+    ],
+    "keyIngredients": "Aqua, Glycerin, Carbomer, Sodium Hydroxide, Polyacrylate-2 Crosspolymer, Phenoxyethanol, Parfum, Sodium Polyacrylate, Tetrasodium EDTA, Iodopropynyl Butylcarbamate, Hydroxycitronellal, Panthenol, Methoxycinnamidopropyl Hydroxysultaine, Ext. Violet 2 (CI 60730), Aloe Barbadensis Leaf Juice"
+  },
+  {
     "id": "recPcZ6tYjC9eBFK0",
     "name": "Medicated Shampoo",
     "brand": "Sulfur 8",
     "category": "Shampoo",
-    "ounces": null,
-    "price": null,
+    "ounces": 7.5,
+    "price": 5.49,
     "hairTypes": [
       "3b",
       "3c",
@@ -586,14 +832,18 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Fine. Medicated shampoo with no oils/butters at all (water, mild surfactant, menthol, aloe) — rinse-off, no ingredient reason to exclude any density. Medicated anti-dandruff/scalp treatment, not daily moisture shampoo.",
+    "notes": "DENSITY CORRECTED: added Fine. Medicated shampoo with no oils/butters at all (water, mild surfactant, menthol, aloe) — rinse-off, no ingredient reason to exclude any density. Medicated anti-dandruff/scalp treatment, not daily moisture shampoo. MINERAL OIL NOTE: this SHAMPOO is mineral-oil-free, but do NOT generalize to the brand — Sulfur8's flagship Medicated Hair & Scalp Conditioner (the grease) is petrolatum + mineral oil + lanolin based. If that SKU is ever added, it must be flagged false.",
     "buyLink": "https://www.sulfur8haircare.com",
     "goals": [
-      "scalp"
+      "scalp",
+      "definition"
     ],
-    "frustrations": [],
+    "frustrations": [
+      "frizz"
+    ],
     "keyIngredients": "Water, Cocamidopropyl Betaine, Sodium/Ammonium Laureth Sulfate, Menthol, Aloe Barbadensis Leaf Extract, Fragrance"
   },
   {
@@ -601,31 +851,30 @@
     "name": "Pure Inspiration Daily Conditioner",
     "brand": "Innersense",
     "category": "Conditioner",
-    "ounces": null,
-    "price": null,
+    "ounces": 10,
+    "price": 30,
     "hairTypes": [
       "3b",
-      "3c",
-      "4a",
-      "4b",
-      "4c"
+      "3c"
     ],
     "porosity": [
+      "low",
       "normal",
       "high"
     ],
     "density": [
-      "medium",
-      "thick"
+      "fine",
+      "medium"
     ],
     "sulfateFree": true,
     "siliconeFree": true,
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Rich butters/oils (shea, avocado, coconut, rice bran) high in list — excluding Low porosity. Contains Hydrolyzed Quinoa + Rice Protein — flag protein-sensitive. Premium price point.",
+    "notes": "MAJOR CORRECTION based on real-world brand knowledge: Innersense is generally recommended for looser curl patterns, fine hair, and low density — not dense coily 4C hair, despite ingredient richness (shea, avocado, coconut, rice bran oils). On fine/low-density hair, the same 'rich' formula covers far less surface area and behaves lighter in practice than the ingredient list alone suggests. This resolves earlier porosity uncertainty — including Low, and narrowing hair type/density to match real usage. Contains Hydrolyzed Quinoa + Rice Protein — flag protein-sensitive. Premium price point.",
     "buyLink": "https://innersensebeauty.com/products/pure-inspiration-daily-conditioner",
     "goals": [
       "moisture"
@@ -641,7 +890,7 @@
     "brand": "Redken",
     "category": "Shampoo",
     "ounces": 10.1,
-    "price": 23,
+    "price": 29,
     "hairTypes": [
       "3b",
       "3c",
@@ -659,10 +908,18 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
-    "notes": "CORRECTED: sulfate-containing shampoo — tagged Normal porosity only. Sulfates over-strip low porosity hair (which already struggles to retain moisture) and pull too much moisture from high porosity hair too fast. Do not tag sulfate-containing shampoos as Low or High porosity.",
-    "goals": [],
-    "frustrations": [],
+    "notes": "CORRECTED: sulfate-containing shampoo — tagged Normal porosity only. Sulfates over-strip low porosity hair (which already struggles to retain moisture) and pull too much moisture from high porosity hair too fast. Do not tag sulfate-containing shampoos as Low or High porosity. color safe",
+    "buyLink": "https://www.redken.com/beautykit/beautykit_step_1/884486452986.html?gclsrc=aw.ds&gad_source=1&gad_campaignid=20553316529&gbraid=0AAAAAD-Q9L8Kd5TDfdQKeC6aH4i__UDUE&gclid=CjwKCAjw48TUBhBREiwAK0GnQSZ3fnEg2oLa4517aW9V-2bI_kn1ItT3UDWB1An6EX4U0TmIdt_cgxoCtGMQAvD_BwE",
+    "goals": [
+      "damage",
+      "frizz"
+    ],
+    "frustrations": [
+      "dryness",
+      "frizz"
+    ],
     "keyIngredients": "Aqua/​Water, Sodium Laureth Sulfate, Dimethicone, Disodium Cocoamphodiacetate, Glycol Distearate, Hexylene Glycol, Sodium Chloride, Cocamide MIPA, Parfum/​Fragrance, Sodium PCA, Salicylic Acid, Benzoic Acid, Guar Hydroxypropyltrimonium Chloride, Carbomer, Citric Acid, Propylene Glycol, Sodium Citrate, Disodium EDTA, Sodium Cocoyl Amino Acids, Potassium Dimethicone PEG-7 Panthenyl Phosphate, Sodium Sarcosinate, Benzyl Alcohol, Argania Spinosa Kernel Oil, Arginine, Hydrolyzed Soy Protein, Coumarin, Linalool, Limonene, Fumaric Acid, Hydrolyzed Vegetable Protein Pg-Propyl Silanetriol, Ci 15510/​Orange 4, Phenoxyethanol, Ci 17200/​Red 33, Tetrasodium EDTA, Potassium Sorbate, Sodium Hydroxide"
   },
   {
@@ -692,6 +949,7 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Deep treatment mask, contains Cyclopentasiloxane + Dimethicone (silicones). 96% Black-owned brand, but full brand ownership already confirmed elsewhere in table.",
@@ -708,11 +966,11 @@
   },
   {
     "id": "recTp4e4e7r9ZDLs7",
-    "name": "Pantene Gold Series",
+    "name": "Pantene Gold Series: Moisture Boost",
     "brand": "Pantene",
     "category": "Shampoo",
-    "ounces": null,
-    "price": null,
+    "ounces": 9.1,
+    "price": 15.88,
     "hairTypes": [
       "3b",
       "3c",
@@ -735,6 +993,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Rinse-off shampoo with minimal ingredient data — no evidence to exclude Fine or Thick. Full INCI not published/found — only brand marketing claims confirmed.",
@@ -746,6 +1005,49 @@
       "dryness"
     ],
     "keyIngredients": "Argan Oil (full INCI not published by brand)"
+  },
+  {
+    "id": "recU2Q2mWLnVYshWo",
+    "name": "Pure Flaxseed Gel",
+    "brand": "Curl Mix",
+    "category": "Gel",
+    "ounces": 8,
+    "price": 26,
+    "hairTypes": [
+      "4a",
+      "4b",
+      "4c"
+    ],
+    "porosity": [
+      "normal",
+      "high"
+    ],
+    "density": [
+      "fine",
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": true,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Loved",
+    "notes": "Step 4 of CurlMix's Wash+Go system; Black woman-owned (Chicago, Shark Tank alum). Real flaxseed gel base — soft hold, no crunch, styles reported to last 5–7 days. Sold in several variants: jojoba/lavender (this one), hemp seed/watermelon, argan/lemon, sweet almond FRAGRANCE-FREE, and a heavy-hold castor version — consider adding the fragrance-free SKU as a separate record for sensitive users. Frequently sold out; 20% site promos are common. EWG score not published.",
+    "buyLink": "https://curlmix.com/products/pure-flaxseed-gel-with-jojoba-oil-for-moisturizing-hair?srsltid=AfmBOopU-8dR6AbDqp5MDuBQJrZk1dnQ29Yx8wZYnLnmahl30ZpNKnqW",
+    "goals": [
+      "definition",
+      "moisture",
+      "frizz"
+    ],
+    "frustrations": [
+      "frizz",
+      "dryness",
+      "cost"
+    ],
+    "keyIngredients": "Distilled Water, Organic Brown Flaxseed (Linum Usitatissimum) Gel, Marshmallow Root Extract, Organic Jojoba Oil, Vegetable Glycerin, Xanthan Gum, Vitamin E (Tocopheryl Acetate), Fragrance (Lavender, phthalate-free), Optiphen Plus (Phenoxyethanol, Caprylyl Glycol, Sorbic Acid), Citric Acid"
   },
   {
     "id": "recWShTpbgyGJBNTQ",
@@ -774,6 +1076,7 @@
     "proteinFree": true,
     "fragranceFree": true,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Minimalist single-active formula (2% Behentrimonium Chloride conditioning agent), lightweight, no heavy oils/butters — low-porosity friendly, won't cause buildup. Budget clinical-brand pricing.",
@@ -783,20 +1086,19 @@
       "affordable"
     ],
     "frustrations": [
-      "dryness"
+      "dryness",
+      "cost"
     ],
     "keyIngredients": "Behentrimonium Chloride (2%), water, minimal additional actives"
   },
   {
-    "id": "recYAFocpDIpHWo6E",
-    "name": "Curl Enhancing Smoothie",
-    "brand": "Shea Moiusture",
-    "category": "Cream",
-    "ounces": 12,
-    "price": 10.97,
+    "id": "recY36Hn8v4rWBtEZ",
+    "name": "Original Curling Custard",
+    "brand": "Kinky-Curly",
+    "category": "Gel",
+    "ounces": 8,
+    "price": 19.99,
     "hairTypes": [
-      "3b",
-      "3c",
       "4a",
       "4b",
       "4c"
@@ -811,32 +1113,75 @@
     ],
     "sulfateFree": true,
     "siliconeFree": true,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": true,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Loved",
+    "notes": "Cult-classic all-natural styler, pairs with Knot Today (already in base). Very short humectant-driven ingredient list — no protein, silicone, sulfate or oil. Because it's agave/aloe humectant-heavy it can feel sticky or swell frizz in high humidity, and can go stiff in very dry air; best applied to soaking wet hair. Priced high per ounce ($2.50/oz) — the main complaint. EWG score not published.",
+    "buyLink": "https://kinky-curly.com/products/curling-custard",
+    "goals": [
+      "definition",
+      "moisture",
+      "frizz"
+    ],
+    "frustrations": [
+      "frizz",
+      "dryness",
+      "cost"
+    ],
+    "keyIngredients": "Botanical Infusion of Water, Horsetail, Chamomile, Nettle and Marshmallow, Organic Aloe Vera Juice, Agave Nectar Extract, Tocopheryl Acetate (Vitamin E), Pectin, Citric Acid, Potassium Sorbate, Natural Fragrance"
+  },
+  {
+    "id": "recYAFocpDIpHWo6E",
+    "name": "Advanced Climate Control Gel",
+    "brand": "Ouidad",
+    "category": "Gel",
+    "ounces": 8.5,
+    "price": 26,
+    "hairTypes": [
+      "3b",
+      "3a",
+      "3c"
+    ],
+    "porosity": [
+      "normal",
+      "high"
+    ],
+    "density": [
+      "fine",
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Rich styling cream, coconut oil + shea butter + neem oil high in formula — excluding Low porosity given richness for a leave-on styler. Not Black-owned (Unilever).",
-    "buyLink": "https://www.sheamoisture.com/coconut-hibiscus-curl-enhancing-smoothie.html",
+    "notes": "Ouidad's bestselling styler, built for humid climates — wheat/soy protein plus sericin (silk protein) form a flexible lattice that resists swelling as humidity rises; soft, crunch-free hold. Includes a UV filter.\n\n⚠️ NOT PROTEIN-FREE — hydrolyzed wheat protein, wheat amino acids and sericin. Protein-sensitive users will get stiffness/brittleness; pair with a moisture-heavy leave-in.\n\nSilicone-free per INCI (brand claims 'free from non-water-soluble silicones' — the actual list shows no silicones at all). Mineral-oil free per brand and INCI.\n\nCaveat customers raise: glycerin sits high in the formula, which is a humectant — counterintuitive for an anti-humidity product and can backfire in extreme dew points. Worth testing before recommending in Gulf/tropical climates.\n\nSKU AMBIGUITY: record name is 'Advanced Climate Control Gel' but Ouidad sells TWO — the standard Heat & Humidity Gel (this record: 8.5 oz / $26) and a Stronger Hold version at a similar price. Confirm which one is intended, or split into two records. Also sold in a 33.8 oz salon size (~$75).\n\nHair types left as originally entered (3A–3C); brand markets it for all curl types, so 4A+ may be worth adding after testing. EWG score not published.",
+    "buyLink": "https://www.ouidad.com/products/advanced-climate-control-heat-and-humidity-gel",
     "goals": [
-      "moisture",
       "definition",
       "frizz",
-      "affordable"
+      "damage"
     ],
     "frustrations": [
-      "dryness",
-      "frizz"
+      "frizz",
+      "cost"
     ],
-    "keyIngredients": "Coconut Oil, Shea Butter, Neem Oil, Coconut Fruit Juice (full detailed INCI not independently confirmed)"
+    "keyIngredients": "Aqua, Butylene Glycol, Polyquaternium-28, Sericin, Chamomilla Recutita (Matricaria) Flower Extract, Actinidia Chinensis (Kiwi) Fruit Extract, Lawsonia Inermis (Henna) Extract, Wheat Amino Acids, Hydrolyzed Wheat Protein/PVP Crosspolymer, Tocopheryl Acetate, Retinyl Palmitate, Panthenol, Polyquaternium-7, Guar Hydroxypropyltrimonium Chloride, Behentrimonium Chloride, Cetrimonium Chloride, PEG-60 Almond Glycerides, Glycerin, PPG-26-Buteth-26, PEG-40 Hydrogenated Castor Oil, VP/DMAPA Acrylates Copolymer, Hydroxyethylcellulose, Potassium Sorbate, Disodium EDTA, Hexylene Glycol, Caprylyl Glycol, Ethylhexylglycerin, Phenoxyethanol, Parfum, Alpha-Isomethyl Ionone, Benzyl Benzoate, Benzyl Salicylate, Butylphenyl Methylpropional, Citronellol, Hexyl Cinnamal, Hydroxycitronellal, Limonene, Linalool"
   },
   {
     "id": "recYTaxnO5YHUVOB3",
     "name": "Weightless Air Dry Cream",
     "brand": "Curlsmith",
     "category": "Cream",
-    "ounces": null,
-    "price": null,
+    "ounces": 8,
+    "price": 27,
     "hairTypes": [
       "3b",
       "3c",
@@ -844,7 +1189,8 @@
     ],
     "porosity": [
       "low",
-      "normal"
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -855,9 +1201,10 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Genuinely lightweight formula despite butters present — castor oil/babassu/murumuru/shea are balanced with humectants (hyaluronic acid, glycerin) and marketed specifically as 'weightless.' Contains Fragrance/Parfum. Sulfate-free, silicone-free confirmed via ingredients.",
+    "notes": "CORRECTED: added High. Despite 'weightless' marketing, formula contains real sealing butters (Murumuru Seed Butter, Shea Butter) alongside humectants (Sodium Hyaluronate) — balanced formula that could genuinely suit High porosity too, not just Low-Normal. Sulfate-free, silicone-free confirmed via ingredients.",
     "buyLink": "https://curlsmith.com/products/weightless-air-dry-cream",
     "goals": [
       "moisture",
@@ -895,6 +1242,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Black-owned, woman-owned brand since 2009. IMPORTANT: brand has not published a full INCI ingredient list — only partial ingredients confirmed (water, coconut oil, shea butter, sweet almond oil, honey). Sulfate/silicone/protein-free status is inferred from marketing (\"all-natural\") but NOT independently verified — confirm before finalizing filter claims.",
@@ -937,6 +1285,7 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Water-first, genuinely lightweight formula with real sealing oils (castor, olive, coconut) — versatile across porosity levels rather than a marketing overreach. Black-owned, woman-owned since 2003, handmade in small batches. Contains Fragrance; unscented version also available directly from brand. Price/oz = $1.78 — removed 'affordable' tag, does not meet $1.50/oz threshold despite being under $17 raw price.",
@@ -978,6 +1327,7 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Marketed for all hair types 1-4c, clinically proven +11.4x moisture. Contains Dimethicone (silicone) despite 'clean' brand positioning — flag silicone-sensitive. Sulfate-free, paraben-free per brand.",
@@ -1018,15 +1368,18 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Full ingredient list not found, general-market drugstore conditioner — no evidence to exclude Fine or Thick. Sulfate-free, paraben-free per comparison data.",
+    "buyLink": "https://notyourmothers.com/products/bond-building-conditioner?srsltid=AfmBOopvSMCHJieSPouYbRss72gqdsxGLaOMPBGghVkl7Z7L4oS7ISPt",
     "goals": [
       "moisture",
       "affordable"
     ],
     "frustrations": [
-      "dryness"
+      "dryness",
+      "cost"
     ],
     "keyIngredients": "Full ingredient list not published/found — sulfate-free, paraben-free confirmed via third-party comparison"
   },
@@ -1058,9 +1411,11 @@
     "proteinFree": true,
     "fragranceFree": true,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Thick. Minimal, gentle clarifying shampoo — rinse-off, no ingredient reason to exclude Thick; density matters less for a cleansing product that's washed out.",
+    "buyLink": "https://kinky-curly.com/products/come-clean-shampoo?srsltid=AfmBOoqfw9os6kuSEGURWcl05u-NP_2BY9CYMJ3q99RLkfrZjqXtR8XN",
     "goals": [
       "moisture",
       "affordable"
@@ -1080,7 +1435,8 @@
     "hairTypes": [
       "4b",
       "4c",
-      "4a"
+      "4a",
+      "3c"
     ],
     "porosity": [
       "low",
@@ -1095,12 +1451,21 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": 3,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Fine. Ingredients (mango extract, slippery elm, marshmallow root, lemongrass, cetyl alcohol, BTMS) show a genuinely light, extract-based formula — no basis to exclude Fine.",
     "buyLink": "https://kinky-curly.com/products/knot-today?srsltid=AfmBOooRRpIKRhjm5aREvBzKyVeazc4NkbQoAtHhBSRF3x86pN9pQl-9",
-    "goals": [],
-    "frustrations": [],
+    "goals": [
+      "moisture",
+      "frizz",
+      "damage"
+    ],
+    "frustrations": [
+      "detangling",
+      "dryness",
+      "frizz"
+    ],
     "keyIngredients": "Organic Mango Fruit Extract, Organic Slippery Elm, Organic Marshmallow Root, Organic Lemongrass, Cetyl Alcohol, Behentrimonium Methosulfate, Citric Acid, Phenoxyethanol, Natural Fragrance"
   },
   {
@@ -1108,8 +1473,8 @@
     "name": "Peppermint &  Aloe",
     "brand": "Design Essentials",
     "category": "Shampoo",
-    "ounces": null,
-    "price": null,
+    "ounces": 12,
+    "price": 15,
     "hairTypes": [
       "3b",
       "3c",
@@ -1130,12 +1495,14 @@
     "proteinFree": true,
     "fragranceFree": true,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Medicated shampoo, no oils/butters in formula — rinse-off, no ingredient basis to exclude any density. Contains synthetic dyes and Sodium C14-16 Olefin Sulfonate.",
+    "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Medicated shampoo, no oils/butters in formula — rinse-off, no ingredient basis to exclude any density. Contains synthetic dyes and Sodium C14-16 Olefin Sulfonate. & doesnt strip color from hair",
     "buyLink": "https://designessentials.com/products/peppermint-aloe-anti-itch-shampoo",
     "goals": [
-      "scalp"
+      "scalp",
+      "damage"
     ],
     "frustrations": [],
     "keyIngredients": "Deionized Water, Sodium C14-16 Olefin Sulfonate, Menthol, Peppermint Oil, Tea Tree Oil, Aloe Vera Juice, Glycerin, Panthenol, Rosemary Extract, Biotin, FD&C Blue No. 1, FD&C Yellow No. 5, FD&C Red No. 33"
@@ -1169,6 +1536,7 @@
     "proteinFree": true,
     "fragranceFree": true,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Thick. Sulfate-free rinse-off shampoo — no ingredient reason to exclude Thick from a cleansing product.",
@@ -1180,7 +1548,8 @@
     ],
     "frustrations": [
       "dryness",
-      "frizz"
+      "frizz",
+      "cost"
     ],
     "keyIngredients": "Water, Rose Flower Extract, Acai Fruit Extract, Ginger Root Extract, Lavender Extract, Calendula Extract, Marula Seed Oil, Sugar Cane Extract, Orange Fruit Extract"
   },
@@ -1212,16 +1581,18 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Fine. Full INCI not found, general-market brand, 3-min fast treatment suggests lighter formula — no evidence to exclude Fine.",
+    "notes": "DATA BUG FIXED: High porosity was dropped from an earlier update, table only showed Low/Normal. Re-added High. Full INCI not found, general-market brand, 5-min fast treatment with avocado/jojoba oil.",
     "buyLink": "https://aussie.com/en-us/miracle-moist-conditioner",
     "goals": [
       "moisture",
       "affordable"
     ],
     "frustrations": [
-      "dryness"
+      "dryness",
+      "cost"
     ],
     "keyIngredients": "Avocado Oil, Jojoba Oil (full INCI not published/found)"
   },
@@ -1252,6 +1623,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Rinse-off shampoo, full INCI not found — no evidence to exclude Fine or Thick.",
@@ -1265,6 +1637,32 @@
       "frizz"
     ],
     "keyIngredients": "Full ingredient list not published by brand — sulfate-free surfactant base confirmed, botanical lipid-restoring complex"
+  },
+  {
+    "id": "rechNTh2Dqrgy46B2",
+    "name": "Twist/Braid Out & Rod Set",
+    "category": "Style",
+    "ounces": null,
+    "price": null,
+    "hairTypes": [],
+    "porosity": [],
+    "density": [],
+    "sulfateFree": false,
+    "siliconeFree": false,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": false,
+    "ewgScore": null,
+    "goals": [
+      "moisture",
+      "scalp",
+      "damage",
+      "volume"
+    ],
+    "frustrations": [
+      "dryness"
+    ]
   },
   {
     "id": "rechzEUEhuHTQv359",
@@ -1289,6 +1687,7 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Black-owned, handmade in Chicago, built by a Black chemist specifically engineered for dense 4C shrinkage patterns — narrowest curl-type targeting in the database. Grape seed oil + slippery elm high in list — excluding Low porosity given richness. Contains Fragrance — flag fragrance-sensitive.",
@@ -1330,6 +1729,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "Black-owned, founded by Janell Stephens in 2011, no acquisition found — independently Black-owned. Rich butter consistency (described as pudding/yogurt texture) — excluding Low porosity given richness. Price/oz = $2.12, not affordable.",
@@ -1354,10 +1754,13 @@
     "hairTypes": [
       "3b",
       "3c",
-      "4a"
+      "4a",
+      "4b",
+      "4c"
     ],
     "porosity": [
-      "normal"
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -1369,9 +1772,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Thick. Mousse/foam format works well for thick/dense hair specifically — distributes across volume without adding weight, no reason to exclude Thick.",
+    "notes": "CORRECTED: added High, kept Low excluded. Contains Dimethicone Copolyol (non-water-soluble silicone) — real buildup risk for Low porosity's resistant cuticle justifies keeping Low out, but silicones commonly seal and smooth High porosity's raised cuticle well, so excluding High had no basis. General market wrap/setting product.",
+    "buyLink": "https://shopultimatebeauty.com/products/nairobi-wrapp-it-shine-foaming-lotion-8oz?variant=50835905282344&country=US&currency=USD&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&gad_source=4&gad_campaignid=24135213114&gbraid=0AAAABDnSlYt5mJmXD73liEKb1yXkENydu&gclid=CjwKCAjw48TUBhBREiwAK0GnQRTDCvJpSQbbPEsO_i-4l_hVXEJVUSCx1yDkcbgkNLHrldxZoA2KtBoCa0gQAvD_BwE",
     "goals": [
       "definition"
     ],
@@ -1409,6 +1814,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Thick. Finishing/styling oil — dosage-adjustable, thick hair can use more drops for more coverage, no reason to exclude Thick from an oil product.",
@@ -1424,11 +1830,11 @@
   },
   {
     "id": "reclUxR2WIELyqaBE",
-    "name": "Nourishing Hair",
+    "name": "Nourishing Hair Oil",
     "brand": "Cecred",
     "category": "Oil/Sealant",
-    "ounces": null,
-    "price": null,
+    "ounces": 1.7,
+    "price": 45,
     "hairTypes": [
       "3b",
       "3c",
@@ -1451,9 +1857,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Fine. Pure oil, full INCI not confirmed — oils are dosage-adjustable, no basis to exclude Fine. Beyoncé's Cecred brand, Black-owned.",
+    "buyLink": "https://cecred.com/products/nourishing-hair-oil?variant=48950630252842",
     "goals": [
       "moisture"
     ],
@@ -1487,9 +1895,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "Black-owned, founded by sisters Miko and Titi Branch — legacy Brooklyn salon brand, no acquisition found. Lightest-hold option in Miss Jessie's line, formulated for soft/fluffy definition. Contains multiple oils/shea butter — excluding Low porosity.",
+    "notes": "Black-owned, founded by sisters Miko and Titi Branch — legacy Brooklyn salon brand, no acquisition found. Lightest-hold option in Miss Jessie's line, formulated for soft/fluffy definition. Contains multiple oils/shea butter — excluding Low porosity. MINERAL OIL VERIFIED: full INCI checked against EWG Skin Deep + retailer listings — no mineral oil, petrolatum or paraffin. Contains amodimethicone (silicone) and wheat protein/silk amino acids.",
+    "buyLink": "https://missjessies.com/products/pillow-soft-curls?variant=17246353621051&country=US&currency=USD&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&utm_source=google&utm_medium=cpc&utm_term=&utm_campaign={Campaign}&utm_adgroup={AdGroup}&utm_content={AdGroup}&gad_source=1&gad_campaignid=16563582360&gbraid=0AAAAAC6zMiiEoMDsDUu3xuIHKdnyDopnF&gclid=CjwKCAjw48TUBhBREiwAK0GnQXUnzRTuE2-HXv4AQMzs79JOXWaGDLRcCkC9lJoin9eEzjTX6Yus7RoCF6MQAvD_BwE",
     "goals": [
       "moisture",
       "definition"
@@ -1505,8 +1915,8 @@
     "name": "Core Strength",
     "brand": "CurlSmith",
     "category": "Shampoo",
-    "ounces": null,
-    "price": null,
+    "ounces": 12,
+    "price": 26,
     "hairTypes": [
       "3b",
       "3c",
@@ -1525,6 +1935,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "CORRECTED BACK: removed Low porosity. Brand explicitly recommends this specifically for medium-high porosity hair — I had added Low based on a blanket 'sulfate-free = safe for Low' rule without honoring the brand's own stated guidance. Protein-infused (plant-based keratin alternative) at low dose — still flag for protein-sensitive users. 4.5/5 rating across 933+ reviews.",
@@ -1538,6 +1949,35 @@
       "products"
     ],
     "keyIngredients": "Plant-based protein complex (keratin alternative), gentle cleansing base, full INCI not published"
+  },
+  {
+    "id": "recpkMmHJYu8igHUt",
+    "name": "Twist/Natural Cornrow & Protective",
+    "category": "Style",
+    "ounces": null,
+    "price": null,
+    "hairTypes": [],
+    "porosity": [],
+    "density": [],
+    "sulfateFree": false,
+    "siliconeFree": false,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": false,
+    "ewgScore": null,
+    "goals": [
+      "moisture",
+      "scalp",
+      "damage",
+      "volume",
+      "length retention"
+    ],
+    "frustrations": [
+      "dryness",
+      "breakage",
+      "detangling"
+    ]
   },
   {
     "id": "recplrxd09tNg5FF9",
@@ -1568,6 +2008,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "DENSITY CORRECTED: added Fine. Full INCI not confirmed — no evidence to exclude Fine. Needs follow-up verification.",
@@ -1594,7 +2035,9 @@
       "4a"
     ],
     "porosity": [
-      "low"
+      "low",
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -1606,12 +2049,21 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": true,
     "ewgScore": 6,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Fine. Formula has light oils + silicone film-former, not heavy butters — silicone-based slip agents are often specifically good for fine hair, not a reason to exclude it.",
+    "notes": "CORRECTED: widened from Low-only. Formula has light oils (evening primrose, jojoba, safflower) plus a smoothing/sealing silicone (Amodimethicone) — silicones are specifically good for smoothing and sealing High porosity's raised cuticle, no reason this should exclude Normal or High.",
     "buyLink": "https://mixedchicks.net/products/hair-products/condition-detangle/mixed-chicks-leave-in-conditioner-6-7oz/?_gl=1*uradmf*_up*MQ..*_gs*MQ..&gclid=CjwKCAjw8uTQBhAdEiwAVvtJyp2P0GISDhvCQTf989GQLYIDABcw00OI7mSaoerQnyCmNLfNQvmG7xoC9e0QAvD_BwE&gbraid=0AAAAAD-rRPSGguR4Wc2ie0v5pDZlznP8x",
-    "goals": [],
-    "frustrations": [],
+    "goals": [
+      "moisture",
+      "frizz",
+      "damage"
+    ],
+    "frustrations": [
+      "frizz",
+      "detangling",
+      "dryness"
+    ],
     "keyIngredients": "AQUA (WATER), GLYCERIN, CETEARYL ALCOHOL, AMODIMETHICONE, STEARALKONIUM CHLORIDE, PVP, PHENOXYETHANOL, HYDROXYPROPYLTRIMONIUM CHLORIDE, METHYL GLUCETH-20, ETHYLHEXYL METHOXYCINNAMATE, CETYL ALCOHOL, PARFUM (FRAGRANCE), POLYSORBATE 60, HYDROXYETHYLCELLULOSE, SOLUBLE COLLAGEN, ETHYLHEXYLGLYCERINE, OENOTHERA BIENNIS (EVENING PRIMROSE) OIL, SIMMONDSIA CHINENSIS (JOJOBA) SEED OIL, CARTHAMUS TINCTORIUS (SAFFLOWER) SEED OIL, SILK AMINO ACIDS, WHEAT AMINO, ACIDS, POTASSIUM SORBATE, BENZYL SALICYLATE, HYDROXYISOHEXYL 3-CYCLOHEXENE CARBOXALDEHYDE, HEXYL CINNAMAL, GERANIOL, LINALOOL, ALPHA-ISOMETHYL IONONE, CITRONELLOL, CI 19140 (YELLOW 5), CI 15985 (YELLOW 6)"
   },
   {
@@ -1643,9 +2095,10 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "DENSITY CORRECTED: added Fine. Pure oil — oils are dosage-adjustable regardless of hair density (fine hair users just apply fewer drops), no basis to exclude Fine from an oil product.",
+    "notes": "DENSITY CORRECTED: added Fine. Pure oil — oils are dosage-adjustable regardless of hair density (fine hair users just apply fewer drops), no basis to exclude Fine from an oil product. MINERAL OIL VERIFIED: manufacturer's official ingredient notice lists only plant oils (coconut, olive, jojoba, rice bran, cocoa butter, acerola, pomegranate, rosehip, pumpkin seed) plus extracts and essential oils — no mineral oil. Note the brand does not publish a true INCI list, so this rests on manufacturer statement, not a regulated label.",
     "buyLink": "https://wildgrowth.com",
     "goals": [
       "growth",
@@ -1671,6 +2124,7 @@
       "4c"
     ],
     "porosity": [
+      "low",
       "normal",
       "high"
     ],
@@ -1684,9 +2138,10 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "DENSITY CORRECTED: added Fine. Mousse/foam format is inherently light regardless of active ingredients — foam distributes without buildup across any density. Partial ingredient data only.",
+    "notes": "CORRECTED: added Low. Mousse/foam format distributes thin with low buildup risk — pomegranate/honey (humectant-forward) formula, no basis to exclude Low. P&G acquired majority ownership in 2023, no longer Black-owned though still Black-led.",
     "buyLink": "https://mielleorganics.com/products/pomegranate-honey-curl-defining-mousse",
     "goals": [
       "moisture",
@@ -1695,7 +2150,8 @@
     ],
     "frustrations": [
       "dryness",
-      "frizz"
+      "frizz",
+      "cost"
     ],
     "keyIngredients": "Pomegranate Extract, Honey (full detailed INCI not independently confirmed)"
   },
@@ -1714,6 +2170,7 @@
       "4c"
     ],
     "porosity": [
+      "low",
       "normal",
       "high"
     ],
@@ -1727,9 +2184,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": true,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Loved",
-    "notes": "DENSITY CORRECTED: widened from Medium-only to all three. Mousse/foam format is inherently light regardless of active ingredients — no basis for narrow density targeting. Partial ingredient data only.",
+    "notes": "CORRECTED: added Low. Mousse/foam format whips oils into a thin, low-buildup-risk foam — no strong evidence to exclude Low even with almond/avocado oil present. Full INCI not independently confirmed — needs follow-up.",
+    "buyLink": "https://designessentials.com/products/almond-avocado-curl-enhancing-mousse?utm_campaign=&utm_term=curly+hair+products&utm_medium=ppc&utm_source=adwords&hsa_ver=3&hsa_mt=p&hsa_kw=curly+hair+products&hsa_acc=8359869719&hsa_grp=181540045596&hsa_tgt=kwd-303002202&hsa_ad=760350031364&hsa_src=g&hsa_cam=22713809210&hsa_net=adwords&gad_source=1&gad_campaignid=22713809210&gbraid=0AAAAADxRAXTERAQR6sY3_cxAFNSfrk_EI&gclid=CjwKCAjw48TUBhBREiwAK0GnQUEnty8rmkhquezPyv1w2NDh3XAzitFhEwTAKiQNfIRwQaF96mmOdRoCJvkQAvD_BwE",
     "goals": [
       "moisture",
       "definition"
@@ -1738,6 +2197,47 @@
       "dryness"
     ],
     "keyIngredients": "Almond Oil, Avocado Oil (full INCI not independently confirmed — needs follow-up)"
+  },
+  {
+    "id": "recszaSvhchO8Bfc2",
+    "name": "I Create Hold",
+    "brand": "Innersense",
+    "category": "Gel",
+    "ounces": 10,
+    "price": 28,
+    "hairTypes": [
+      "3b",
+      "3c",
+      "4a"
+    ],
+    "porosity": [
+      "normal",
+      "high"
+    ],
+    "density": [
+      "medium",
+      "thick"
+    ],
+    "sulfateFree": true,
+    "siliconeFree": true,
+    "proteinFree": true,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": true,
+    "ewgScore": null,
+    "communitySentiment": "Loved",
+    "notes": "Clean/organic aloe + honey gel, firm hold with shine; brand pairs with Sweet Spirit and Pure Inspiration already in the base. Concentrated — 1–2 pumps is usually enough, so the 10 oz lasts. No synthetic fragrance, but scented with organic orange peel oil (limonene), so not fragrance-free. Note: recently reformulated and some long-time users report the new version performs worse — worth watching sentiment. Also sold in 32 oz refill. EWG score not published.",
+    "buyLink": "https://innersensebeauty.com/products/i-create-hold",
+    "goals": [
+      "definition",
+      "frizz",
+      "moisture"
+    ],
+    "frustrations": [
+      "frizz",
+      "cost"
+    ],
+    "keyIngredients": "Water/Aqua, Aloe Barbadensis Gel*, Hydroxyethylcellulose, Maltodextrin Copolymer, Potassium Hydroxide, Gluconolactone, Sodium Benzoate, Calcium Gluconate, Alkyl Acrylate Crosspolymer, Citrus Aurantium Dulcis Peel Oil, Caprylic/Capric Triglyceride, Potassium Sorbate, Sodium Phytate, Glycerin*, Chamomile Flower Extract*, Eucalyptus Leaf Extract*, Ginkgo Biloba Leaf Extract*, Rooibos (Aspalathus Linearis) Leaf Extract*, Honey Extract*, Limonene (*Certified Organic)"
   },
   {
     "id": "recuJbJ7AcyQ9E9FZ",
@@ -1768,15 +2268,18 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "DENSITY CORRECTED: added Fine. Pure oil, traditionally used as a light daily Ayurvedic oil — dosage-adjustable, no basis to exclude Fine.",
+    "notes": "DENSITY CORRECTED: added Fine. Pure oil, traditionally used as a light daily Ayurvedic oil — dosage-adjustable, no basis to exclude Fine. ⚠️ NOT MINERAL OIL FREE — verified: Paraffinum Liquidum (mineral oil) is the FIRST ingredient, ahead of canola and palm oil; amla is present as an extract. Despite the name, this is a mineral-oil-based product, not a botanical oil. Exclude from any mineral-oil-free or 'clean' recommendation path, and don't group it with the plant-oil sealants.",
+    "buyLink": "https://www.walmart.com/ip/Dabur-Amla-Hair-Oil-Nourishing-Indian-Oil-for-Men-Women-for-Healthy-Moisturized-Hair-and-Scalp-300ml/13285719557?wmlspartner=wlpa&selectedSellerId=101036997&sourceid=dsn_gdn_0c92c416-dbd6-42ec-845c-ecf69af2153d&veh=dsn&wmlspartner=dsn_gdn_0c92c416-dbd6-42ec-845c-ecf69af2153d&cn=0042_fy27_mp_mpa_lo_int_dis_pmax-p13n&wl0=&wl1=g&wl2=c&wl3=&wl4=&wl5=9007578&wl6=&wl7=&wl8=&wl9=pla&wl10=263225436&wl11=online&wl12=13285719557_101036997&gclsrc=aw.ds&gad_source=1&gad_campaignid=23148469844&gbraid=0AAAAADmfBIplmC6Zf7bubrcVu0XuGi2y8&gclid=CjwKCAjw48TUBhBREiwAK0GnQUZ-G8EWiDytY9GgDOUBjuIexsjdvhxvFod4jYFdxQ3164jpzTKunxoC3yAQAvD_BwE",
     "goals": [
       "moisture",
       "affordable"
     ],
     "frustrations": [
-      "dryness"
+      "dryness",
+      "cost"
     ],
     "keyIngredients": "Amla (Indian Gooseberry) Oil (full INCI not independently confirmed)"
   },
@@ -1809,6 +2312,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Mixed",
     "notes": "DENSITY CORRECTED: added Fine. Bond-building conditioner, brand markets as suitable for all hair types — bond-builders are often specifically good for fine, damage-prone hair, not a reason to exclude it.",
@@ -1836,7 +2340,8 @@
       "4c"
     ],
     "porosity": [
-      "low"
+      "normal",
+      "high"
     ],
     "density": [
       "thick",
@@ -1847,14 +2352,18 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": 5,
     "communitySentiment": "Loved",
-    "notes": "This product is specifically designed for Type 4 (thicker) curly hair textures.",
+    "notes": "MAJOR CORRECTION: was wrongly tagged Low-only. Ingredients show real richness — Babassu Oil, Buriti Fruit Oil, Murumuru Seed Butter, Copaiba Resin (2 oils + 1 butter + 1 resin). This is one of the richer leave-ins in the table, not a light one. Removed Low, set to Normal-High.",
     "buyLink": "https://mielleorganics.com/products/pomegranate-honey-leave-in-conditioner?variant=796573368336",
     "goals": [
       "affordable"
     ],
-    "frustrations": [],
+    "frustrations": [
+      "dryness",
+      "detangling"
+    ],
     "keyIngredients": "Water (Aqua, Eau), Behentrimonium Methosulfate, Cetyl Alcohol, Butylene Glycol, Cetyl Alcohol, Glycerin, Orbignya Oleifera (Babassu) Oil, Mauritia Flexuosa (Buriti) Fruit Oil, Copaiferi Officinalis (Balsam Copaiba) Resin, Astrocaryum Murumuru Seed Butter, Vaccinium Myrtillus Fruit Extract, Saccharum Officinarum (Sugar Cane) Extract, Acer Saccharinum (Sugar Maple) Extract, Citrus Aurantium Dulcis (Orange) Fruit Extract, Citrus Medica Limonum Citrus Medica Limonum (Lemon) Fruit Extract, Punica Granatum (Pomegranate) Extract, Betaine, Hexylene Glycol, Honey (Mel, Miel), Pyrus Malus (Apple) Fruit Extract, Camellia Sinensis Leaf Extract, Hexapeptide-11, Citric Acid, Fragrance (Parfum), Phenoxyethanol, Benzoic Acid, Ethylhexylglycerin, Glycereth-2 Cocoate"
   },
   {
@@ -1867,10 +2376,14 @@
     "hairTypes": [
       "3b",
       "3c",
-      "4a"
+      "4a",
+      "4b",
+      "4c"
     ],
     "porosity": [
-      "normal"
+      "low",
+      "normal",
+      "high"
     ],
     "density": [
       "fine",
@@ -1882,9 +2395,11 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": false,
     "ewgScore": null,
     "communitySentiment": "Mixed",
-    "notes": "Salon-professional line ('the Z line'), cationic co-polymer + humectant styling foam for control/volume. Full INCI not published — flag for follow-up. Not Black-owned confirmed.",
+    "notes": "CORRECTED: widened from Normal-only to all three. Foam format + humectant-based cationic co-polymer system — no ingredient basis for such a narrow porosity range. Full INCI not published — needs follow-up.",
+    "buyLink": "https://texturebe.com/zoe-naturals-styling-foam/",
     "goals": [
       "definition"
     ],
@@ -1901,7 +2416,9 @@
     "ounces": 8,
     "price": 10.5,
     "hairTypes": [
-      "4b"
+      "4b",
+      "4a",
+      "3c"
     ],
     "porosity": [
       "low",
@@ -1916,14 +2433,48 @@
     "proteinFree": true,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": 4,
     "communitySentiment": "Mixed",
     "notes": "DENSITY CORRECTED: added Fine. Ingredients (fruit/botanical extracts, cetearyl/cetyl alcohol, BTMS) show a light-to-medium formula, not heavy enough to justify excluding Fine.",
+    "buyLink": "https://asiamnaturally.com/products/leave-in-conditioner?srsltid=AfmBOooM42SxEGipGJEp5DlH0bTcRtQr6b_wRv-jA1CT_yZROUJfyMot",
     "goals": [
-      "affordable"
+      "affordable",
+      "moisture"
     ],
-    "frustrations": [],
+    "frustrations": [
+      "dryness",
+      "detangling"
+    ],
     "keyIngredients": "Aqua/Water/Eau, Cetearyl Alcohol, Cetyl Alcohol, Cocos Nucifera (Coconut) Fruit Extract, Phyllanthus Emblica Fruit Extract, Beta Vulgaris (Beet) Root Extract, Phytosterols, Serenoa Serrulata Fruit Extract, Camellia Sinensis Leaf Extract, Glycerin, Pyrus Malus (Apple) Fruit Extract, Citrus Limon (Lemon) Peel Extract, Saccharum Ofcinarum (Sugarcane) Extract, Betaine, Behentrimonium Methosulfate, Stearamidopropyl Dimethylamine, Citric Acid, Phenoxyethanol, Caprylyl Glycol, Potassium Sorbate, Polyacrylamide, Fragrance/Parfum, Anise Alcohol, Coumarin, Limonene"
+  },
+  {
+    "id": "recwGnNf6e3FZeKmg",
+    "name": "Wash and Go",
+    "category": "Style",
+    "ounces": null,
+    "price": null,
+    "hairTypes": [],
+    "porosity": [],
+    "density": [],
+    "sulfateFree": false,
+    "siliconeFree": false,
+    "proteinFree": false,
+    "fragranceFree": false,
+    "blackOwned": false,
+    "mineralOilFree": false,
+    "ewgScore": null,
+    "notes": "Ideal style for letting hair breathe, not as healthy as a twist/natural protective style, but healthier than braids if your hair is in a fragile state",
+    "goals": [
+      "moisture",
+      "definition",
+      "frizz",
+      "scalp"
+    ],
+    "frustrations": [
+      "dryness",
+      "frizz"
+    ]
   },
   {
     "id": "recyjBTbsQyU54VN2",
@@ -1950,6 +2501,7 @@
     "proteinFree": false,
     "fragranceFree": false,
     "blackOwned": false,
+    "mineralOilFree": true,
     "ewgScore": null,
     "communitySentiment": "Loved",
     "notes": "CORRECTED: sulfate-containing shampoo (Sodium Laureth Sulfate) — tagged Normal porosity only, not High. Professional/salon brand (owned by Henkel, not Black-owned). Also contains Silicone Quaternium-16 and multiple peptides/Hydrolyzed Keratin — flag for silicone AND protein-sensitive users too. Formulated for thick/coarse/very dry hair, but sulfate content means porosity tag stays Normal regardless of density marketing.",

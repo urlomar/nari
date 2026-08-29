@@ -28,6 +28,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     proteinFree: true,
     fragranceFree: true,
     blackOwned: false,
+    mineralOilFree: true,
     ewgScore: null,
     goals: [],
     frustrations: [],

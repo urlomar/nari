@@ -24,6 +24,7 @@ const validResponseBody = {
     skippedRows: [],
     unmappedFields: [],
     missingMappedFields: [],
+    valueDrift: { goals: [], frustrations: [], porosity: [], density: [], hairTypes: [] },
   },
 };
 

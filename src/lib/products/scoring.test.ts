@@ -155,6 +155,7 @@ describe("scoreProducts — brand diversity", () => {
       proteinFree: true,
       fragranceFree: true,
       blackOwned: false,
+      mineralOilFree: true,
       ewgScore: null,
       goals: [],
       frustrations: [],
@@ -207,6 +208,7 @@ describe("scoreProducts — budget is soft, never a hard filter", () => {
       proteinFree: true,
       fragranceFree: true,
       blackOwned: false,
+      mineralOilFree: true,
       ewgScore: null,
       goals: [],
       frustrations: [],
@@ -232,18 +234,32 @@ describe("scoreProducts — budget is soft, never a hard filter", () => {
   });
 });
 
-describe("scoreProducts — mineral_oil sensitivity (no catalog column yet)", () => {
-  it("flags mineral_oil as unenforced rather than silently ignoring it", () => {
+describe("scoreProducts — mineral_oil sensitivity (Mineral Oil Free column added 2026-08-29)", () => {
+  it("is enforced now that the catalog has real Mineral Oil Free data", () => {
     const result = scoreProducts({ ...baseAnswers, sensitivities: ["mineral_oil"] }, catalog);
-    expect(result.unenforcedSensitivities).toEqual(["mineral_oil"]);
+    expect(result.unenforcedSensitivities).toEqual([]);
   });
 
-  it("does not exclude any product on mineral_oil (nothing to check it against)", () => {
-    const withFilter = scoreProducts({ ...baseAnswers, sensitivities: ["mineral_oil"] }, catalog);
-    const withoutFilter = scoreProducts({ ...baseAnswers, sensitivities: ["none"] }, catalog);
-    const totalPicksWith = withFilter.categories.reduce((sum, c) => sum + c.picks.length, 0);
-    const totalPicksWithout = withoutFilter.categories.reduce((sum, c) => sum + c.picks.length, 0);
-    expect(totalPicksWith).toBe(totalPicksWithout);
+  it("never returns a product that isn't positively marked mineral-oil-free", () => {
+    const result = scoreProducts({ ...baseAnswers, sensitivities: ["mineral_oil"] }, catalog);
+    for (const category of result.categories) {
+      for (const pick of category.picks) {
+        expect(pick.product.mineralOilFree).toBe(true);
+      }
+    }
+  });
+
+  // Guards the auto-activation design itself (see getMineralOilFree's
+  // comment in scoring.ts): if every product in the catalog lacked the
+  // field entirely — the pre-2026-08-29 state — the filter must fall back
+  // to unenforced rather than excluding everything.
+  it("falls back to unenforced when no product in the catalog carries the field at all", () => {
+    const noColumnCatalog = catalog.map((p) => {
+      const { mineralOilFree, ...rest } = p;
+      return rest as Product;
+    });
+    const result = scoreProducts({ ...baseAnswers, sensitivities: ["mineral_oil"] }, noColumnCatalog);
+    expect(result.unenforcedSensitivities).toEqual(["mineral_oil"]);
   });
 });
 
@@ -311,6 +327,7 @@ describe("scoreProducts — porosity is honest when not relaxed", () => {
         proteinFree: true,
         fragranceFree: true,
         blackOwned: false,
+        mineralOilFree: true,
         ewgScore: null,
         goals: [],
         frustrations: [],
@@ -340,10 +357,11 @@ describe("scoreProducts — no product violating a stated sensitivity ever appea
     sulfates: "sulfateFree",
     silicones: "siliconeFree",
     fragrance: "fragranceFree",
+    mineral_oil: "mineralOilFree",
   };
 
   for (const sensitivity of SENSITIVITY_VALUES) {
-    if (sensitivity === "none" || sensitivity === "mineral_oil") continue; // mineral_oil has its own dedicated tests below
+    if (sensitivity === "none") continue;
     it(`never returns a product that fails the "${sensitivity}" filter (real catalog)`, () => {
       const result = scoreProducts({ ...baseAnswers, sensitivities: [sensitivity] }, catalog);
       const field = sensitivityToField[sensitivity];

@@ -24,7 +24,14 @@ export interface AirtableRecord {
 export const ProductSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
-  brand: z.string().min(1),
+  // Optional: the catalog's 5 "Style" rows (Braids, Blow Out, Wash and Go,
+  // etc.) legitimately have no brand — a style is a technique, not a
+  // purchased product. Verified live 2026-08-29: all 5 brand-less rows are
+  // category "Style", nothing else. These rows still aren't recommended
+  // anywhere today — scoring.ts's CATEGORIES only iterates the 6 real
+  // product categories — but they belong in the catalog/normalization
+  // report rather than being silently dropped as "invalid."
+  brand: z.string().optional(),
   category: z.string().min(1),
   ounces: z.number().nullable().default(null),
   price: z.number().nullable().default(null),
@@ -41,6 +48,10 @@ export const ProductSchema = z.object({
   proteinFree: z.boolean().default(false),
   fragranceFree: z.boolean().default(false),
   blackOwned: z.boolean().default(false),
+  // Wired 2026-08-29 — see fieldMap.ts. scoring.ts's mineral-oil filter
+  // reads this directly and was written to activate automatically the
+  // moment it's a real boolean instead of always-undefined.
+  mineralOilFree: z.boolean().default(false),
   ewgScore: z.number().nullable().default(null),
   communitySentiment: z.string().optional(),
   notes: z.string().optional(),
@@ -61,11 +72,18 @@ export const ProductSchema = z.object({
 });
 export type Product = z.infer<typeof ProductSchema>;
 
-type FieldKind = "string" | "optionalString" | "boolean" | "number" | "stringArrayLower" | "goalsArray";
+type FieldKind =
+  | "string"
+  | "optionalString"
+  | "boolean"
+  | "number"
+  | "stringArrayLower"
+  | "goalsArray"
+  | "frustrationsArray";
 
 const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
   name: "string",
-  brand: "string",
+  brand: "optionalString",
   category: "string",
   ounces: "number",
   price: "number",
@@ -77,12 +95,13 @@ const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
   proteinFree: "boolean",
   fragranceFree: "boolean",
   blackOwned: "boolean",
+  mineralOilFree: "boolean",
   ewgScore: "number",
   communitySentiment: "optionalString",
   notes: "optionalString",
   buyLink: "optionalString",
   goals: "goalsArray",
-  frustrations: "stringArrayLower",
+  frustrations: "frustrationsArray",
   keyIngredients: "optionalString",
 };
 
@@ -97,6 +116,17 @@ const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
 const GOAL_ALIASES: Record<string, string> = {
   "scalp health": "scalp",
   "heat or color damage": "damage",
+};
+
+// Same pattern as GOAL_ALIASES, one dimension over. Verified live
+// 2026-08-29: the catalog's "Frustrations" column uses "Breakage/length
+// retention" where the quiz's frustration question only ever emits
+// "breakage" — with no alias, every one of the 10 products tagged this way
+// silently failed to match ANY user who picked breakage as their #1
+// frustration, on a dimension weighted 3x for the top pick. See
+// DECISIONS.md.
+const FRUSTRATION_ALIASES: Record<string, string> = {
+  "breakage/length retention": "breakage",
 };
 
 function coerce(kind: FieldKind, value: unknown): unknown {
@@ -123,6 +153,13 @@ function coerce(kind: FieldKind, value: unknown): unknown {
             .filter((v): v is string => typeof v === "string")
             .map((v) => v.trim().toLowerCase())
             .map((v) => GOAL_ALIASES[v] ?? v)
+        : [];
+    case "frustrationsArray":
+      return Array.isArray(value)
+        ? value
+            .filter((v): v is string => typeof v === "string")
+            .map((v) => v.trim().toLowerCase())
+            .map((v) => FRUSTRATION_ALIASES[v] ?? v)
         : [];
   }
 }
@@ -151,6 +188,88 @@ export function normalizeProduct(record: AirtableRecord): NormalizeResult {
   return { success: true, product: parsed.data };
 }
 
+/**
+ * Expected catalog-side vocabulary for the 5 dimensions scoring.ts compares
+ * against real quiz answer values. Duplicated here rather than imported —
+ * same reasoning as api/_lib/schemas.ts's hand-duplication of a subset of
+ * src/lib/schemas.ts (see CLAUDE.md "Server code boundary"): api/_lib can't
+ * import from src/lib without risking the exact FUNCTION_INVOCATION_FAILED
+ * this file's own header comment describes. Keep these in sync by hand if
+ * scoring.ts's GOAL_VALUES/FRUSTRATION_VALUES/DENSITY_COLLAPSE or the
+ * porosity/hairType vocab ever change.
+ *
+ * Column-name drift (Nya adding/renaming a column) was already caught by
+ * unmappedFields/missingMappedFields above. Column *value* drift — a real
+ * row using a value that doesn't match what scoring.ts expects — was not
+ * caught by anything, which is exactly how the "breakage/length retention"
+ * vs. "breakage" mismatch (see FRUSTRATION_ALIASES) went unnoticed. This
+ * audit runs post-normalization (after lowercasing/trimming/alias tables),
+ * so a value only shows up here if it's a REAL, unresolved mismatch, not
+ * just a casing difference the pipeline already handles.
+ */
+const EXPECTED_GOALS = new Set([
+  "moisture",
+  "growth",
+  "definition",
+  "frizz",
+  "scalp",
+  "damage",
+  "volume",
+  "simplify",
+  "affordable",
+  "technique",
+]);
+const EXPECTED_FRUSTRATIONS = new Set([
+  "breakage",
+  "dryness",
+  "frizz",
+  "products",
+  "time",
+  "detangling",
+  "cost",
+  "technique",
+  "nothing",
+]);
+// Catalog-side only — "unsure" is a quiz-only answer with no catalog tag.
+const EXPECTED_POROSITY = new Set(["low", "normal", "high"]);
+// Catalog-side (collapsed) values — scoring.ts's DENSITY_COLLAPSE maps the
+// quiz's 5 finer-grained answers down to these same 3 before comparing.
+const EXPECTED_DENSITY = new Set(["fine", "medium", "thick"]);
+// Every single curl-type tag the app models (1A-4C), not just the 6 that
+// happen to exist in the catalog today — new hairTypes rows in the
+// currently-absent 1A-2C range should validate cleanly, not get flagged.
+const EXPECTED_HAIR_TYPES = new Set([
+  "1a", "1b", "1c",
+  "2a", "2b", "2c",
+  "3a", "3b", "3c",
+  "4a", "4b", "4c",
+]);
+
+export interface ValueDriftReport {
+  goals: string[];
+  frustrations: string[];
+  porosity: string[];
+  density: string[];
+  hairTypes: string[];
+}
+
+function driftFor(values: Iterable<string>, expected: Set<string>): string[] {
+  const seen = new Set<string>();
+  for (const v of values) if (!expected.has(v)) seen.add(v);
+  return [...seen].sort();
+}
+
+/** Post-normalization value drift — see the vocab comment above. */
+function computeValueDrift(products: Product[]): ValueDriftReport {
+  return {
+    goals: driftFor(products.flatMap((p) => p.goals), EXPECTED_GOALS),
+    frustrations: driftFor(products.flatMap((p) => p.frustrations), EXPECTED_FRUSTRATIONS),
+    porosity: driftFor(products.flatMap((p) => p.porosity), EXPECTED_POROSITY),
+    density: driftFor(products.flatMap((p) => p.density), EXPECTED_DENSITY),
+    hairTypes: driftFor(products.flatMap((p) => p.hairTypes), EXPECTED_HAIR_TYPES),
+  };
+}
+
 export interface NormalizationReport {
   totalFetched: number;
   validCount: number;
@@ -160,6 +279,8 @@ export interface NormalizationReport {
   unmappedFields: string[];
   /** FIELD_MAP entries never seen in any fetched record — Nya renamed or removed a column FIELD_MAP still expects. */
   missingMappedFields: string[];
+  /** Per-dimension catalog values that don't match scoring.ts's expected vocabulary, post-normalization — see the comment above computeValueDrift. */
+  valueDrift: ValueDriftReport;
 }
 
 export function buildNormalizationReport(
@@ -170,6 +291,9 @@ export function buildNormalizationReport(
     .filter((r): r is Extract<NormalizeResult, { success: false }> => !r.success)
     .map((r) => r.skipped);
   const validCount = results.length - skippedRows.length;
+  const products = results
+    .filter((r): r is Extract<NormalizeResult, { success: true }> => r.success)
+    .map((r) => r.product);
 
   const seenFields = new Set<string>();
   for (const record of records) {
@@ -186,5 +310,6 @@ export function buildNormalizationReport(
     skippedRows,
     unmappedFields,
     missingMappedFields,
+    valueDrift: computeValueDrift(products),
   };
 }

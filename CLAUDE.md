@@ -178,11 +178,14 @@ normalized to `false`, not treated as missing/invalid data.
 The originally-described schema didn't quite match the live base — several
 field names differ (`"Product name"` not `"Product Name"`; `"Sulfate
 free"` / `"Silicone free"` / `"Protein free"` with no hyphen; `"Blk
-owned"` not `"Black-owned"`), the live `Category` values are Shampoo,
-Conditioner, Leave-in, Cream, Mousse, Oil/Sealant (no "Gel" yet — Gel was
-in the original description but has never appeared in real data, and
-Oil/Sealant's only current row is one of the two invalid ones below), and
-there is **no image URL column yet** (optional in `ProductSchema` so its
+owned"` not `"Black-owned"`), the live `Category` values were originally
+Shampoo, Conditioner, Leave-in, Cream, Mousse, Oil/Sealant (no "Gel" yet —
+Gel was in the original description but had not yet appeared in real data,
+and Oil/Sealant's only current row is one of the two invalid ones below;
+**"Gel" has since appeared live — see "Data pipeline fixes pass
+(2026-08-29)" below, a real gap, not yet wired into `scoring.ts`'s
+`CATEGORIES`**), and there is **no image URL column yet** (optional in
+`ProductSchema` so its
 absence doesn't break anything — Prompt 4 handles a missing image
 gracefully). Two extra columns exist in the live base that aren't wired
 into `FIELD_MAP` yet: `"Key ingredients"` and `"Who it works for"` (both
@@ -206,8 +209,12 @@ also more robust, since it survives Nya renaming the table). If Vercel's
 env vars mirror the old `.env.local` values, they need the same fix.
 
 **Distinct post-normalization values actually present**, for Prompt 2 to
-build the quiz↔catalog matching against real data rather than assumption:
-- `category`: `Conditioner`, `Cream`, `Leave-in`, `Mousse`, `Oil/Sealant`, `Shampoo`
+build the quiz↔catalog matching against real data rather than assumption
+(updated 2026-08-29 — see the fixes-pass note below for `Gel`/`Style`,
+both new since this list was first written):
+- `category`: `Conditioner`, `Cream`, `Gel`, `Leave-in`, `Mousse`,
+  `Oil/Sealant`, `Shampoo`, `Style` (`Gel` and `Style` are not in
+  `scoring.ts`'s `CATEGORIES` — see below)
 - `hairTypes`: `3a`, `3b`, `3c`, `4a`, `4b`, `4c` (no 1A-2C rows exist yet;
   the schema doesn't restrict to only these, so new rows in other types
   will flow through fine)
@@ -221,6 +228,74 @@ answers (`"fine_low"`, `"fine_high"`, `"thick_low"`, `"thick_high"`) are
 more granular than the catalog's three values above; quiz porosity
 includes `"unsure"`, which has no catalog equivalent and needs a defined
 fallback.
+
+### Data pipeline fixes pass (2026-08-29)
+Three real data-loss/scoring bugs found live in `/api/products`, all fixed:
+
+1. **5 Style rows were being skipped** (`brand: Required`) — verified live:
+   all 5 are category `"Style"` (Braids, Blow Out, Twist/Braid Out, Twist/
+   Natural Cornrow, Wash and Go), which legitimately have no brand — a
+   style is a technique, not a purchased product. `brand` is now optional
+   on `ProductSchema` (`FIELD_KINDS.brand` changed from `"string"` to
+   `"optionalString"`). These rows still never get recommended anywhere —
+   `scoring.ts`'s `CATEGORIES` const only iterates the 6 real product
+   categories, "Style" isn't one of them — but they now show up in the
+   catalog/report instead of being silently dropped. Code that reads
+   `product.brand` now has to handle `undefined` (`scoring.ts`'s
+   `selectForCategory` brand-dedup, `ScanResults.tsx`'s send-results
+   payload) — both fall back to `""`, which is inert since no scored
+   product actually lacks a brand.
+2. **"Mineral Oil Free" was unmapped** — Nya added the column; it's now in
+   `FIELD_MAP` → `mineralOilFree` (a checkbox, same absent-means-false
+   pattern as the other free-from fields). `scoring.ts`'s mineral-oil
+   filter needed **zero changes** — it was deliberately written to
+   activate automatically the moment this column exists and is mapped
+   (see `getMineralOilFree`'s comment) — closing the last previously
+   inert/unenforced sensitivity.
+3. **Frustration value drift**: the catalog's `"Breakage/length retention"`
+   no longer matched the quiz's `"breakage"` — silently true for all 10
+   products tagged that way, on a dimension weighted 3x for a user's #1
+   frustration. Fixed with a new `FRUSTRATION_ALIASES` table in
+   `api/_lib/schema.ts` (same pattern as the existing `GOAL_ALIASES`),
+   applied via a new `"frustrationsArray"` `FieldKind`.
+
+**Full goal/frustration audit against live data** (post-normalization, alias
+tables already applied): the only other mismatch found is a goals value,
+`"length retention"` (1 row — the "Twist/Natural Cornrow & Protective"
+Style entry, which — per point 1 above — is already excluded from scoring
+by category, so this is currently inert, not aliased). No other goal or
+frustration value drift exists.
+
+**New: value-drift auditing**, so the next one of these doesn't go
+unnoticed silently for weeks. `buildNormalizationReport` now includes a
+`valueDrift` field — per-dimension (goals/frustrations/porosity/density/
+hairTypes) lists of post-normalization catalog values that don't match
+`scoring.ts`'s expected vocabulary. The expected-vocabulary lists are
+duplicated in `api/_lib/schema.ts` (can't import `scoring.ts` from
+`src/lib` — see "Server code boundary" above) — keep them in sync by hand
+if `scoring.ts`'s `GOAL_VALUES`/`FRUSTRATION_VALUES`/`DENSITY_COLLAPSE` or
+the porosity/hairType vocab ever change. Column-*name* drift
+(`unmappedFields`/`missingMappedFields`) was already reported; this closes
+the gap for column-*value* drift, which is exactly how bug 3 went
+unnoticed. `src/lib/products/schema.ts`'s `ProductsMetaSchema` (the
+client-side shape check) was updated to match, so `/debug/products` shows
+the new field too.
+
+**Found but NOT fixed, flagged for a follow-up decision**: the live
+catalog now has a `Category: "Gel"` — 8 real products — that CLAUDE.md
+previously documented as never having appeared in real data. `scoring.ts`'s
+`CATEGORIES` const doesn't include `"Gel"`, so **these 8 products are
+fully invisible on the results page today** (never scored, never shown, in
+any tab) — normalization now includes them in the catalog fine, but the
+per-category recommendation loop simply never looks at that category.
+Outside this pass's explicit scope (three named bugs); needs a product
+decision (does Nari have a "Gel" recommendation tab? does the UI/copy need
+anything for it?) before wiring it in, so it's surfaced here rather than
+silently added.
+
+The catalog fixture (`src/lib/products/__fixtures__/catalog.json`) was
+regenerated from a fresh live pull after these fixes — 62 products now
+(up from 50), including the 5 Style rows and real `mineralOilFree` data.
 
 ## Product Scoring
 

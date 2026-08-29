@@ -23,6 +23,13 @@ export const ProductsMetaSchema = z.object({
   skippedRows: z.array(z.object({ id: z.string(), reasons: z.array(z.string()) })),
   unmappedFields: z.array(z.string()),
   missingMappedFields: z.array(z.string()),
+  valueDrift: z.object({
+    goals: z.array(z.string()),
+    frustrations: z.array(z.string()),
+    porosity: z.array(z.string()),
+    density: z.array(z.string()),
+    hairTypes: z.array(z.string()),
+  }),
 });
 export type ProductsMeta = z.infer<typeof ProductsMetaSchema>;
 
