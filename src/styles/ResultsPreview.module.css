@@ -33,13 +33,17 @@
 
 /* --- Sample result: gradient-tinted spotlight frame (Final Spike, P4 of
    4, Part E) — chosen by the CEO from 3 generated options, see
-   DECISIONS.md. The card inside is SampleResultCard, which mirrors
+   DECISIONS.md. The cards inside are SampleResultCard, which mirrors
    ProductCard's own border/shadow/spacing/hover — this file only owns the
-   frame and ribbon badge around it. */
+   frame, the two-card grid, and the ribbon badge around it.
+   Widened from a single 360px card to a 620px two-card frame in P5, Part
+   A (chosen from 3 generated sizing options) so the section fills its
+   intended visual footprint via more real content at native sizing,
+   rather than one card stretched past the scale it was designed at. */
 
 .spotlightFrame {
   position: relative;
-  max-width: 360px;
+  max-width: 620px;
   margin-inline: auto;
   padding: var(--space-xl) var(--space-lg) var(--space-lg);
   border-radius: var(--radius-2xl);
@@ -48,6 +52,18 @@
   transition:
     transform var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+@media (max-width: 480px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spotlightFrame:hover {

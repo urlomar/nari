@@ -2104,3 +2104,156 @@ below for the `"tehnique"` alias status update.
   predates this prompt (see "Cube photo refresh") and this pass's scope
   didn't include sourcing new photos. Worth prioritizing in the next
   photo drop given how many passes it's now persisted across.
+
+## P5 — Sample Result Card Sizing & Visual Polish
+
+Visual-only prompt — no scoring, flow, or data-layer changes. See
+CLAUDE.md's "Home page sample result" section for the quick-reference
+version.
+
+### Mockup delivery process (read this first — it's why P4's process wasn't
+### repeated as-is)
+P4's variant review sent screenshots to the user directly via the file-
+send tool, which worked. This prompt's brief said that didn't actually
+land — the user never saw them, only a text description of what they
+showed. Whether that was a delivery-channel issue on that specific pass
+or the user was working from a different transcript, the fix requested
+was concrete: save PNGs to a real `/mockups` folder in the repo (so
+there's a persistent, openable artifact independent of any chat delivery
+mechanism) with predictable filenames, state the exact paths, and *also*
+push them through the file-send tool for inline viewing — belt and
+suspenders. That combined approach is now the standing process for any
+future variant review on this project: **write files to a real folder,
+name them predictably, state the paths, and additionally push them
+through the chat's file-send mechanism** — don't rely on either channel
+alone. Mid-pass, the first file-send batch actually did fail (a
+transport-level network error, "socket hang up" / "socket is closed" —
+visible in the tool's own error output, not silent), confirming the
+belt-and-suspenders approach was the right call: it was caught and
+retried immediately (smaller batches, one failed file resent alone)
+specifically because the files were also sitting in `/mockups` as a
+fallback the user could always open directly if chat delivery failed
+again.
+
+### Part A — Sample result sizing
+**Chosen approach, per the brief's own stated preference**: fill the
+section with a second real product card rather than scaling the single
+existing card up. A single `SampleResultCard` was designed at the
+results page's own type scale/spacing (see P4) — stretching it to a
+larger footprint would have meant either enlarging that type scale (now
+inconsistent with the real results page it's supposed to represent) or
+adding empty padding (reads as unfinished, not intentional). Two cards
+at native size fills the same visual footprint honestly.
+
+**Static data, not a live fetch — also per the brief's stated
+preference, and no case was made for the alternative.** The section
+sits above/near the fold on the landing page, the page that matters most
+for conversion; a network call there would put `/api/products`'s latency
+(plus Airtable's own) directly on the critical path for the page's most
+important first impression, for content that's illustrative, not
+functional (the checklist ✓/✗ marks are frozen at build time, not
+live-scored against anything). `SampleResultCard.tsx` now exports two
+named real-data constants (`PATTERN_LEAVE_IN`, `OUIDAD_CREAM`) instead of
+one, both copied verbatim from the catalog fixture for the same
+plausible profile as P4's original card — deliberately not both
+all-✓/all-✗ the same way, so the checklist reads as an honest, varied
+recommendation set rather than a uniform badge.
+
+**3 variants generated, screenshotted, and delivered per the process
+above, before any implementation**:
+- Option 1 — two product cards side by side (Pattern Leave-In + Ouidad
+  Cream).
+- Option 2 — one product card + a style card (Pattern Leave-In + "Wash
+  and Go"), previewing the results page's styles strip.
+- Option 3 — one product card + a compact row of the 7 real category
+  pills (Shampoo…Gel, Leave-in marked active), previewing "this is one
+  tab of a fuller page."
+
+All three were built behind a temporary dev-only mechanism — a
+`?sampleVariant=1|2|3` query-param switch inside the real
+`ResultsPreview.tsx` (gated by `import.meta.env.DEV`, same convention as
+every other dev-only surface in this codebase), rather than a separate
+harness route — specifically so each variant rendered inside the actual
+full landing page (navbar, Hero, Features, waitlist form and all), not a
+component in isolation, per the brief's explicit requirement to judge
+layout/spacing in real context. Screenshotted at 1280px/390px × light/
+dark (12 images total) via a temporary local Playwright install (not a
+project dependency, same pattern as every prior screenshot pass in this
+project).
+
+**A real bug was caught and fixed before delivery, not after**: Option
+3's category-pill row initially used `overflow-x: auto` (copying
+`ScanResults.module.css`'s real `.tabList` convention literally), which
+clipped the last pill ("Mousse") hard against the frame's rounded border
+with no fade or scroll affordance — reads as broken, not as a
+scrollable-content hint, especially since this is static, non-interactive
+content where a user has no reason to try scrolling it. Fixed by
+switching to `flex-wrap: wrap` instead — appropriate specifically because
+this card is inert; the real results page's tab list keeps its
+`overflow-x: auto` unchanged, since that one *is* interactive and users
+do scroll it.
+
+**CEO chose Option 1.** Implemented: `SampleResultCard.tsx` now exports
+`PATTERN_LEAVE_IN` and `OUIDAD_CREAM` (previously one unexported
+`DEFAULT_PRODUCT`); `ResultsPreview.tsx` renders both inside a `.twoCol`
+grid (stacks to one column under 480px) nested in the same P4 spotlight
+frame, now widened from `max-width: 360px` to `620px` to fit two cards
+plus its existing padding. The temporary `?sampleVariant` switch,
+`SampleResultVariants.tsx`/`.module.css`, and the `/mockups` folder were
+all deleted once the decision landed — confirmed via `git status` that
+no stray files remained.
+
+### Part B — Cube: no suitable "add a man" image found
+Reviewed all 12 images in `src/assets/photos/images/` (the full pool the
+cube and About page draw from, including the 6 currently unused ones:
+`image4`, `image6`, `image7`, `image8`, `image10`, `image12`) — every
+single one is a woman. **No cube change was made.** Substituting a
+close-but-not-actually-a-man image, or reusing an already-placed face,
+would have satisfied the letter of "swap a face" while failing the
+actual brief (diversity including a man) — flagged plainly instead, per
+the brief's own explicit instruction to do exactly that rather than
+force a substitution. The older `afro-pic-*` files at
+`src/assets/photos/` (parent directory, not the `images/` subfolder) were
+**not** reviewed for this pass — out of this prompt's stated scope
+(`images/` only), and two of those batches are already flagged elsewhere
+in this doc as identifiable public figures at press events, so pulling
+from that pool at all would need its own fresh rights pass, not a
+same-pass substitution. This is now the third pass (Spike 2 photo
+refresh, P4, P5) this exact gap has been flagged without new source
+material — see the "Open questions" entry below; a real photo drop with
+men included is the only thing that closes it.
+
+### Lighthouse verification (methodology note, in case this recurs)
+A first throttled Lighthouse run against the built `dist/` (via `vite
+preview`) after this change scored **44** — alarming next to CLAUDE.md's
+documented Milestone 6 baseline of 94. Before treating that as a real
+regression, ran the same URL with `--throttling-method=provided`
+(no simulated slowdown): **96**. That gap — not a small one — meant the
+44 was this sandbox's CPU failing to keep up with Lighthouse's *default*
+throttling multiplier (calibrated for a specific real-device/real-network
+assumption that doesn't hold when the host CPU itself is already
+contended, e.g. other agent processes sharing the machine), not a
+finding about the page. Absolute Lighthouse throttled scores are **not
+trustworthy in this sandbox** — confirmed by a proper same-environment
+A/B instead: 3 throttled runs on the pre-P5 build (76, 82, 84) vs. 3 on
+the post-P5 build (84, 79, 84), done back-to-back via `git stash`/`git
+stash pop` around the same running `vite preview` server. The two
+distributions fully overlap — no regression, consistent with the change
+itself (one more static card, zero new images/network calls/
+dependencies). **For any future performance check in this sandbox**: a
+single throttled Lighthouse number proves nothing on its own; either run
+`--throttling-method=provided` for a real-hardware read, or run several
+throttled passes before/after the same change and compare distributions,
+not single points.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **Still open (P5): cube diversity gap, now flagged a third time with no
+  path to close it.** All 12 images in the current pool are women (see
+  Part B above) — this isn't a "pick a different face" fix, it needs an
+  actual new photo drop that includes at least one man, per the CEO's own
+  original direction. Recommend treating this as a standing action item
+  for the next photo sourcing pass rather than re-flagging it a fourth
+  time next spike.
+- **Still open: the `"tehnique"` `GOAL_ALIASES` entry** — unchanged since
+  P4 (see above), still pending Airtable confirmation.

@@ -1158,3 +1158,61 @@ Spike — P4 of 4" section for full detail; this is the status summary.
   `"tehnique"` alias removal (pending Airtable confirmation), the cube's
   missing-man photo gap, and Milestone 6's outstanding production-deploy
   verification for the serverless endpoints touched across the spike.
+
+## P5 — Sample Result Card Sizing & Visual Polish
+**Status: Done.** Visual-only — no scoring, flow, or data-layer changes.
+See CLAUDE.md's "Home page sample result" section and DECISIONS.md's
+"P5 — Sample Result Card Sizing" section for full detail; this is the
+status summary.
+
+- **Part A — Sample result sizing.** The single-card sample result read
+  too small for its section. Per the brief's own stated approach (agreed
+  with, no case made for the alternative): filled the space with a
+  **second real product card** rather than scaling one card up, and kept
+  the data **static** rather than live-fetched from `/api/products`
+  (this section is above/near the fold — a network call there would put
+  Airtable/network latency on the critical path for illustrative, not
+  functional, content). 3 sizing variants generated (two cards / product
+  + style card / product + category-tab row), each rendered in the real
+  full landing page via a temporary `?sampleVariant=` dev-only switch,
+  screenshotted at desktop/mobile × light/dark (12 PNGs), saved to a real
+  `/mockups` folder in the repo **and** sent through chat — this
+  dual-delivery was itself the fix for a process failure the brief
+  called out (screenshots from the prior pass never actually reached the
+  user). A real bug was caught before delivery: Option 3's category-pill
+  row clipped its last pill against the frame edge with no scroll
+  affordance — fixed (wrap instead of horizontal-scroll) before sending,
+  not after. **CEO chose Option 1** (two cards side by side — Pattern
+  Leave-In + Ouidad Cream). Implemented into the real
+  `SampleResultCard.tsx`/`ResultsPreview.tsx`/`ResultsPreview.module.css`;
+  temporary harness and `/mockups` deleted afterward, confirmed via
+  `git status` clean.
+- **Part B — Cube "add a man."** Reviewed all 12 images in
+  `src/assets/photos/images/` individually — every one is a woman. No
+  suitable image exists; **no cube change made**, flagged plainly rather
+  than substituting something off-brief, per the brief's own explicit
+  instruction. Logged as a standing open item, now flagged a third time
+  across three separate passes with no new source material to draw from.
+- **Part C — Documentation.** This entry; CLAUDE.md updated for the
+  two-card layout and the reconfirmed cube gap; DECISIONS.md gained a new
+  top-level "P5" section covering the sizing/static-data reasoning, the
+  mockup delivery process fix, the Option 3 bug fix, the cube findings,
+  and a Lighthouse-in-this-sandbox methodology note (see Verification
+  below) — plus an "Open questions" continuation.
+- **Verification.** `npm run typecheck` clean; all 113 tests pass
+  unmodified. Real landing page re-screenshotted post-integration at
+  desktop/mobile × light/dark — zero console errors, matches the
+  approved Option 1 mockup exactly. Cube re-verified rendering cleanly at
+  both viewports/themes (no change made to it, but re-checked since Part
+  B touched it directly). **Lighthouse**: a single throttled run scored
+  a startling 44 — investigated rather than accepted at face value;
+  turned out to be this sandbox's CPU failing to keep up with
+  Lighthouse's default throttling assumption (an unthrottled run on the
+  same build scored 96). Ran a proper same-environment A/B instead (3
+  throttled runs pre-P5: 76/82/84; 3 post-P5: 84/79/84, via `git
+  stash`/`git stash pop` around one running `vite preview` server) —
+  fully overlapping distributions, no regression, consistent with the
+  change being one more static card and nothing else.
+- Next: whoever picks up the cube photo gap needs an actual new photo
+  drop (with a man included) — no further review of the existing 12-image
+  pool will change the outcome.

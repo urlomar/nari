@@ -1372,7 +1372,11 @@ file again.
   call. **Known gap**: none of the current 12 images include a man, though
   Nya's direction asked for a mix that does — flagged, not fixed. Still
   unresolved as of P4 of 4 (re-confirmed during the image6->image5 swap
-  above) — worth prioritizing in the next photo drop.
+  above) — worth prioritizing in the next photo drop. **Re-confirmed a
+  third time in P5** (explicitly tasked with finding a man image for the
+  cube): all 12 images in this pool reviewed individually, all 12 are
+  women, no swap made — this needs a genuinely new photo drop, not
+  another look at the existing pool.
 - **Curl mark changed** (cube-only — `Logo.tsx`/the navbar-footer wordmark
   are untouched). `CURL_PATH_2D` is now a self-intersecting limaçon
   (`r = b + a·cos θ`, `a > b`) rather than the original tight logarithmic
@@ -1478,31 +1482,59 @@ tailor support towards your biggest frustrations and goals!" — a verbatim
 CEO-provided replacement, no other About page copy touched in this pass.
 
 ### Home page sample result (`src/components/SampleResultCard.tsx` +
-`ResultsPreview.tsx`, Final Spike, P4 of 4, Part E)
-The landing page's "Sample result" card (in the `ResultsPreview` section,
-just above the waitlist form) is a **static mock of a real recommendation
-card** — real catalog data (Pattern Leave-In, Pattern Beauty, $29,
-Leave-in) with a plausible, honestly-mixed ✓/✗ match checklist (✓
-porosity, ✓ curl type, ✓ Black-owned, ✗ over budget), replacing an older
-mock that showed a fake "3C" curl-pattern label and three invented
-product bullets with no match indicators at all — the results page's
-actual differentiator (the checklist, see Spike B Part C) was invisible
-in the old version.
-- **`SampleResultCard.tsx`/`.module.css`** deliberately duplicate
+`ResultsPreview.tsx`, Final Spike, P4 of 4, Part E; widened in P5, Part A)
+The landing page's "Sample result" section (in the `ResultsPreview`
+section, just above the waitlist form) shows **two static mocks of real
+recommendation cards side by side** — `SampleResultCard.tsx` exports two
+named real-catalog products, `PATTERN_LEAVE_IN` (Pattern Beauty, $29,
+Leave-in) and `OUIDAD_CREAM` (Ouidad, $26, Cream), each with its own
+plausible, honestly-mixed ✓/✗ checklist and deliberately *not* the same
+mix on both cards (3✓/1✗ and 2✓/2✗) — a uniform four-checkmarks-on-every-
+card would read as invented rather than a real recommendation set. This
+replaced P4's original single-card version, which itself replaced an even
+older mock with a fake "3C" curl-pattern label and no match indicators at
+all — see DECISIONS.md's "P5 — Sample Result Card Sizing" for the sizing
+rationale (fill with more real content at native size, not one card
+stretched past its designed scale) and the static-vs-live-fetch call
+(static wins — this section is above/near the fold, and a live
+`/api/products` call there would put Airtable/network latency on the
+critical path for content that's illustrative, not functional).
+- **`SampleResultCard.tsx`** takes a `product` prop
+  (`SampleProductData` — category/name/brand/price/checklist), defaulting
+  to `PATTERN_LEAVE_IN`, so both cards render through the exact same
+  component. Its `.module.css` deliberately duplicates
   `ScanResults.module.css`'s `.productCard`/`.checklist*`/etc. rules
   verbatim (same tokens, same values) rather than importing across the
   component/page boundary — "reuse existing ProductCard conventions"
   means visually identical, not a shared CSS module coupling an unrelated
   marketing component to a results-page stylesheet.
-- **Frame**: `ResultsPreview.module.css`'s `.spotlightFrame`/
-  `.ribbonBadge` — a soft `color-mix()`-tinted panel around the card with
-  a gradient-filled ribbon badge (`--gradient-accent-solid`, the same
-  fill every other button/pill on the site uses), picked by the CEO from
-  3 generated options (direct card / context-strip / spotlight frame) —
-  screenshotted at desktop+mobile × light+dark and sent for approval
-  before implementation, per the same process as the P3 styles-strip
-  layout decision. See DECISIONS.md's "Final Spike — P4 of 4" section for
-  the other two options and the full reasoning.
+- **Frame**: `ResultsPreview.module.css`'s `.spotlightFrame`
+  (`max-width: 620px` as of P5, was `360px` for one card) /
+  `.ribbonBadge` — a soft `color-mix()`-tinted panel with a gradient-
+  filled ribbon badge (`--gradient-accent-solid`, the same fill every
+  other button/pill on the site uses) — plus a new `.twoCol` grid
+  (stacks to one column under 480px) holding the two cards. The frame/
+  badge treatment itself was picked by the CEO in P4 from 3 options
+  (direct card / context-strip / spotlight frame); the two-card layout
+  was picked in P5 from 3 sizing options (two cards / product+style /
+  product+category-tabs) — both rounds screenshotted at desktop+mobile ×
+  light+dark and sent for approval before implementation. See
+  DECISIONS.md's "Final Spike — P4 of 4" and "P5 — Sample Result Card
+  Sizing" sections for the other options and full reasoning each round.
+- **Mockup process (P5)**: when generating visual options for user
+  review on this project, save PNGs to a real `/mockups` folder in the
+  repo with predictable filenames AND push them through the chat's file-
+  send mechanism — don't rely on chat delivery alone (it failed silently
+  from the user's side once mid-pass; the `/mockups` files were the
+  fallback). Delete `/mockups` and any temporary harness once a variant
+  is chosen and implemented.
 - Static only — no interactivity, no live scoring call. Don't wire this
   to `getRecommendations()` or make it clickable; it's marketing, not a
   functional preview.
+- **Lighthouse in this sandbox**: a single throttled Lighthouse run can
+  swing wildly (seen: 44 on one run of an unchanged-in-substance page)
+  purely from host CPU contention — Lighthouse's default throttling
+  multiplier assumes real, uncontended hardware. Don't trust one number;
+  either run `--throttling-method=provided` for a real-hardware read, or
+  run several throttled passes before/after and compare distributions.
+  See DECISIONS.md's "P5" section for the full methodology.
