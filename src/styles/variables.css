@@ -49,6 +49,14 @@
     var(--color-accent-blue) 100%
   );
 
+  /* Shimmer highlight (results page heading) — a translucent tint of the
+   * existing accent-blue token, used to paint a soft moving band over
+   * --gradient-accent-clipped text. Blue against the purple/pink base reads
+   * as a light sweep rather than a hue swap. Dark mode needs a higher mix
+   * percentage than light mode for the same perceived contrast, verified
+   * with real screenshots — not assumed to be symmetric. */
+  --shimmer-highlight: color-mix(in srgb, var(--color-accent-blue) 45%, transparent);
+
   /* Two-layer shadow system — a tight, low-opacity dark shadow close to
    * the element (contact/grounding) plus a larger, softer, brand-tinted
    * ambient shadow further out (the "glow"). Every shadow in the app is
@@ -195,4 +203,8 @@
    * radius on a dark shadow. */
   --shadow-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 24px rgba(192, 132, 252, 0.14);
   --shadow-glow: 0 0 1px rgba(0, 0, 0, 0.6), 0 0 32px rgba(192, 132, 252, 0.45), 0 0 64px rgba(244, 114, 182, 0.3);
+
+  /* Higher mix % than light mode — the same percentage read visibly dimmer
+   * against the lighter dark-mode gradient stops when screenshotted. */
+  --shimmer-highlight: color-mix(in srgb, var(--color-accent-blue) 65%, transparent);
 }

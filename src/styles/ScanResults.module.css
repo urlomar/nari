@@ -34,10 +34,49 @@
   font-size: clamp(32px, 8vw, var(--text-5xl));
   line-height: var(--leading-tight);
   letter-spacing: -0.02em;
-  background: var(--gradient-accent);
+  /* Two background layers: a soft shimmer band (transparent on both sides,
+     --shimmer-highlight at its peak) on top of the static brand gradient
+     underneath. Both are clipped to the text glyphs together. The shimmer
+     layer is oversized (250% width) so animating its background-position
+     sweeps the band across the text; the base layer's position never
+     moves. See .heading's animation below for the sweep/pause timing. */
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 35%,
+      var(--shimmer-highlight) 50%,
+      transparent 65%,
+      transparent 100%
+    ),
+    var(--gradient-accent);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 0% 0, 0% 0;
+  background-repeat: no-repeat, no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Right-to-left sweep, ~4s travel + ~3s stillness (7s cycle) — slow and
+   low-contrast on purpose, so it reads as an occasional shimmer rather
+   than a loading skeleton. Only background-position animates. */
+@media (prefers-reduced-motion: no-preference) {
+  .heading {
+    animation: heading-shimmer 7000ms ease-in-out infinite;
+  }
+}
+
+@keyframes heading-shimmer {
+  0% {
+    background-position: 0% 0, 0% 0;
+  }
+  57.14% {
+    background-position: 100% 0, 0% 0;
+  }
+  100% {
+    background-position: 100% 0, 0% 0;
+  }
 }
 
 .body {
