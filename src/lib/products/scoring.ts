@@ -168,7 +168,37 @@ export interface ScoredRecommendationSet {
   journey: string;
 }
 
-export const CATEGORIES = ["Shampoo", "Conditioner", "Leave-in", "Cream", "Mousse", "Oil/Sealant"] as const;
+const STYLE_CATEGORY = "Style";
+
+/**
+ * Known product categories, in the order they should render — everything
+ * else (a category Nya adds in Airtable that isn't in this list yet, the
+ * way "Gel" briefly was — see CLAUDE.md's "Gel category") still appears,
+ * just appended alphabetically after these, rather than being silently
+ * invisible. This is a display-order hint, not the source of truth for
+ * which categories exist — see `deriveCategories` below.
+ */
+const KNOWN_CATEGORY_ORDER = ["Shampoo", "Conditioner", "Leave-in", "Cream", "Mousse", "Oil/Sealant", "Gel"] as const;
+
+/**
+ * The actual list of product categories to render, derived from whatever
+ * the catalog contains rather than hardcoded — this is the fix for the
+ * bug that made "Gel" (8 real products) invisible on the results page: a
+ * hardcoded category list silently drops any category Nya adds until a
+ * developer notices and updates it by hand. "Style" rows are excluded —
+ * they render separately (see the Styles section below), never as a
+ * product-category tab. Derived from the full, unfiltered catalog (not
+ * Stage 1's survivors) so a category isn't hidden just because every one
+ * of its products got excluded by sensitivities for this particular user
+ * — it should still show up with an honest "0" badge, same as today's
+ * Mousse/Oil-Sealant-for-a-protein-sensitive-user case.
+ */
+export function deriveCategories(catalog: Product[]): string[] {
+  const present = new Set(catalog.map((p) => p.category).filter((c) => c !== STYLE_CATEGORY));
+  const known = KNOWN_CATEGORY_ORDER.filter((c) => present.has(c));
+  const extra = [...present].filter((c) => !(KNOWN_CATEGORY_ORDER as readonly string[]).includes(c)).sort();
+  return [...known, ...extra];
+}
 
 // ---------------------------------------------------------------------------
 // Weights — the priority ranking. Expected to be tuned; this is the only
@@ -730,12 +760,10 @@ export function debugScoreCategory(category: string, catalog: Product[], answers
 // ingredient flags, so none of Stage 1's hard filters or Stage 2's
 // porosity/density/curlType/budget/black-owned scoring applies to them —
 // they're scored on goals and frustrations only, and NOT filtered by
-// CATEGORIES' per-category loop above (CATEGORIES only lists the 6 real
-// product categories, so styles never entered that loop and don't need to
-// be excluded from it).
+// deriveCategories' per-category loop above (deriveCategories excludes
+// STYLE_CATEGORY, so styles never enter that loop and don't need to be
+// excluded from it there).
 // ---------------------------------------------------------------------------
-
-const STYLE_CATEGORY = "Style";
 
 export interface RecommendedStyle {
   product: Product;
@@ -811,7 +839,7 @@ export function debugScoreStyles(catalog: Product[], answers: DiagnosticAnswers)
 export function scoreProducts(answers: DiagnosticAnswers, catalog: Product[]): ScoredRecommendationSet {
   const { survivors, unenforcedSensitivities } = applyHardFilters(catalog, answers.sensitivities);
 
-  const categories = CATEGORIES.map((category) => buildCategoryRecommendation(category, survivors, answers));
+  const categories = deriveCategories(catalog).map((category) => buildCategoryRecommendation(category, survivors, answers));
   // Styles score from the full, unfiltered catalog — no sensitivity data
   // exists on style rows for Stage 1 to have meaningfully filtered anyway.
   const styles = buildStyleRecommendations(catalog, answers);

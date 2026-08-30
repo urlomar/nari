@@ -1734,3 +1734,237 @@ assertions, not just visual inspection:
   and both viewports — the flow-level changes in this prompt don't touch
   scoring or the results page, and this confirms they didn't
   inadvertently break the handoff into either.
+
+## Final Spike — Results Page Styles & Categories (P3 of 4)
+
+Results page only — no flow or scoring-priority changes (those were P1/
+P2). See CLAUDE.md's "Product Data Pipeline," "Product Scoring," and
+"Results page" sections for the file-by-file breakdown; this is the
+reasoning.
+
+**Category list is now derived from the catalog, not hardcoded — this is
+the actual fix, not just adding "Gel" to a list.**
+`scoring.ts`'s `CATEGORIES` const (the original hardcoded 6-category
+array) is gone, replaced by `deriveCategories(catalog)`: it takes
+whatever product categories are actually present in the catalog
+(excluding `"Style"`, which still renders separately), orders the known
+ones per a `KNOWN_CATEGORY_ORDER` display-order hint, and appends
+anything unrecognized alphabetically after. "Gel" (8 real products) was
+invisible on the results page for the same reason it would have stayed
+invisible the next time Nya adds a category: the tab list was a
+hardcoded array a developer has to remember to update by hand. Patching
+in `"Gel"` as a 7th literal would have fixed today's symptom and left the
+exact same landmine for whatever category she adds next — the brief
+explicitly asked to fix the cause, not the symptom, so this went with
+the derived-list approach instead.
+- **Derives from the full catalog, not Stage 1's hard-filter survivors.**
+  A category shouldn't disappear just because every one of its products
+  got excluded by a user's sensitivities for this one request — it
+  should still show up with an honest "0" badge, same as today's
+  Mousse/Oil-Sealant-for-a-protein-sensitive-user case (see the "Open
+  questions" entry on that from the scoring-reorder pass). Deriving from
+  `survivors` instead would have made that case indistinguishable from
+  "this category doesn't exist," which is a worse, more confusing
+  failure mode than an honest empty tab.
+- **`ScoringDebug.tsx` updated to match** — its category-table loop and
+  the `CategoryTable` prop type both used the old `CATEGORIES` export
+  directly; both now call `deriveCategories(catalog)` against whichever
+  catalog the debug view actually loaded, so it can never show a
+  different category list than the real results page would for the same
+  data.
+- **Test fixed, not papered over**: `toDiagnosticAnswers.test.ts`'s
+  contract test asserted `result.categories` has length 6 — a leftover
+  from the hardcoded list. Updated to 7 with a comment explaining why,
+  rather than loosening the assertion to "some length" — the real
+  catalog fixture has exactly 7 non-Style categories today, and the test
+  should still fail loudly if that count ever silently drifts again.
+
+**Styles strip: card-row layout, chosen from 3 generated options.**
+The brief asked for 2-3 visual treatments, screenshotted in both themes
+and both viewports, before picking one — same process as the logo curl
+mark (Spike 2). Built via a temporary dev-only harness
+(`/dev/styles-strip-variants`, deleted after the decision — see the
+process note below) rendering all 3 side by side with real fixture
+content (Wash and Go, which has notes; Twist/Braid Out & Rod Set, which
+doesn't):
+1. **Card row** — two style cards using the exact same hairline-border +
+   `--shadow-elevation-1` + hover-lift convention as product cards, with
+   a small "STYLE" eyebrow badge standing in for a category badge.
+2. **Tinted feature panel** — a single `--color-accent-tint-2`-background
+   container holding both cards, with its own heading, reading as a
+   visually distinct "bonus" section.
+3. **Compact list rows** — no card chrome at all, just text separated by
+   a hairline divider; the lightest-weight, most clearly-secondary
+   option.
+
+**Chosen: Card row (Variant 1).** The CEO picked it directly from the
+screenshots. It's also the option requiring the least new visual
+vocabulary — reusing the identical card shadow/border/hover pattern
+`ProductCard` already uses means the strip reads as native to the page
+rather than a bolted-on section, which was the brief's own framing for
+how this should feel ("products remain the main event, styles are a
+complementary addition" — visually similar card language, distinct badge
+and no brand/price/buy-link, rather than a whole different container
+style).
+- **Placement**: below the full product-tabs block (tab list + active
+  category's panel), above the privacy line and email capture — never
+  another tab, never above the products, per the brief. It renders once
+  per page, not once per active category, since it's not tied to which
+  product tab is open.
+- **Renders nothing when there are 0 styles** (not an empty-state
+  message). Unlike a product category — a fixed slot the tab list always
+  shows — "styles worth trying" isn't a slot users expect to always see,
+  so an empty section reads as more broken than an absent one would.
+  Verified via a dedicated render test (`ScanResults.test.tsx`) asserting
+  the "Styles worth trying" eyebrow is absent both when `styles: []` and
+  when the field is missing entirely (the pre-existing backward-
+  compatibility case for an older cached history entry).
+- **1-style case**: the grid (`repeat(auto-fit, minmax(240px, 1fr))`,
+  same sizing formula as `.productGrid`) naturally collapses to one card
+  at whatever width fits rather than stretching to fill the row — no
+  special-case code needed, confirmed in both the variant-review
+  screenshots and a real render test.
+- **"Keep in mind" only when `notes` exists** — no heading left hanging
+  for the 2 live styles that have none (Twist/Braid Out & Rod Set,
+  Twist/Natural Cornrow & Protective). Confirmed both in a render test
+  (asserts the "Keep in mind" text is absent from that specific card's
+  `<li>`, not just absent from the page) and in the full-page screenshots
+  below, where the no-notes card visibly ends right after its match line
+  with no dangling label.
+- **Match line is new UI-only code, not a scoring.ts addition** —
+  `buildStyleMatchLine()` in `ScanResults.tsx`, sitting next to
+  `humanizeMatchReason`/`buildWhyText` (the equivalent product-card
+  humanizer) and reusing the same `getOptionLabel()` lookup so a style's
+  match line quotes Nya's actual quiz option copy ("your deep moisture
+  goal," not the raw catalog tag "moisture") the same way a product
+  card's "why we picked this" text does. It reads
+  `scoreStyle`'s already-computed `matchReasons` strings — no new
+  scoring logic, no new export from `scoring.ts`. Phrased as one sentence
+  covering both goals and frustrations (per the brief's own example
+  phrasing), rather than reusing `humanizeMatchReason`'s per-reason list-
+  and-join approach — a style card only ever has two dimensions to
+  report (goals, frustrations), so the more general five-dimension
+  humanizer would be doing unneeded work for a simpler case.
+- **`notes` is display-only, confirmed not wired into scoring anywhere
+  new.** This was already true of `scoreStyle` before this pass (see the
+  "Styles" section of CLAUDE.md and this file's own Final Spike Part C
+  entry above) — this pass didn't touch `scoring.ts`'s styles logic at
+  all, only added a UI consumer of the same `notes` field
+  `ScanResults.tsx` already reads for products' nonexistent equivalent
+  (products have no notes field surfaced on their cards today). Re-
+  confirmed by reading `scoreStyle` fresh rather than assuming the prior
+  entry still describes current code.
+- **Process note**: the variant-review harness
+  (`src/pages/dev/StylesStripVariants.tsx` + its CSS module + a
+  `/dev/styles-strip-variants` route) was deleted immediately after the
+  CEO's pick was captured — it was scaffolding for the decision, not a
+  permanent tool like `/debug/scoring` or `/debug/products`, so keeping
+  it around would just be dead code with no future reader.
+
+**Curl-type checklist honesty (Part D) — verified, not changed.**
+Curl type stopped being a hard eligibility requirement back in the P1
+scoring-reorder pass (see this file's "Scoring reorder" / "Curl type
+demoted to a pure weight" entries) — that change already shipped before
+this prompt started. This prompt's job was narrower: confirm the results
+page's existing match checklist (`buildMatchChecklist`, Spike B) still
+reads sensibly now that a product can be an otherwise-excellent pick
+while failing curl type outright, rather than never reaching the results
+page at all.
+- **Verified live** against a crafted "2b" profile — the catalog has zero
+  products tagged `2b` (a real, pre-existing gap, not something this pass
+  introduced), so every single top pick in every category shows
+  "✗ not your curl type." Screenshotted directly (see below): each card
+  still shows "✓ your porosity" alongside the curl-type ✗, and the
+  checklist's existing matches-first sort (Spike B) keeps the ✓ visible
+  first. Reads as "a good match with one known gap," not as a broken
+  card — the same honest-✗ pattern the checklist already uses for an
+  over-budget or non-Black-owned product, just on a dimension that can
+  now appear on a top-3 pick where it couldn't before this year's
+  scoring changes.
+- **No code change was needed or made here** — `buildMatchChecklist`
+  already includes a `curlType` row whenever the user gave a non-empty
+  curl-type answer, matched or not, with no special-casing for whether
+  curl type happened to be a hard filter at scoring time. The checklist
+  was already dimension-agnostic in exactly the way that made this
+  verification a non-event rather than a fix.
+
+**Typo alias (Part A) — dual-spelling workaround, explicitly temporary.**
+All 5 live "Style" rows' `"Best For Goals"` column has "tehnique"
+(missing the 'c') where the quiz only ever emits `"technique"` — a
+straightforward Airtable data-entry typo, not a code bug. The CEO is
+correcting it directly in Airtable, but the timing wasn't known at the
+time of this pass, so `api/_lib/schema.ts`'s `GOAL_ALIASES` table now
+maps both `"tehnique"` and `"technique"` to `"technique"` — the
+misspelling works today, and the correct spelling will keep working the
+moment she fixes it, with zero code change or deploy-timing dependency
+either way.
+- **`GOAL_ALIASES["technique"] = "technique"` is a no-op today** (a value
+  that already equals its own lowercased key never needed aliasing) but
+  is included anyway so the table's intent — "both spellings normalize to
+  the same catalog tag" — is legible from reading the table alone,
+  without having to reason through what happens once she edits the base.
+- **Fixture patched to match**: the checked-in catalog fixture
+  (`__fixtures__/catalog.json`) had 5 literal `"tehnique"` occurrences
+  (one per Style row) predating this fix. Since the fixture is meant to
+  represent already-normalized data (the same shape `normalizeProduct`
+  produces from a live fetch), and the alias table now guarantees that
+  transform for any future live pull, the 5 occurrences were replaced
+  with `"technique"` directly in the fixture — a deterministic, hand-
+  applied correction matching exactly what normalization now does, not a
+  live Airtable re-pull (this sandbox's env files are dotless — see the
+  top of CLAUDE.md).
+- **Open question, logged below**: remove the `"tehnique"` line (and
+  optionally the now-fully-redundant `"technique"` line) once the CEO
+  confirms the Airtable correction is live — leaving it in has no
+  downside beyond a small amount of dead-if-fixed code, but it shouldn't
+  linger indefinitely once it's no longer needed.
+
+**Verification.** All 113 tests pass (109 pre-existing + a new 4-test
+`describe` block in `ScanResults.test.tsx` covering the styles strip's
+2-style, 1-style, 0-style, and styles-field-absent cases).
+`npm run typecheck` clean. Full results page driven end to end via a
+temporary local Playwright install (same not-a-project-dependency
+pattern as every prior spike) against a temporary dev-only harness route
+that ran the real `scoreProducts()` against the checked-in catalog
+fixture and navigated into the real `ScanResults` component with real
+router state — not a mock, and not the variant-review harness above
+(deleted separately, before this run) — across desktop (1280px) and
+mobile (390px), light and dark, for two profiles:
+- A "Demanding" profile (4C/high-porosity/protein-sensitive/under-$10):
+  Gel tab renders with a real "3" badge and 3 real products, confirming
+  the category-derivation fix end to end, not just in scoring.ts's unit
+  tests. Styles strip shows 2 real styles, one with a "Keep in mind" line
+  and one without, confirming the no-orphan-heading behavior in the
+  actual rendered page, not just the render test.
+- A "2b" curl-type profile: every product on every tab shows the
+  ✗-curl-type / ✓-porosity pattern described above.
+Zero console/page errors in any of the 8 screenshot passes (2 profiles ×
+2 viewports × 2 themes). Both harness routes and their router.tsx
+entries were deleted after their respective screenshots were captured —
+confirmed via `git status`/`git diff` that `router.tsx` ended the pass
+byte-identical to how it started.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **Resolved (P3): the `"tehnique"` goals typo.** Previously flagged as
+  "worth a quick confirmation with the CEO" on whether to alias it or
+  fix it in Airtable directly — she's doing the latter, timing unknown,
+  so P3 added the dual-spelling `GOAL_ALIASES` workaround (see above)
+  rather than waiting. **New, follow-up open item**: once she confirms
+  the Airtable correction is live, remove the `"tehnique"` line (and
+  optionally `"technique"`, which is a no-op once `"tehnique"` is gone)
+  from `GOAL_ALIASES` in `api/_lib/schema.ts` — it's harmless to leave,
+  but shouldn't linger indefinitely as dead-once-fixed code.
+- **Resolved (P3): the two notes-less style rows.** Previously flagged as
+  "P3 will have nothing to show" for "Twist/Braid Out & Rod Set" and
+  "Twist/Natural Cornrow & Protective." The styles strip now simply omits
+  the "Keep in mind" line for a style with no `notes` rather than showing
+  an empty or hanging heading — no Airtable change needed on the CEO's
+  end, this was purely a rendering decision.
+- **New (P3): the live catalog's real 2b curl-type gap (zero products
+  tagged `2b`) is still just as real as it was before this pass** — this
+  prompt only confirmed the results page handles it honestly (an honest
+  ✗ next to real ✓'s), not that the gap itself is closed. Same category
+  of open item as the pre-existing 2A/2B/2C gap noted in the P1 scoring-
+  reorder pass; no new action needed unless the CEO wants curl-type
+  coverage prioritized in future catalog additions.

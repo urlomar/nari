@@ -1025,3 +1025,73 @@ Screen (P2 of 4)" for full detail; this is the status summary.
 - Next: P3 (results page) and P4 (content/copy edits — cube image, quiz
   density wording, About page, em dash removal elsewhere, home page
   sample result).
+
+## Final Spike — Results Page Styles & Categories (P3 of 4)
+**Status: Done.** Results page only — no flow or scoring-priority
+changes (those were P1/P2). See CLAUDE.md's "Product Scoring" and
+"Results page" sections and DECISIONS.md's "Final Spike — Results Page
+Styles & Categories (P3 of 4)" for full detail; this is the status
+summary.
+
+- **Part A — Typo alias.** `api/_lib/schema.ts`'s `GOAL_ALIASES` now
+  maps both `"tehnique"` (the live Airtable typo on all 5 Style rows) and
+  `"technique"` to `"technique"`, so the goal matches today and keeps
+  matching once the CEO corrects the spelling in Airtable — no deploy-
+  timing dependency either way. Flagged as temporary in both the code
+  comment and DECISIONS.md's open questions; the checked-in catalog
+  fixture was hand-patched to reflect the same normalization.
+- **Part B — Gel category, fixed at the root.** `scoring.ts`'s hardcoded
+  `CATEGORIES` const is gone, replaced by `deriveCategories(catalog)`:
+  categories are now whatever the catalog actually contains (minus
+  "Style"), ordered per a known-category display-order hint with
+  anything unrecognized appended alphabetically after. This is why "Gel"
+  (8 real products) was invisible before — a hardcoded list silently
+  drops any category Nya adds until a developer notices — and why the
+  fix is category-agnostic going forward, not just "Gel" added as a 7th
+  literal. `ScoringDebug.tsx` updated to call the same function against
+  its own loaded catalog, so the debug view and the real results page
+  can never show different category lists for the same data.
+- **Part C — Styles strip.** Renders the top 2 styles as a card row below
+  the product tabs (never another tab, never above the products) —
+  `StylesStrip`/`buildStyleMatchLine` in `ScanResults.tsx`, new
+  `.stylesSection`/`.styleCard`/etc. rules in `ScanResults.module.css`.
+  Layout picked by the CEO from 3 generated options (card row / tinted
+  panel / compact list rows), screenshotted at desktop/mobile ×
+  light/dark via a temporary dev-only harness (deleted after the
+  decision) — she chose the card row, which reuses `ProductCard`'s exact
+  hairline-border/shadow/hover-lift convention. Renders nothing at all
+  (not an empty-state message) when there are 0 styles; the "Keep in
+  mind" notes line is omitted entirely, no orphaned heading, for the 2
+  live styles that have none. Match line is UI-only (`ScanResults.tsx`),
+  reusing `scoreStyle`'s existing `matchReasons` — no new `scoring.ts`
+  exports, and `notes` remains display-only, never read for ranking.
+- **Part D — Product card match text.** Verified, not changed: confirmed
+  live (crafted "2b" profile, a curl type with zero tagged catalog
+  products) that a product can show an honest "✗ not your curl type"
+  next to a real "✓ your porosity" without reading as broken, now that
+  curl type is a pure weight rather than a hard requirement (P1).
+  `buildMatchChecklist` needed no change — it was already dimension-
+  agnostic to whether a dimension happened to be a hard filter.
+- **Part E — Documentation.** CLAUDE.md's "Product Data Pipeline" gained
+  a note on category derivation; DECISIONS.md gained a new top-level
+  section for this prompt's reasoning plus a continuation of "Open
+  questions" resolving two previously-flagged items (the typo, the
+  notes-less styles) and logging one new one (remove the dual-spelling
+  alias once Airtable is confirmed fixed); this PLAN.md entry is the
+  third leg.
+- **Verification.** `npm run typecheck` clean; all 113 tests pass (109
+  pre-existing + a new 4-test block in `ScanResults.test.tsx` covering
+  the styles strip's 2/1/0-style and styles-field-absent cases). Full
+  results page driven end to end via a temporary local Playwright
+  install (not a project dependency, removed after) against a temporary
+  harness that ran the real `scoreProducts()` against the checked-in
+  catalog fixture and navigated into the real `ScanResults` component
+  with real router state — across desktop/mobile × light/dark for a
+  "Demanding" profile (Gel tab populated with a real "3" badge; styles
+  strip showing one style with notes and one without) and a "2b"
+  curl-mismatch profile (Part D's check). Zero console/page errors in
+  any of the 8 screenshot passes; the harness and its router.tsx entry
+  were deleted afterward, confirmed via `git diff` that `router.tsx`
+  ended byte-identical to how it started.
+- Next: P4 (content/copy edits — cube image, quiz density wording, About
+  page, em dash removal elsewhere, home page sample result).

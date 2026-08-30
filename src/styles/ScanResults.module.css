@@ -237,6 +237,87 @@
   text-underline-offset: 3px;
 }
 
+/* --- Styles strip (Final Spike, P3 of 4, Part C) --- */
+
+.stylesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.stylesEyebrow {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.stylesGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+
+.styleCard {
+  border-radius: var(--radius-card);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-elevation-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.styleCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+.styleBadge {
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-accent-tint-1);
+}
+
+.styleName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
+.styleMatchLine {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.styleNotes {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.styleNotesLabel {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 /* --- Match checklist (Spike B, Part C) --- */
 
 .checklist {

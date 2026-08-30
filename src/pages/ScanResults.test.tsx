@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ScanResults from "./ScanResults";
-import type { DiagnosticAnswers, ScoredRecommendationSet } from "@/lib/products/scoring";
+import type { DiagnosticAnswers, RecommendedStyle, ScoredRecommendationSet } from "@/lib/products/scoring";
 import type { Product } from "../../api/_lib/schema";
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -84,6 +84,32 @@ const answers: DiagnosticAnswers = {
   budgetMax: null,
   blackOwnedPref: "no_pref",
   journey: "test",
+};
+
+const styleWithNotes: RecommendedStyle = {
+  product: makeProduct({
+    id: "style1",
+    name: "Wash and Go",
+    category: "Style",
+    notes: "Not as healthy as a protective style, but great for letting hair breathe.",
+    goals: ["moisture"],
+    frustrations: ["dryness"],
+  }),
+  score: 40,
+  matchReasons: ["goal: moisture", "frustration #1: dryness"],
+};
+
+const styleWithoutNotes: RecommendedStyle = {
+  product: makeProduct({
+    id: "style2",
+    name: "Twist/Braid Out & Rod Set",
+    category: "Style",
+    notes: undefined,
+    goals: ["volume"],
+    frustrations: [],
+  }),
+  score: 26,
+  matchReasons: ["goal: volume"],
 };
 
 function renderResults(state: unknown) {
@@ -172,5 +198,38 @@ describe("ScanResults — all categories empty", () => {
   it("does not show the all-empty banner when at least one category has picks", () => {
     renderResults({ recommendations, answers });
     expect(screen.queryByText(/very specific/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanResults — styles strip (Final Spike, P3 of 4, Part C)", () => {
+  it("renders 2 styles with a match line each, and only shows 'Keep in mind' for the one with notes", () => {
+    renderResults({
+      recommendations: { ...recommendations, styles: [styleWithNotes, styleWithoutNotes] },
+      answers,
+    });
+
+    expect(screen.getByText("Wash and Go")).toBeInTheDocument();
+    expect(screen.getByText(/matches your deep moisture goal and helps with constant dryness/i)).toBeInTheDocument();
+    expect(screen.getByText(/keep in mind/i)).toBeInTheDocument();
+
+    expect(screen.getByText("Twist/Braid Out & Rod Set")).toBeInTheDocument();
+    const noNotesCard = screen.getByText("Twist/Braid Out & Rod Set").closest("li")!;
+    expect(within(noNotesCard).queryByText(/keep in mind/i)).not.toBeInTheDocument();
+  });
+
+  it("renders cleanly with just 1 style", () => {
+    renderResults({ recommendations: { ...recommendations, styles: [styleWithNotes] }, answers });
+    expect(screen.getByText("Wash and Go")).toBeInTheDocument();
+    expect(screen.queryByText("Twist/Braid Out & Rod Set")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing at all — not an empty state — when there are 0 styles", () => {
+    renderResults({ recommendations: { ...recommendations, styles: [] }, answers });
+    expect(screen.queryByText(/styles worth trying/i)).not.toBeInTheDocument();
+  });
+
+  it("also renders nothing when styles is entirely absent (older cached history entry)", () => {
+    renderResults({ recommendations, answers });
+    expect(screen.queryByText(/styles worth trying/i)).not.toBeInTheDocument();
   });
 });

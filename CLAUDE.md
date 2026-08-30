@@ -213,8 +213,10 @@ build the quiz↔catalog matching against real data rather than assumption
 (updated 2026-08-29 — see the fixes-pass note below for `Gel`/`Style`,
 both new since this list was first written):
 - `category`: `Conditioner`, `Cream`, `Gel`, `Leave-in`, `Mousse`,
-  `Oil/Sealant`, `Shampoo`, `Style` (`Gel` and `Style` are not in
-  `scoring.ts`'s `CATEGORIES` — see below)
+  `Oil/Sealant`, `Shampoo`, `Style` (as of Final Spike P3, all 7 non-Style
+  categories render as tabs via `scoring.ts`'s `deriveCategories` — see
+  "Product Scoring"'s "Category order" section below; `Style` renders
+  separately, never as a tab)
 - `hairTypes`: `3a`, `3b`, `3c`, `4a`, `4b`, `4c` (no 1A-2C rows exist yet;
   the schema doesn't restrict to only these, so new rows in other types
   will flow through fine)
@@ -284,17 +286,22 @@ unnoticed. `src/lib/products/schema.ts`'s `ProductsMetaSchema` (the
 client-side shape check) was updated to match, so `/debug/products` shows
 the new field too.
 
-**Found but NOT fixed, flagged for a follow-up decision**: the live
-catalog now has a `Category: "Gel"` — 8 real products — that CLAUDE.md
-previously documented as never having appeared in real data. `scoring.ts`'s
-`CATEGORIES` const doesn't include `"Gel"`, so **these 8 products are
-fully invisible on the results page today** (never scored, never shown, in
-any tab) — normalization now includes them in the catalog fine, but the
-per-category recommendation loop simply never looks at that category.
-Outside this pass's explicit scope (three named bugs); needs a product
-decision (does Nari have a "Gel" recommendation tab? does the UI/copy need
-anything for it?) before wiring it in, so it's surfaced here rather than
-silently added.
+**Found but NOT fixed at the time, flagged for a follow-up decision**: the
+live catalog now has a `Category: "Gel"` — 8 real products — that
+CLAUDE.md previously documented as never having appeared in real data.
+`scoring.ts`'s `CATEGORIES` const doesn't include `"Gel"`, so **these 8
+products are fully invisible on the results page today** (never scored,
+never shown, in any tab) — normalization now includes them in the catalog
+fine, but the per-category recommendation loop simply never looks at that
+category. Outside this pass's explicit scope (three named bugs); needs a
+product decision (does Nari have a "Gel" recommendation tab? does the
+UI/copy need anything for it?) before wiring it in, so it's surfaced here
+rather than silently added.
+
+**Fixed (Final Spike, P3 of 4)**: `CATEGORIES` no longer exists as a
+hardcoded const — see "Product Scoring"'s "Category order" section below
+for the derived-list replacement that closed this gap for Gel and any
+future category the same way.
 
 The catalog fixture (`src/lib/products/__fixtures__/catalog.json`) was
 regenerated from a fresh live pull after these fixes — 62 products now
@@ -398,17 +405,40 @@ corresponds to it; per Nya's own note it changes how Nari *talks* to the
 user, not what she recommends, so it's collected and passed through on
 `ScoredRecommendationSet` for Prompt 4's copy and nowhere else.
 
+### Category order (Final Spike, P3 of 4)
+`scoring.ts`'s `deriveCategories(catalog)` — not a hardcoded list —
+decides which product-category tabs render and in what order. It takes
+whatever categories are actually present in the catalog (excluding
+`"Style"`, which never renders as a tab — see "Styles" below), orders the
+ones it recognizes per an internal `KNOWN_CATEGORY_ORDER` array
+(currently Shampoo → Conditioner → Leave-in → Cream → Mousse →
+Oil/Sealant → Gel), and appends anything it doesn't recognize
+alphabetically after that. **A category Nya adds in Airtable — the way
+"Gel" briefly was (see the "Data pipeline fixes pass" section above) —
+appears automatically the next time the catalog is fetched, with no code
+change required.** It only needs a code change (adding it to
+`KNOWN_CATEGORY_ORDER`) if it should render in a specific position rather
+than falling to the alphabetical tail. Derived from the full, unfiltered
+catalog (not Stage 1's hard-filter survivors), so a category isn't hidden
+just because every one of its products got excluded by a user's
+sensitivities — it still shows up with an honest "0" badge. Both
+`scoreProducts()` and `/debug/scoring`'s `ScoringDebug.tsx` call this same
+function, so the two can never disagree on which categories exist.
+
 ### Styles (Final Spike, Part C / P1 of 4)
 Catalog rows with `category: "Style"` (Braids, Blow Out, Twist/Braid Out
 & Rod Set, Twist/Natural Cornrow & Protective, Wash and Go — 5 in the
 live catalog) have no brand/price/buyLink/ingredient data, so they're
 scored in a separate path (`scoreStyle`/`buildStyleRecommendations`, both
-in `scoring.ts`) rather than through `CATEGORIES`' 6-category product
-loop, and never touch Stage 1's hard filters (no ingredient data to
+in `scoring.ts`) rather than through `deriveCategories`' product-category
+loop (see "Category order" below — `deriveCategories` explicitly excludes
+`"Style"`), and never touch Stage 1's hard filters (no ingredient data to
 filter on). `scoreProducts()` returns the top 2 on a new `styles` field
 on `ScoredRecommendationSet` (currently typed optional, for backward
 compatibility with any pre-existing literal construction of that type —
-see the field's own comment in `scoring.ts`).
+see the field's own comment in `scoring.ts`). As of Final Spike P3, the
+results page renders these as a card-row strip below the product tabs —
+see "Results page"'s "Styles strip" section below.
 
 - **Goals and frustrations BOTH score positively, same direction and same
   weights as products** — `scoreStyle` and `computeScoreBreakdown`
@@ -696,8 +726,10 @@ other files' fixes, still stand):
 Fully rebuilt to render a real `ScoredRecommendationSet` (from
 `src/lib/products/scoring.ts`) instead of the retired mock
 `RecommendationSet`. **Routine-ordered tabs**, not an arbitrary list —
-`scoring.ts`'s own `CATEGORIES` constant is already
-Shampoo→Conditioner→Leave-in→Cream→Mousse→Oil/Sealant, so the results
+`scoring.ts`'s `deriveCategories()` derives the category list from the
+catalog itself (currently Shampoo→Conditioner→Leave-in→Cream→Mousse→
+Oil/Sealant→Gel — see "Product Scoring"'s "Category order" section for
+how a category Nya adds gets picked up automatically), so the results
 page just renders `categories` in the order `scoreProducts()` returns it
 with no re-sorting. Each tab shows a count badge (`category.picks.length`,
 shown even when 0); the first category is open by default.
@@ -745,6 +777,26 @@ shown even when 0); the first category is open by default.
   key navigation between tabs isn't implemented) — keyboard-reachable
   via Tab/Enter like any button, just not the full authoring-practices
   pattern. Flagged for Spike B, not done here.
+- **Styles strip (Final Spike, P3 of 4)**: the top 2 `styles` picks (see
+  "Product Scoring"'s "Styles" section) render as a card row
+  (`StylesStrip` in `ScanResults.tsx`) below the full product-tabs block
+  — never another tab, never above the products. Layout was picked by
+  the CEO from 3 generated options (card row / tinted panel / compact
+  list rows), screenshotted at desktop/mobile × light/dark; the chosen
+  card row reuses `ProductCard`'s exact hairline-border +
+  `--shadow-elevation-1` + hover-lift convention (a small "STYLE" badge
+  stands in for a category badge; no brand/price/buy-link, since a style
+  is a technique, not a purchased product). Renders nothing at all — not
+  an empty-state message — when there are 0 styles. Each card's match
+  line (`buildStyleMatchLine` in `ScanResults.tsx`) humanizes
+  `scoreStyle`'s existing `matchReasons` the same way `humanizeMatchReason`
+  does for products, reusing `quiz/quizLabels.ts`'s `getOptionLabel`. The
+  style's `notes` field ("Keep in mind") is shown directly under the
+  match line only when present — 2 of the 5 live styles have none, and
+  the heading is omitted entirely for those rather than left hanging
+  empty. See DECISIONS.md's "Final Spike — Results Page Styles &
+  Categories (P3 of 4)" for the full reasoning and the other 2 layout
+  options that weren't chosen.
 
 ## Spike B — Hardening, Tests & Scoring Transparency (Day 2 of 2)
 

@@ -69,7 +69,10 @@ describe("contract: toDiagnosticAnswers() output is accepted by scoreProducts()"
     expect(() => scoreProducts(answers, catalog)).not.toThrow();
 
     const result = scoreProducts(answers, catalog);
-    expect(result.categories).toHaveLength(6);
+    // 7, not 6: categories are now derived from the catalog (see
+    // scoring.ts's deriveCategories) rather than hardcoded, and the real
+    // catalog fixture now includes "Gel" alongside the original 6.
+    expect(result.categories).toHaveLength(7);
     for (const category of result.categories) {
       expect(typeof category.category).toBe("string");
       expect(Array.isArray(category.picks)).toBe(true);

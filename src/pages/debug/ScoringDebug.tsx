@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { getProducts } from "@/lib/dataSource";
 import type { Product } from "@/lib/products/schema";
 import {
-  CATEGORIES,
+  deriveCategories,
   SCORING_WEIGHTS,
   debugHardFilterExclusions,
   debugScoreCategory,
@@ -359,7 +359,7 @@ function ProfileSection({ profile, catalog }: { profile: ResolvedProfile; catalo
         </div>
       )}
 
-      {CATEGORIES.map((category) => (
+      {deriveCategories(catalog).map((category) => (
         <CategoryTable key={category} category={category} catalog={catalog} answers={answers} />
       ))}
     </section>
@@ -371,7 +371,7 @@ function CategoryTable({
   catalog,
   answers,
 }: {
-  category: (typeof CATEGORIES)[number];
+  category: string;
   catalog: Product[];
   answers: DiagnosticAnswers;
 }) {

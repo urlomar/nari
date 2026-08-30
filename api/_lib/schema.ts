@@ -121,6 +121,16 @@ const GOAL_ALIASES: Record<string, string> = {
   // "growth" — added Final Spike Part D after valueDrift.goals flagged it
   // as an unresolved mismatch. See CLAUDE.md/DECISIONS.md.
   "length retention": "growth",
+  // TEMPORARY WORKAROUND (results-page P3, Part A): all 5 live Style rows'
+  // "Best For Goals" carry the misspelling "tehnique" instead of
+  // "technique" — the quiz only ever emits "technique". The CEO is
+  // correcting it in Airtable, but the fix's timing is unknown, so both
+  // spellings are mapped here rather than waiting on her edit. Remove the
+  // "tehnique" line (keep "technique" -> "technique" or drop it entirely,
+  // since a value already equal to its own key is a no-op) once the
+  // Airtable correction is confirmed live. See DECISIONS.md open questions.
+  "tehnique": "technique",
+  "technique": "technique",
 };
 
 // Same pattern as GOAL_ALIASES, one dimension over. Verified live

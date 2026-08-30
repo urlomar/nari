@@ -6,6 +6,7 @@ import type {
   DiagnosticAnswers,
   MatchChecklistItem,
   RecommendedProduct,
+  RecommendedStyle,
   ScoredRecommendationSet,
   SensitivityAnswer,
 } from "@/lib/products/scoring";
@@ -80,6 +81,37 @@ function buildWhyText(reasons: string[]): string {
   const parts = reasons.map(humanizeMatchReason).filter((p): p is string => Boolean(p));
   if (parts.length === 0) return "A solid pick for your routine.";
   return `Matches ${joinWithAnd(parts)}.`;
+}
+
+/**
+ * Plain-language match line for a style card (Final Spike, P3 of 4, Part
+ * C), e.g. "Matches your moisture goal and helps with dryness and frizz."
+ * Draws on the same raw `matchReasons` scoring.ts's scoreStyle already
+ * computes (goals and frustrations only — styles have no porosity/curl
+ * type/budget/black-owned data), reusing `getOptionLabel` the same way
+ * `humanizeMatchReason` does for products, but phrased as one sentence
+ * rather than a bag of parts — a style card has only two dimensions to
+ * report, not five, so it doesn't need that function's generality.
+ */
+function buildStyleMatchLine(matchReasons: string[]): string {
+  const goalLabels = matchReasons
+    .map((r) => r.match(/^goal: (.+)$/))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => getOptionLabel("goals", m[1]).toLowerCase());
+
+  const frustrationLabels = matchReasons
+    .map((r) => r.match(/^frustration #\d+: (.+)$/))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => getOptionLabel("frustrations", m[1]).toLowerCase());
+
+  const goalPart =
+    goalLabels.length > 0 ? `your ${joinWithAnd(goalLabels)} ${goalLabels.length > 1 ? "goals" : "goal"}` : null;
+  const frustrationPart = frustrationLabels.length > 0 ? `helps with ${joinWithAnd(frustrationLabels)}` : null;
+
+  if (goalPart && frustrationPart) return `Matches ${goalPart} and ${frustrationPart}.`;
+  if (goalPart) return `Matches ${goalPart}.`;
+  if (frustrationPart) return `A style that ${frustrationPart}.`;
+  return "A style worth trying as part of your routine.";
 }
 
 function unenforcedSensitivityLabel(sensitivity: SensitivityAnswer): string {
@@ -294,6 +326,10 @@ function ScanResultsContent({
           </motion.div>
         )}
 
+        {/* Below the product tabs, not another tab and not above the products —
+            products remain the main event, styles are a complementary addition. */}
+        <StylesStrip styles={recommendations.styles ?? []} />
+
         <motion.p className={s.privacyLine} variants={fadeUp}>
           Your answers are used only to build these recommendations — never stored or shared.
         </motion.p>
@@ -385,6 +421,46 @@ function ProductCard({
         )}
       </div>
     </li>
+  );
+}
+
+/**
+ * Top 2 styles, rendered as a card row below the product tabs (Final
+ * Spike, P3 of 4, Part C) — visually modeled on ProductCard's own hairline-
+ * border + shadow-elevation-1 + hover-lift convention (see CLAUDE.md's
+ * "Card / shadow conventions") so it reads as native to this page, not
+ * bolted on, while a small "Style" eyebrow badge (in place of a category
+ * badge) signals it's a different kind of pick — no brand/price/buy link,
+ * deliberately, since a style is a technique, not a purchased product.
+ * Renders nothing at all when there are zero styles (a thin/empty catalog
+ * case), rather than an empty-state message — unlike a product category,
+ * "styles" isn't a fixed slot users expect to always see.
+ */
+function StylesStrip({ styles }: { styles: RecommendedStyle[] }) {
+  if (styles.length === 0) return null;
+
+  return (
+    <motion.div className={s.stylesSection} variants={fadeUp}>
+      <p className={s.stylesEyebrow}>Styles worth trying</p>
+      <ul className={s.stylesGrid}>
+        {styles.map((style) => (
+          <li key={style.product.id} className={s.styleCard}>
+            <span className={s.styleBadge}>Style</span>
+            <h3 className={s.styleName}>{style.product.name}</h3>
+            <p className={s.styleMatchLine}>{buildStyleMatchLine(style.matchReasons)}</p>
+            {/* Two styles in the live catalog have no notes — omit the
+                "Keep in mind" heading entirely rather than leaving it
+                hanging with nothing under it. Display-only: notes never
+                drive ranking or filtering (see scoring.ts's scoreStyle). */}
+            {style.product.notes && (
+              <p className={s.styleNotes}>
+                <span className={s.styleNotesLabel}>Keep in mind:</span> {style.product.notes}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
   );
 }
 
