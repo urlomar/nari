@@ -1968,3 +1968,139 @@ byte-identical to how it started.
   of open item as the pre-existing 2A/2B/2C gap noted in the P1 scoring-
   reorder pass; no new action needed unless the CEO wants curl-type
   coverage prioritized in future catalog additions.
+
+## Final Spike — P4 of 4: Content & Visual Edits
+
+Last prompt of the spike — low-risk, additive content/copy/visual changes,
+nothing touching scoring or the flow reducer. See CLAUDE.md's relevant
+sections for the quick-reference version; this is the full reasoning.
+
+### Part A — Quiz density wording
+`quizQuestions.ts`'s `density` question's five option `sub` labels changed
+from casual phrasing ("Not a lot of them", "Tons of it") to a consistent
+two-part "[strand thickness] / [density level]" pattern per the CEO's
+request for more professional copy: Fine/Low, Fine/High, Medium/Medium,
+Thick/Low, Thick/High. **Only the display `sub` strings changed** — every
+option's `value` (`fine_low`, `fine_high`, `medium`, `thick_low`,
+`thick_high`) is untouched, so `toDiagnosticAnswers.ts` and
+`scoring.ts`'s density handling need zero changes; confirmed by the full
+test suite (113 tests, including `toDiagnosticAnswers.test.ts`'s contract
+section, which calls the real `scoreProducts()` for every quiz option
+value across all 5 scored dimensions) passing unmodified. "Medium
+strands" / "Medium density" was considered for an awkward-repetition
+rewrite but read fine next to the other four once actually laid out — no
+change made.
+
+### Part B — Cube image swap (image6 -> image5, not image11)
+The brief's stated preference (`image11`) turned out to already be in use
+as the cube's `photoBack` face (see the `Cube.tsx` import list) — not
+"unused" as assumed when the prompt was written. Using it again would
+have silently duplicated a face rather than adding variety, so the
+fallback, `image5`, was used instead; flagged back to the CEO rather than
+silently substituting. **Rights check on both candidates** (not just the
+one used): `image5` (blue studio backdrop, side profile, dip-dyed ends)
+and `image11` (plain gray/white backdrop, natural light) both read as
+clean stock/editorial photography — no step-and-repeat backdrop, no press
+badges, no recognizable public figure — consistent with the rest of the
+Final Spike photo pool (see "Cube photo refresh" above). **Diversity
+check**: all 5 cube photo faces (front/left/top/right/back) are women
+across a real spread of skin tones and curl textures; **no man**,
+reconfirming the gap CLAUDE.md's "Cube photo refresh" section already
+flagged as not yet closed. Not fixed here — out of this pass's scope,
+which only named `image11`/`image5` as the two candidates — but worth
+surfacing again since it's now been carried across two spikes unaddressed.
+
+### Part C / D — About sentence & Analyze copy
+Both exact-text swaps from the brief, no interpretation needed.
+`Features.tsx`'s Analyze step copy dropped its em dashes
+("— porosity, curl type, goals, and more —") for a colon + comma
+construction, scoped to that one sentence only, per the brief's explicit
+"narrow scope" instruction — no other em dash in the codebase was touched,
+and nothing under `api/` (Airtable-sourced product/style `notes` text) was
+in scope at all, since that text is regenerated on every catalog fetch and
+any manual edit would be silently overwritten.
+
+### Part E — Home page sample result
+The old `ResultsPreview.tsx` mock (`SAMPLE_RECOMMENDATIONS`, a "3C" curl
+pattern label, three invented product-shaped bullets with no match
+indicators) no longer reflected what the app actually produces — the real
+results page's differentiator is the ✓/✗ match checklist (Spike B, Part
+C), which the old mock never showed at all. Replaced with a new
+`SampleResultCard` component (`src/components/SampleResultCard.tsx` +
+`.module.css`) that deliberately duplicates `ScanResults.module.css`'s
+`.productCard`/`.categoryBadge`/`.productName`/`.productBrand`/
+`.productPrice`/`.checklist*`/`.buyLink` rules verbatim (same tokens, same
+values) rather than importing across page/component boundaries — the
+brief's "reuse existing ProductCard conventions" was interpreted as
+"look and feel identical," not "share a literal CSS module," since
+`ScanResults.module.css` is page-scoped and pulling from it would couple
+an unrelated marketing component to a results-page stylesheet. Card data
+(Pattern Leave-In, Pattern Beauty, $29, Leave-in) is copied verbatim from
+the live catalog fixture; the checklist (✓ porosity, ✓ curl type, ✓
+Black-owned, ✗ over budget) is a plausible, honestly-mixed profile — not
+all-✓, per the on-screen convention that a couple of honest ✗'s reads as
+more credible, not worse — with matches ordered first, same as the real
+checklist's convention.
+
+**Process**: 3 options were built behind a temporary dev-only harness
+route (`/dev/sample-result-options`, gated by `import.meta.env.DEV` the
+same way `/dev/swatches` is) and screenshotted at desktop (1280px) and
+mobile (390px) × light/dark — 4 images, each showing all 3 options
+stacked for direct comparison — then sent for approval before any of them
+touched the real `ResultsPreview.tsx`, per the brief's explicit
+stop-and-wait instruction (same process as the P3 styles-strip layout
+decision and the Spike 2 curl-mark variant review).
+- **Option 1 — Direct card**: the product card alone, with the same
+  outlined "Sample result" pill the old mock used. Lowest-risk, most
+  literal drop-in.
+- **Option 2 — Context strip**: adds a "Matched to 4A curls · high
+  porosity · Black-owned preferred" meta line above the card, narrating
+  the quiz→result connection explicitly.
+- **Option 3 — Gradient-tinted spotlight frame (chosen)**: the card sits
+  inside a soft `color-mix()`-tinted outer panel with a gradient-filled
+  ribbon badge (`--gradient-accent-solid`, matching the site's button
+  convention rather than inventing a new fill) replacing the plain
+  outlined tag. Picked by the CEO for reading as the most polished/
+  premium of the three — appropriate weight for a landing-page first
+  impression, per the brief's "must look polished enough to be the first
+  impression" requirement.
+
+The harness route, its page, and its CSS module were deleted immediately
+after the decision (same "delete the harness once its screenshots are
+captured" convention as every prior variant-review pass) — `router.tsx`
+ended net-unchanged (the route was added and removed within this same
+pass). The winning layout's CSS (`.spotlightFrame`/`.ribbonBadge`) now
+lives directly in `ResultsPreview.module.css`, replacing the old
+`.card`/`.previewTag`/`.eyebrow`/`.curlPattern`/`.notes`/`.recList`/
+`.recCard`/`.recTitle`/`.recWhy` rules, all of which were fully unused
+elsewhere and removed rather than left dead.
+
+**Verification**: `npm run typecheck` clean, all 113 tests still pass
+unmodified (none of this touches scoring/reducer code), and the real
+Landing page (not the harness) was re-screenshotted at all 4 combos
+post-integration — zero console errors, spotlight frame renders
+identically to the approved Option 3 screenshot.
+
+### Part F note
+This section itself is Part F. See the "Open questions" entry directly
+below for the `"tehnique"` alias status update.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **Still open (P4): the `"tehnique"` `GOAL_ALIASES` entry.** Raised at
+  P3 (see above) as pending the CEO's Airtable correction — as of this
+  pass (P4 of 4, the spike's last prompt) no confirmation has come back
+  that the live catalog's typo is fixed, so `"tehnique"` (and the
+  now-redundant `"technique"` line) stay in `api/_lib/schema.ts`'s
+  `GOAL_ALIASES` unchanged. Carrying this forward explicitly rather than
+  letting it go stale in a closed prompt: **once the CEO confirms the
+  Airtable fix is live, remove both lines** (verify via
+  `/debug/products`'s `valueDrift` report or a fresh fixture pull showing
+  no more `"tehnique"` occurrences before removing, not just on her
+  say-so) and re-run `npm test` to confirm nothing regresses.
+- **New (P4): cube diversity gap (no man in the photo pool) still
+  unresolved.** Flagged again in this pass's Part B (see above) purely
+  because the image-swap task touched the cube again — the gap itself
+  predates this prompt (see "Cube photo refresh") and this pass's scope
+  didn't include sourcing new photos. Worth prioritizing in the next
+  photo drop given how many passes it's now persisted across.

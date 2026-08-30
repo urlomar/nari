@@ -591,6 +591,21 @@ were dropped and why `PhaseBar` wasn't ported.
    question updates the progress bar automatically; only revisit
    `INTERSTITIAL_AFTER_INDEX` if the new question count changes where the
    "almost there" beat should land.
+6. **Display label vs. answer value are independent** — a question's
+   option `label`/`sub`/`emoji` can be reworded freely (see the density
+   question's P4-of-4 copy pass below) without touching scoring, as long
+   as `value` stays the same. Only bump 2 above (union types +
+   `scoreProducts()`) if the actual `value` changes.
+
+**Density wording (Final Spike, P4 of 4, Part A)**: the `density`
+question's five `sub` labels were rewritten from casual phrasing ("Not a
+lot of them", "Tons of it") to a consistent "[strand thickness] /
+[density level]" pattern (Fine/Low, Fine/High, Medium/Medium, Thick/Low,
+Thick/High) per the CEO's request for more professional copy — display
+text only, `value`s (`fine_low`/`fine_high`/`medium`/`thick_low`/
+`thick_high`) unchanged, confirmed by the full test suite (including
+`toDiagnosticAnswers.test.ts`'s contract section, which runs the real
+`scoreProducts()` against every quiz option value) passing unmodified.
 
 ## Scanner Flow: Photo, Quiz, Review, Results
 
@@ -706,7 +721,15 @@ other files' fixes, still stand):
   flow changed) and "We analyze your hair texture..." (implies photo
   vision analysis that isn't wired). Now: "Answer a few quick questions
   about your hair, then add a photo if you'd like" / "We match your
-  answers... to real products. No guesswork."
+  answers... to real products. No guesswork." **(Superseded again, P4 of
+  4, Part D)**: the Analyze line's em dashes ("— porosity, curl type,
+  goals, and more —") were replaced with a colon + comma construction per
+  the CEO's request, scoped to this one sentence only — current text:
+  "We match your answers: porosity, curl type, goals, and more, to real
+  products. No guesswork!" No other em dash in the codebase was touched,
+  and Airtable-sourced text (product/style `notes`) is explicitly out of
+  scope for any future em-dash sweep — it's regenerated on every catalog
+  fetch, so a manual edit there would just be silently overwritten.
 - **Two distinct capture options, not one input with `capture` set**:
   `PhotoCapture.tsx`'s `capture` prop is now optional
   (`"environment" | "user" | undefined`) instead of hardcoded to
@@ -1329,9 +1352,15 @@ file again.
 - **Photo pool refreshed (Final Spike)** — 5 faces now come from
   `src/assets/photos/images/` (a 12-image drop, all clean stock
   photography this time — see DECISIONS.md's "Cube photo refresh"):
-  `image3` (front), `image2` (left), `image9` (top), `image6` (right),
-  `image11` (back). `image1` is reserved for the About page;
-  `image4/5/7/8/10/12` are unused/available. The older `afro-pic-*` files
+  `image3` (front), `image2` (left), `image9` (top), `image5` (right),
+  `image11` (back). **(P4 of 4, Part B)**: right face changed from
+  `image6` to `image5` — the brief's preferred replacement, `image11`,
+  turned out to already be the back face (not "unused" as assumed), so
+  the fallback was used instead and the discrepancy flagged rather than
+  silently duplicating a face. `image5` cleared the same rights check as
+  the rest of this pool (studio backdrop, no press/event indicators, no
+  recognizable public figure). `image1` is reserved for the About page;
+  `image4/6/7/8/10/12` are unused/available. The older `afro-pic-*` files
   in `src/assets/photos/` (not the `images/` subfolder) are no longer
   referenced by the cube or About page but weren't deleted — check before
   assuming they're dead if you see them elsewhere (e.g. Hero's fallback).
@@ -1341,7 +1370,9 @@ file again.
   celebrities at real branded press events (paparazzi/red-carpet
   photography, not stock), a publicity-rights/copyright risk, not a style
   call. **Known gap**: none of the current 12 images include a man, though
-  Nya's direction asked for a mix that does — flagged, not fixed.
+  Nya's direction asked for a mix that does — flagged, not fixed. Still
+  unresolved as of P4 of 4 (re-confirmed during the image6->image5 swap
+  above) — worth prioritizing in the next photo drop.
 - **Curl mark changed** (cube-only — `Logo.tsx`/the navbar-footer wordmark
   are untouched). `CURL_PATH_2D` is now a self-intersecting limaçon
   (`r = b + a·cos θ`, `a > b`) rather than the original tight logarithmic
@@ -1439,3 +1470,39 @@ file again.
   spiral math. See the updated bullet list above (Spike 2 continuation)
   for the other 5 faces, rim glow, magnetic hover, and entrance — this
   was originally 3 photo + 3 gradient faces and has since changed.
+
+### About page opening sentence (Final Spike, P4 of 4, Part C)
+`About.tsx`'s first body paragraph is now exactly: "We recommend
+products, help you understand your unique hair characteristics, and
+tailor support towards your biggest frustrations and goals!" — a verbatim
+CEO-provided replacement, no other About page copy touched in this pass.
+
+### Home page sample result (`src/components/SampleResultCard.tsx` +
+`ResultsPreview.tsx`, Final Spike, P4 of 4, Part E)
+The landing page's "Sample result" card (in the `ResultsPreview` section,
+just above the waitlist form) is a **static mock of a real recommendation
+card** — real catalog data (Pattern Leave-In, Pattern Beauty, $29,
+Leave-in) with a plausible, honestly-mixed ✓/✗ match checklist (✓
+porosity, ✓ curl type, ✓ Black-owned, ✗ over budget), replacing an older
+mock that showed a fake "3C" curl-pattern label and three invented
+product bullets with no match indicators at all — the results page's
+actual differentiator (the checklist, see Spike B Part C) was invisible
+in the old version.
+- **`SampleResultCard.tsx`/`.module.css`** deliberately duplicate
+  `ScanResults.module.css`'s `.productCard`/`.checklist*`/etc. rules
+  verbatim (same tokens, same values) rather than importing across the
+  component/page boundary — "reuse existing ProductCard conventions"
+  means visually identical, not a shared CSS module coupling an unrelated
+  marketing component to a results-page stylesheet.
+- **Frame**: `ResultsPreview.module.css`'s `.spotlightFrame`/
+  `.ribbonBadge` — a soft `color-mix()`-tinted panel around the card with
+  a gradient-filled ribbon badge (`--gradient-accent-solid`, the same
+  fill every other button/pill on the site uses), picked by the CEO from
+  3 generated options (direct card / context-strip / spotlight frame) —
+  screenshotted at desktop+mobile × light+dark and sent for approval
+  before implementation, per the same process as the P3 styles-strip
+  layout decision. See DECISIONS.md's "Final Spike — P4 of 4" section for
+  the other two options and the full reasoning.
+- Static only — no interactivity, no live scoring call. Don't wire this
+  to `getRecommendations()` or make it clickable; it's marketing, not a
+  functional preview.

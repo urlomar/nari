@@ -13,10 +13,12 @@ import { useTheme } from "@/styles/useTheme";
 // identifiable public figures) — unlike the last two photo drops, nothing
 // here needed to be excluded. image1 is reserved for the About page; these
 // 5 are picked from the remaining 11 for skin-tone and styling spread.
+// image6 -> image5 swap (P4 of 4): image5 reviewed and cleared for rights
+// (studio backdrop, no press/event indicators) — see DECISIONS.md.
 import photoFront from "@/assets/photos/images/image3.png";
 import photoLeft from "@/assets/photos/images/image2.png";
 import photoTop from "@/assets/photos/images/image9.png";
-import photoRight from "@/assets/photos/images/image6.png";
+import photoRight from "@/assets/photos/images/image5.png";
 import photoBack from "@/assets/photos/images/image11.png";
 
 /**

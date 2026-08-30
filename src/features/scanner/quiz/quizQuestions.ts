@@ -74,11 +74,11 @@ export const QUIZ_QUESTIONS: QuizQuestionConfig[] = [
     layout: "grid",
     columns: 2,
     options: [
-      { value: "fine_low", emoji: "🪶", label: "Fine strands", sub: "Not a lot of them" },
-      { value: "fine_high", emoji: "🌫️", label: "Fine strands", sub: "But a whole lot of them" },
-      { value: "medium", emoji: "✨", label: "Medium strands", sub: "Average amount" },
-      { value: "thick_low", emoji: "🌿", label: "Thick, strong strands", sub: "Not a lot" },
-      { value: "thick_high", emoji: "🌳", label: "Thick, strong strands", sub: "Tons of it" },
+      { value: "fine_low", emoji: "🪶", label: "Fine strands", sub: "Low density" },
+      { value: "fine_high", emoji: "🌫️", label: "Fine strands", sub: "High density" },
+      { value: "medium", emoji: "✨", label: "Medium strands", sub: "Medium density" },
+      { value: "thick_low", emoji: "🌿", label: "Thick strands", sub: "Low density" },
+      { value: "thick_high", emoji: "🌳", label: "Thick strands", sub: "High density" },
     ],
   },
   {

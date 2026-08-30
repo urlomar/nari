@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     title: "Analyze",
-    body: "We match your answers — porosity, curl type, goals, and more — to real products. No guesswork.",
+    body: "We match your answers: porosity, curl type, goals, and more, to real products. No guesswork!",
   },
   {
     title: "Your routine",

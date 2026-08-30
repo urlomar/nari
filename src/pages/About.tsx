@@ -28,9 +28,8 @@ export default function About() {
             Nari
           </motion.h1>
           <motion.p ref={body1.ref} style={body1.style} className={s.body}>
-            Nari is a personalized hair care app for people with curly, coily, and afro-textured
-            hair. We recommend products, help you understand your hair type, suggest protective
-            styles, and support recovery from heat and breakage.
+            We recommend products, help you understand your unique hair characteristics, and
+            tailor support towards your biggest frustrations and goals!
           </motion.p>
           <motion.p ref={body2.ref} style={body2.style} className={s.body}>
             We&rsquo;re starting with a focus on Black women and expanding for all curl patterns.

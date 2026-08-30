@@ -1095,3 +1095,66 @@ summary.
   ended byte-identical to how it started.
 - Next: P4 (content/copy edits — cube image, quiz density wording, About
   page, em dash removal elsewhere, home page sample result).
+
+## Final Spike — Content & Visual Edits (P4 of 4)
+**Status: Done.** Last prompt of the spike — low-risk, additive
+content/copy/visual changes only, nothing touching scoring or the flow
+reducer. See CLAUDE.md's relevant sections and DECISIONS.md's "Final
+Spike — P4 of 4" section for full detail; this is the status summary.
+
+- **Part A — Quiz density wording.** `quizQuestions.ts`'s `density`
+  question's five `sub` labels reworded to a consistent "[strand
+  thickness] / [density level]" pattern (Fine/Low, Fine/High,
+  Medium/Medium, Thick/Low, Thick/High) per the CEO's request for more
+  professional copy. Display-only — all 5 `value`s unchanged, confirmed
+  by the full test suite (including the `toDiagnosticAnswers.test.ts`
+  contract section, which runs real `scoreProducts()` calls) passing
+  unmodified.
+- **Part B — Cube image swap, with a flagged substitution.** The brief's
+  preferred replacement (`image11`) turned out to already be the cube's
+  `photoBack` face — not "unused" as assumed — so the fallback,
+  `image5`, was used instead for the right face (was `image6`) and the
+  discrepancy flagged rather than silently duplicating a face. Rights
+  check passed for both candidates (clean stock/editorial photography,
+  no press/event indicators, no recognizable public figure). Reconfirmed
+  the pre-existing "no man in the photo pool" gap — not fixed, out of
+  this pass's scope, but now flagged across two spikes.
+- **Part C / D — About sentence & Analyze copy.** Verbatim CEO-provided
+  replacement for `About.tsx`'s opening sentence; `Features.tsx`'s
+  Analyze line's em dashes replaced with a colon+comma construction,
+  scoped to that one sentence only — no broader em-dash sweep, and
+  Airtable-sourced text explicitly untouched (regenerated on every
+  catalog fetch).
+- **Part E — Home page sample result.** Old mock (fake "3C" label,
+  invented product bullets, no match indicators) replaced with a static
+  `SampleResultCard` built from real catalog data (Pattern Leave-In,
+  Pattern Beauty, $29) and a plausible, honestly-mixed match checklist —
+  the results page's actual differentiator, absent from the old mock
+  entirely. 3 layout options (direct card / context-strip / gradient-
+  tinted spotlight frame) built behind a temporary dev-only harness,
+  screenshotted at desktop/mobile × light/dark, sent for approval before
+  implementation — same process as P3's styles-strip decision. CEO chose
+  the **spotlight frame**. Harness deleted after the decision;
+  `router.tsx` ended net-unchanged.
+- **Part F — Documentation.** This entry; CLAUDE.md gained sections for
+  the density wording, the cube image swap, the About sentence, the
+  Analyze copy, and the new `SampleResultCard`/spotlight-frame component;
+  DECISIONS.md gained a new top-level section for this prompt's reasoning
+  plus a continuation of "Open questions" carrying the `"tehnique"` alias
+  status forward (still unresolved — no Airtable confirmation yet) and
+  logging the cube diversity gap again.
+- **Verification.** `npm run typecheck` clean; all 113 tests pass
+  unmodified (this prompt touches no scoring/reducer code). Quiz
+  question 4 verified at desktop/mobile × light/dark with the new
+  labels, values confirmed unchanged via the passing test suite. Cube
+  verified rendering cleanly (no texture/console errors) at desktop/
+  mobile × light/dark with the new right face. Real landing page (not
+  the harness) re-screenshotted post-integration at all 4 combos — zero
+  console errors, spotlight frame matches the approved option exactly.
+  Not yet done: production deploy + live verification (this sandbox has
+  no deploy target — see CLAUDE.md's env-file note).
+- This closes out the Final Spike's four-prompt content/copy/visual
+  pass. Remaining open items for whoever picks this up next: the
+  `"tehnique"` alias removal (pending Airtable confirmation), the cube's
+  missing-man photo gap, and Milestone 6's outstanding production-deploy
+  verification for the serverless endpoints touched across the spike.
