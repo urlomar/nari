@@ -12,7 +12,7 @@
 - Serverless: api/ folder, Vercel conventions (see api/subscribe.ts) — deployed and working, do not move. Verified live end-to-end during the design sprint (real Sheets row + real confirmation email). Note: `GOOGLE_SHEET_RANGE` in `.env.local` is currently `Sheet1!A:D` (4 cols) but the code writes 5 — harmless (Sheets auto-expands) but should be updated to `Sheet1!A:E` to stop drifting
 - `api/send-results.ts` (Final Spike) emails a user their scan results and logs to a separate `Results` sheet tab — see "Results Email" below. Needs `GOOGLE_RESULTS_RANGE` (defaults to `Results!A:E` if unset, same fallback pattern as `GOOGLE_SHEET_RANGE`) in addition to the existing Google/Resend vars
 - Secrets via process.env, never VITE\_-prefixed
-- **This sandbox's local env files are missing their leading dot** (`env.local`/`env.example` at the repo root, not `.env.local`/`.env.example` — a real, separately-tracked `.env.example` also exists and is the one Vite/Vercel actually look for). Neither Vite nor `vercel dev` load a dotless `env.local` automatically — treat any "verified against real credentials" claim in this sandbox with that in mind; every serverless-function check so far has relied on typecheck + a per-file transpile/Node-ESM-resolution harness (see "Server code boundary" below) rather than an actual invocation with live secrets
+- **This sandbox's local env files are missing their leading dot** (`env.local`/`env.example` at the repo root, not `.env.local`/`.env.example` — a real, separately-tracked `.env.example` also exists and is the one Vite/Vercel actually look for). Neither Vite nor `vercel dev` load a dotless `env.local` automatically, so a normal `npm run dev`/`vercel dev` session still won't see these secrets — treat any "verified against real credentials" claim from *that* path with caution. **This does NOT mean the credentials themselves are unusable, though** — `env.local`'s `AIRTABLE_TOKEN`/`AIRTABLE_BASE_ID`/`AIRTABLE_TABLE_NAME` are real and live; manually sourcing the file (`set -a; source env.local; set +a`) and calling the Airtable REST API directly (mirroring `api/products.ts`'s own fetch/pagination logic, run standalone via `vite-node` rather than through the actual Vercel handler) works and was used to do a genuine live catalog re-pull during the Final Spike P1 follow-up (styles frustration correction) — see DECISIONS.md. What's still *not* verified is an actual Vercel Lambda invocation of `api/products.ts`/`api/analyze.ts`/etc. themselves (no local deploy target in this sandbox) — every serverless-function check for the handler code itself has relied on typecheck + a per-file transpile/Node-ESM-resolution harness (see "Server code boundary" below), not a real Lambda invocation. Google/Resend credentials in `env.local` have not been similarly manually verified — only Airtable has been, for this one task.
 - Commands: npm run dev / npm run typecheck / npm test — typecheck must stay green
 - Build plan: read PLAN.md, execute milestone by milestone
 - 3D deps (Spike 2, Part F): `three` + `@react-three/fiber@^8` +
@@ -237,10 +237,13 @@ Three real data-loss/scoring bugs found live in `/api/products`, all fixed:
    Natural Cornrow, Wash and Go), which legitimately have no brand — a
    style is a technique, not a purchased product. `brand` is now optional
    on `ProductSchema` (`FIELD_KINDS.brand` changed from `"string"` to
-   `"optionalString"`). These rows still never get recommended anywhere —
-   `scoring.ts`'s `CATEGORIES` const only iterates the 6 real product
-   categories, "Style" isn't one of them — but they now show up in the
-   catalog/report instead of being silently dropped. Code that reads
+   `"optionalString"`). At the time of this pass these rows never got
+   recommended anywhere — `scoring.ts`'s `CATEGORIES` const only iterates
+   the 6 real product categories, "Style" isn't one of them — but they
+   showed up in the catalog/report instead of being silently dropped.
+   **As of Final Spike Part C, Style rows ARE scored** — see "Product
+   Scoring"'s "Styles" section below; they're just scored through a
+   separate path, not added to `CATEGORIES`. Code that reads
    `product.brand` now has to handle `undefined` (`scoring.ts`'s
    `selectForCategory` brand-dedup, `ScanResults.tsx`'s send-results
    payload) — both fall back to `""`, which is inert since no scored
@@ -330,36 +333,42 @@ and `blackOwnedPref`'s literal casing (`"yes_always"` / `"mixed"` /
    unchecked box (whether it means "contains it" or "unverified" — see
    the Supercurl product's notes in the live catalog for a real example
    of the latter) is excluded either way, for free, via `ProductSchema`'s
-   existing false-when-absent default. `mineral_oil` has no catalog
-   column yet — the filter checks the actual product data at runtime
-   (`getMineralOilFree`) rather than assuming `false`, so it activates
-   automatically the moment a column exists and is mapped, with no
-   `scoring.ts` change needed; until then it's inert and gets recorded in
-   `unenforcedSensitivities` instead of silently doing nothing.
+   existing false-when-absent default. `mineral_oil` is enforced the same
+   way as of 2026-08-29 (`Mineral Oil Free` is mapped and populated) — the
+   filter checks the actual product data at runtime (`getMineralOilFree`)
+   rather than assuming `false`, and was written to activate automatically
+   the moment the column existed, so no `scoring.ts` change was needed
+   when it did. `unenforcedSensitivities` still exists as a mechanism
+   (falls back to it if a future catalog snapshot somehow has zero
+   products carrying the field), but in practice it's empty today for
+   `mineral_oil`.
 2. **Weighted scoring** (`scoreProduct`) — every surviving product gets a
    score built from `SCORING_WEIGHTS`. See "Changing the weights" below.
 3. **Select and diversify** (`selectForCategory`) — top 3 per category,
    sorted by score, with a one-product-per-brand cap that only relaxes
    (allows a repeat brand) if there's no other-brand alternative to fill
    the slot.
-4. **Relaxation** (`buildCategoryRecommendation`) — density, curl type,
-   and porosity aren't just weighted, they're also treated as *required*
-   overlaps for a product to be eligible in the first place (this is why
-   the brief's Stage 4 talks about "relaxing" them even though Stage 2
-   frames them as weights, not filters — both are true: they're weighted
-   AND initially required). If a category has fewer than 2 eligible
-   products, the weakest requirement drops first — density, then curl
-   type, then porosity, **never sensitivities** — and the category's
-   `relaxed`/`relaxedConstraints` fields record exactly what was dropped,
-   so the UI can label it honestly rather than silently backfilling.
-   **This is load-bearing today, not a hypothetical**: the catalog has no
-   products tagged 2a/2b/2c at all, so any 2A/2B or 2C/3A user hits curl-
-   type relaxation immediately — verified directly in
-   `scoring.test.ts`. A second, newly-discovered gap: **Mousse and
-   Oil/Sealant currently have zero protein-free products** (0/6 and
-   0/4) — since relaxation never touches sensitivities, a protein-
-   sensitive user's Demanding-profile test correctly returns those two
-   categories empty. See DECISIONS.md's "Open questions" for both.
+4. **Relaxation** (`buildCategoryRecommendation`) — density and porosity
+   aren't just weighted, they're also treated as *required* overlaps for
+   a product to be eligible in the first place (this is why the brief's
+   Stage 4 talks about "relaxing" them even though Stage 2 frames them as
+   weights, not filters — both are true: they're weighted AND initially
+   required). If a category has fewer than 2 eligible products, the
+   weakest requirement drops first — density, then porosity, **never
+   sensitivities** — and the category's `relaxed`/`relaxedConstraints`
+   fields record exactly what was dropped, so the UI can label it
+   honestly rather than silently backfilling. **Curl type is no longer in
+   this list** (Final Spike, Part A — see below and DECISIONS.md's
+   "Scoring weights"): it used to be a third required/relaxable
+   dimension, dropped first, ahead of density; now it's a pure weight
+   with no eligibility role at all, so the catalog's real gap (no
+   products tagged 2a/2b/2c) no longer triggers relaxation for 2A/2B or
+   2C/3A users — they just score 0 on curl type instead of losing
+   eligibility. A separate, still-open gap: **Mousse and Oil/Sealant
+   currently have zero protein-free products** (0/6 and 0/4) — since
+   relaxation never touches sensitivities, a protein-sensitive user's
+   Demanding-profile test correctly returns those two categories empty.
+   See DECISIONS.md's "Open questions" for both.
 
 ### Changing the weights
 Everything lives in the single exported `SCORING_WEIGHTS` object near the
@@ -368,14 +377,73 @@ maximum attainable contribution commented inline (e.g. goals' max is
 `3 * goalMatch`) — the values are deliberately set so a lower-priority
 tier's ceiling stays below the tier above it, so retuning is usually just
 changing one number and confirming the two test profiles' printed output
-still looks right. Porosity is weighted heaviest because it determines
-whether a product physically *works* on someone's hair — a hair-science
-judgment made for this pass, open to Nya's revision, and a one-file,
-one-minute edit to change (see DECISIONS.md). `journey` is deliberately
-**not** in `SCORING_WEIGHTS` at all — no product attribute corresponds to
-it; per Nya's own note it changes how Nari *talks* to the user, not what
-she recommends, so it's collected and passed through on
+still looks right. **Priority order (Final Spike, Part A / P1 of 4,
+directed by the CEO/hair expert): porosity → goals → frustrations →
+density → budget → black-owned → curl type → tiebreakers.** Porosity is
+weighted heaviest because it determines whether a product physically
+*works* on someone's hair — a hair-science judgment made for this pass,
+open to Nya's revision, and a one-file, one-minute edit to change (see
+DECISIONS.md). Curl type dropped from #2 to #7 (and from a hard
+requirement to a pure weight — see the stages above) because products in
+Nya's catalog are tagged across curl-type *ranges* (a 4C product usually
+also carries 4A/4B), so curl type rarely discriminates between two
+candidate products the way porosity or a declared goal does — see
+DECISIONS.md's "Curl type demoted to a pure weight" for the full
+reasoning. There is deliberately **no "clean formulation" bonus**
+(sulfate-free/protein-free/etc. scored positively for users who never
+declared that sensitivity) — considered and rejected, since some users
+genuinely benefit from those ingredients; see DECISIONS.md. `journey` is
+deliberately **not** in `SCORING_WEIGHTS` at all — no product attribute
+corresponds to it; per Nya's own note it changes how Nari *talks* to the
+user, not what she recommends, so it's collected and passed through on
 `ScoredRecommendationSet` for Prompt 4's copy and nowhere else.
+
+### Styles (Final Spike, Part C / P1 of 4)
+Catalog rows with `category: "Style"` (Braids, Blow Out, Twist/Braid Out
+& Rod Set, Twist/Natural Cornrow & Protective, Wash and Go — 5 in the
+live catalog) have no brand/price/buyLink/ingredient data, so they're
+scored in a separate path (`scoreStyle`/`buildStyleRecommendations`, both
+in `scoring.ts`) rather than through `CATEGORIES`' 6-category product
+loop, and never touch Stage 1's hard filters (no ingredient data to
+filter on). `scoreProducts()` returns the top 2 on a new `styles` field
+on `ScoredRecommendationSet` (currently typed optional, for backward
+compatibility with any pre-existing literal construction of that type —
+see the field's own comment in `scoring.ts`).
+
+- **Goals and frustrations BOTH score positively, same direction and same
+  weights as products** — `scoreStyle` and `computeScoreBreakdown`
+  (products) share two extracted functions, `scoreGoalOverlap` and
+  `scoreFrustrationOverlap`, so the two can't drift apart again. A
+  style's `goals` tag means what it helps the user achieve; its
+  `frustrations` tag means what it helps the user address — same meaning
+  as on a product in both cases.
+  - **Correction (P1 follow-up):** an earlier version of this file
+    inverted frustration scoring for styles, on the assumption that a
+    style's `frustrations` tag meant a risk it caused. That was wrong —
+    per the CEO (domain expert), she tags a style with the frustrations
+    it SOLVES and *omits* a tag where the style risks causing that
+    problem instead (e.g. "Wash and Go" carries no `"breakage"` tag
+    specifically because it can cause breakage) — absence encodes the
+    caution, not presence. See DECISIONS.md's "Styles frustration
+    scoring correction" for the full story. Do not reintroduce a sign
+    flip here without confirming with her first.
+- **No neutral baseline for goal-less styles.** One existed briefly
+  (`STYLE_NEUTRAL_GOAL_BASELINE`) to stop a goal-less style from being
+  structurally guaranteed last place under the (since-reverted) inverted
+  frustration scoring; removed once that justification no longer applied
+  (see DECISIONS.md for the numbers — every style in the live catalog
+  currently has at least one goal, so it was already fully inert before
+  removal). A goal-less style today just scores on frustrations alone,
+  same as a product with no goal match.
+- **`notes` (the free-text field) is never read for scoring** — P3
+  displays it as a "Keep in mind" line; scoring only ever reads structured
+  tags (`goals`, `frustrations`). See DECISIONS.md for why keyword-
+  matching prose was rejected.
+- **Debug export**: `debugScoreStyles(catalog, answers)` returns every
+  style's score (not just the top 2), reusing the exact same `scoreStyle`
+  the real pipeline calls — used by `scoring.test.ts` to assert ranking
+  order directly, same pattern as `debugHardFilterExclusions`/
+  `debugScoreCategory`.
 
 ### Running the tests
 `npm test` (Vitest). `scoring.test.ts` runs the two required profiles
@@ -399,14 +467,18 @@ Free"` → `fragranceFree` (a checkbox, same pattern as the other free-from
 fields), and `"Key ingredients"` → `keyIngredients` (free text,
 display-only, no scoring role). `goals` gets one extra normalization step
 beyond the usual lowercase/trim: a small `GOAL_ALIASES` table in
-`api/_lib/schema.ts` rewrites the two Airtable values that don't match
-the quiz's vocabulary exactly (`"scalp health"` → `"scalp"`, `"heat or
-color damage"` → `"damage"`) — done at the data-normalization boundary,
+`api/_lib/schema.ts` rewrites Airtable values that don't match the quiz's
+vocabulary exactly (`"scalp health"` → `"scalp"`, `"heat or color
+damage"` → `"damage"`, and, added Final Spike Part D, `"length
+retention"` → `"growth"` — the latter now load-bearing since styles are
+scored, see "Styles" above) — done at the data-normalization boundary,
 per this prompt's own instruction, so `scoring.ts` never has to know
 Airtable's original wording. Three quiz goal values (`"volume"`,
 `"simplify"`, `"technique"`) have no catalog equivalent at all — not an
-error, they simply never contribute a match. `frustrations` needed no
-aliasing — its values matched the quiz vocabulary exactly once
+error, they simply never contribute a match. `frustrations` has its own
+alias table (`FRUSTRATION_ALIASES`, added 2026-08-29) for
+`"breakage/length retention"` → `"breakage"`; no other frustration values
+need aliasing — they matched the quiz vocabulary exactly once
 lowercased.
 
 ## Diagnostic Quiz UI
@@ -447,12 +519,17 @@ were dropped and why `PhaseBar` wasn't ported.
   mapping, `blackOwnedPref`'s casing) — see DECISIONS.md. Still doesn't
   call `scoreProducts()` itself — `ScannerRoute.tsx` calls it, then passes
   the result to `getRecommendations()` (see "Product Data Pipeline" above).
-- **`quiz/quizLabels.ts`** (Spike A) — `getOptionLabel`/`getOptionDisplay`/
-  `formatAnswerDisplay`, the shared value→label lookup against
-  `QUIZ_QUESTIONS`. Used by both the profile summary step (below) and
+- **`quiz/quizLabels.ts`** (Spike A; extended P2 of 4) — `getOptionLabel`/
+  `getOptionDisplay`/`formatAnswerDisplay`, the shared value→label lookup
+  against `QUIZ_QUESTIONS`. Used by both the review step (below) and
   `ScanResults.tsx`'s "why we picked this" humanizer, so neither has to
   re-derive the mapping from a raw answer value back to Nya's option
-  copy.
+  copy. `formatAnswerDisplay` numbers a `ranked`-mode question's array
+  (`"1. Breakage & shedding   2. Constant dryness   3. ..."`) instead of
+  just joining it — added for the review screen, since a ranked answer's
+  order is meaningful and a plain `·`-joined list would lose it (the only
+  question this currently applies to is `frustrations`, but the check is
+  generic to any future `ranked` question).
 
 ### How to add or edit a quiz question
 1. Edit (or add an entry to) the `QUIZ_QUESTIONS` array in
@@ -485,39 +562,111 @@ were dropped and why `PhaseBar` wasn't ported.
    `INTERSTITIAL_AFTER_INDEX` if the new question count changes where the
    "almost there" beat should land.
 
-## Scanner Flow: Profile Step, Photo Honesty, Results (Spike A)
+## Scanner Flow: Photo, Quiz, Review, Results
 
-The scanner flow now ends-to-end for real: quiz → profile summary → photo
-(optional) → scored results from the live catalog. `STEP_ORDER` in
-`steps.ts` is `["intro", "quiz", "profile", "photo", "analyzing"]` — the
-profile step was inserted between quiz and photo, not appended at the
-end. See DECISIONS.md's Spike A section for the reasoning behind each
-piece below.
+**Current order (Final Spike, P2 of 4 — supersedes Spike A's ordering
+below): `STEP_ORDER` in `steps.ts` is `["intro", "photo", "quiz",
+"review", "analyzing"]`.** The photo now comes right after the intro,
+before the quiz — moved per the CEO's direction so it reads as a real
+part of the experience rather than an afterthought squeezed in at the
+end (it was previously quiz → profile → photo). The old "profile"
+step/file was renamed **"review"** (`src/features/scanner/steps/
+ReviewStep.tsx`, was `ProfileStep.tsx`) and its copy rewritten — see the
+"Review step" section below, which replaces the "Profile step" section
+that used to be here. See DECISIONS.md's "Flow reorder" (P2 of 4)
+section for the full reasoning; DECISIONS.md's Spike A section (below,
+still accurate for everything **except** step order/naming) covers the
+five locked results-page edge cases, the prefetch timing, and the photo
+honesty-fix rationale that P2 didn't change.
 
-### Profile step (`src/features/scanner/steps/ProfileStep.tsx`)
-Ports the spirit of Nya's "done" screen from `nya-quiz-reference.jsx`
-("Your Nari profile / Nari's got you, sis. 🌿") — restyled in Nari
-tokens, both themes. Renders every answered question with its human
-label via `quiz/quizLabels.ts` (never a raw value like `"fine_low"`).
-Two actions per her design (plus a standard Back, for consistency with
-every other step): primary **Continue** → photo step, and **Start
-over**, which confirms via `window.confirm` before clearing all scanner
-state (`RESET` action) and the persisted quiz sessionStorage blob —
-handled in `ScannerRoute.tsx`'s `handleStartOver`, not inside the
-reducer, since sessionStorage is a side effect the reducer itself
-shouldn't own (same convention as the existing photo-step clear effect).
-`scannerReducer.ts`'s `BACK` case now special-cases leaving "profile"
-(returns to the quiz's last question) rather than leaving "photo" — a
-consequence of profile now sitting between them, not a new pattern.
+### How to add or reorder a scanner step
+1. Add/move the step's id in `steps.ts`'s `StepId` union and
+   `STEP_ORDER` array.
+2. Add a case for it to `ScannerRoute.tsx`'s step-dispatch `if`/`else if`
+   chain (renders the step's component and wires its callbacks to
+   `dispatch`).
+3. Check `scannerReducer.ts`'s `ADVANCE_QUIZ`/`BACK` cases for any
+   step-name-specific special casing — currently just the boundary
+   between "quiz" (its last question) and "review" (`ADVANCE_QUIZ` past
+   question 9 jumps to "review"; `BACK` out of "review" jumps back to
+   the quiz's last question, not `stepIndex - 1` blindly, since
+   `quizIndex` is out of range by that point). A step inserted anywhere
+   else needs no special case — the default `stepIndex ± 1` already
+   handles it.
+4. Add a matching `activeSection()`/`currentUnit()` entry in
+   `ScanProgress.tsx` for the new step's progress-bar label/unit.
+   `TOTAL_PROGRESS_UNITS` (`steps.ts`) is `QUIZ_QUESTION_COUNT + 1` — the
+   `+1` is the photo's one unit; a new non-quiz step that should count
+   toward the bar needs its own slot budgeted into that total, not just
+   a label.
+5. If the step reads or writes sessionStorage-persisted quiz state,
+   check whether it needs its own "clear the stale blob" effect in
+   `ScannerRoute.tsx`, the way "review" does today (see below) — this is
+   only needed for a step positioned right after "quiz".
 
-### Photo step honesty fix (launch-blocking, per the brief)
+### Review step (`src/features/scanner/steps/ReviewStep.tsx`, was `ProfileStep.tsx`)
+Read-only confirmation screen between the last quiz question and results
+— the user sees every answer reflected back before recommendations are
+generated. Takes visual inspiration from Nya's "done" screen in
+`nya-quiz-reference.jsx` ("Your Nari profile / Nari's got you, sis. 🌿")
+but the copy was rewritten for P2 of 4: heading **"Here's what you told
+Nari"**, subtext **"Take a look and fix anything that looks incorrect
+before we build your recommendations."** Renders every answered question
+with its human label via `quiz/quizLabels.ts` (never a raw value like
+`"fine_low"`); a `ranked` question's array (frustrations) is numbered by
+priority order, not just joined — see `quizLabels.ts`'s
+`formatAnswerDisplay` above. **Deliberately no photo shown** — the photo
+currently feeds nothing (see below), so surfacing it here would imply it
+does. **Deliberately no inline editing or step-jumping** — clicking a
+past answer doesn't do anything; if something's wrong, the user hits
+Back, which already preserves every answer all the way through the quiz.
+Inline editing across all 9 question types was considered and
+explicitly deferred (it's the single largest item in this spike's scope
+for the smallest payoff) — see DECISIONS.md.
+
+Two actions per Nya's original design (plus a standard Back, for
+consistency with every other step): primary **"Build my
+recommendations"** → analyzing/results, and **Start over**, which
+confirms via `window.confirm` before clearing all scanner state (`RESET`
+action) and the persisted quiz sessionStorage blob — handled in
+`ScannerRoute.tsx`'s `handleStartOver`, not inside the reducer, since
+sessionStorage is a side effect the reducer itself shouldn't own (same
+convention as the existing quiz→review clear effect below).
+`scannerReducer.ts`'s `BACK` case special-cases leaving "review"
+(returns to the quiz's last question) rather than leaving "quiz" itself
+— a consequence of review sitting right after the quiz, not a new
+pattern. `ScannerRoute.tsx`'s sessionStorage-clear effect (fires once
+the user reaches "review", so a refresh there doesn't read the quiz's
+stale last-question snapshot and bounce the user backward) moved with
+the rename — same mechanism as Spike A's original "clear on reaching
+profile" fix, just retargeted at the new step name.
+
+### Photo step (`src/features/scanner/steps/PhotoStep.tsx`) — now first, and no longer called "optional" (P2 of 4)
+The photo step moved to right after the intro (was after the quiz, then
+after the quiz+profile in Spike A — see the flow-reorder note above) and
+its copy dropped the word "optional" from the heading/label per the
+CEO's direction: she wants it to read as a real part of the experience,
+not an afterthought. **It's still skippable** — "Skip for now" stays,
+the concept didn't change, just the framing. Current heading: **"A photo
+of your hair"**. Body copy: *"Full photo analysis is coming soon and
+will help Nari tailor style recommendations. For now, your
+recommendations primarily come from your quiz answers."* This still
+holds the line from Spike A's honesty fix below — no claim that the
+photo is analyzed, stored, or used for recommendations; it's currently
+read by nothing.
+
+### Photo step honesty fix (launch-blocking, per the Spike A brief)
 The old copy claimed photos were "analyzed and immediately deleted" —
 untrue today, since `api/analyze.ts` is deployed but never called from
-this flow (still true post-Spike-A; wiring it is explicitly out of
-scope). Fixed everywhere the claim appeared:
-- `PhotoStep.tsx`: heading now reads "(optional)"; body copy is *"Photo
-  analysis is coming soon — add a photo to try the flow, or skip
-  straight to your results. Your photo isn't stored or shared."*
+this flow (still true after P2 of 4; wiring it is explicitly out of
+scope). Fixed everywhere the claim appeared (the specific `PhotoStep.tsx`
+copy quoted below was superseded again by P2 of 4's rewrite — see
+directly above for the current wording; the reasoning here, and the
+other files' fixes, still stand):
+- `PhotoStep.tsx` (superseded, see above): heading used to read
+  "(optional)"; body copy used to be *"Photo analysis is coming soon —
+  add a photo to try the flow, or skip straight to your results. Your
+  photo isn't stored or shared."*
 - `CTA.tsx`'s landing trust line: dropped to "Your photos are never
   stored or shared." (still true, no longer promising analysis).
 - `Features.tsx`'s "Scan"/"Analyze" step copy: also corrected a second,

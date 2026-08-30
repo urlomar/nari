@@ -836,3 +836,192 @@ summary.
   live Resend/Google credentials (this sandbox's env files are dotless —
   see CLAUDE.md) and a real Vercel deploy — both are the user's to run,
   per this spike's own verification checklist.
+
+## Final Spike — Scoring Engine Update (P1 of 4)
+**Status: Done.** Four prompts split the remainder of the Final Spike;
+this is the first — scoring logic only, no UI changes (P2 handles the
+flow, P3 the results page, P4 content edits). See CLAUDE.md's "Product
+Scoring" section and DECISIONS.md's "Final Spike — Scoring Engine Update
+(P1 of 4)" for full detail; this is the status summary.
+
+- **Part A — Ranking reorder, per the CEO/hair expert.** New priority
+  order in `SCORING_WEIGHTS`: porosity → goals → frustrations (still
+  rank-weighted 3x/2x/1x) → density → budget → black-owned → curl type
+  (now last). Curl type dropped out of `requiredDimensionsFor`/
+  `RELAXATION_ORDER` entirely — it's a pure weight now, never a hard
+  eligibility gate; porosity and density remain hard requirements with
+  the existing progressive relaxation (density first, then porosity,
+  never sensitivities). No "clean formulation" bonus was added for
+  undeclared sensitivities — considered and explicitly rejected (some
+  users genuinely benefit from protein/silicones/etc.). The exported
+  `relaxedConstraints` type shape was deliberately left untouched
+  (still allows `"curlType"`, which now simply never appears at runtime)
+  specifically to avoid touching `ScanResults.tsx`/`useSendResults.ts`/
+  `api/_lib/resultsSchema.ts`/`api/send-results.ts` — see DECISIONS.md.
+- **Part B — Mineral oil filter.** Checked and confirmed already fully
+  wired as of the 2026-08-29 data pipeline fixes pass — no code change
+  needed; verified via the existing passing test block rather than
+  assumed.
+- **Part C — Styles scoring (new).** The 5 "Style" catalog rows are now
+  scored via a dedicated `scoreStyle`/`buildStyleRecommendations` path,
+  returning the top 2 on a new `styles` field on `ScoredRecommendationSet`.
+  `notes` is never read for scoring — display-only, per the brief. New
+  `debugScoreStyles` export (mirrors the existing
+  `debugHardFilterExclusions`/`debugScoreCategory` pattern) powers the
+  tests directly. **Correction, P1 follow-up:** the frustration direction
+  originally shipped here (inverted — a style's frustration tag treated
+  as a risk it causes) was wrong, per the CEO's direct correction, and has
+  since been reverted to positive (same direction as products); the
+  neutral goal baseline mentioned below was also removed as a result. See
+  the "P1 follow-up" entry further down and DECISIONS.md for the full
+  story — left in place here as the historical record of what originally
+  shipped.
+- **Part D — `length retention` → `growth` alias.** Added to
+  `GOAL_ALIASES` in `api/_lib/schema.ts`. The catalog fixture's one
+  affected row was hand-updated to the post-alias value rather than
+  re-pulled live (this sandbox's env files are dotless — no real
+  `/api/products` fetch was possible here). `valueDrift.goals` confirmed
+  clean afterward via an updated `schema.test.ts` case.
+- **Part E — Tests and docs.** 109 tests passing (up from 97): new/updated
+  coverage for curl type no longer excluding products, porosity/density
+  still excluding, mineral-oil enforcement (pre-existing, re-verified),
+  style frustration inversion + rank-weighting, the no-goals neutral
+  baseline, and styles never being excluded by sensitivities. `npm run
+  typecheck` clean. CLAUDE.md and DECISIONS.md both updated; this PLAN.md
+  entry is the third leg.
+- **Report (per the original brief, now superseded — see the P1 follow-up
+  below for the corrected numbers): top-2 styles for a user whose top
+  frustrations are dryness and frizz** — "Braids/Protective Style with
+  Added Hair" (26.0, neutral baseline) and "Blow Out (& Afro)" (0.0).
+  "Wash and Go" (tagged dryness + frizz — exactly this user's top two)
+  landed dead last at -50.0 under the (since-reverted) inversion.
+- **Known side effect, not in scope to fix:** `/debug/scoring`'s built-in
+  `"relaxation"` demo profile (`ScoringDebug.tsx`) is now mislabeled — its
+  comment claims it triggers curl-type relaxation, which is no longer
+  possible. Flagged in DECISIONS.md's "Open questions" for P2/P3 or a
+  standalone fix; left untouched here since it's a UI file outside this
+  prompt's scope. Still true as of the P1 follow-up below.
+
+## Final Spike — Scoring Engine Update, P1 follow-up (styles frustration correction)
+**Status: Done.** The CEO (domain expert) corrected a wrong assumption
+in P1's styles scoring: frustrations on styles mean the same thing they
+mean on products (problems the style HELPS ADDRESS), not problems it
+causes — she tags styles with the frustrations they solve and *omits* a
+tag where a style risks causing that problem instead. See DECISIONS.md's
+"Styles frustration scoring correction" for the full reasoning; this is
+the status summary.
+
+- **Reverted the inversion.** `scoreStyle` now scores frustration overlap
+  POSITIVELY, same rank weighting as products (#1 ~3x, #2 ~2x, #3 ~1x).
+  Extracted two shared functions, `scoreGoalOverlap` and
+  `scoreFrustrationOverlap`, used by both `scoreStyle` and
+  `computeScoreBreakdown` (products) — a structural safeguard so the two
+  can't silently diverge in direction again the way they did the first
+  time.
+- **Removed the neutral goal baseline** (`STYLE_NEUTRAL_GOAL_BASELINE`).
+  Its only justification (protecting a goal-less style from being
+  structurally guaranteed last place under inverted scoring) no longer
+  applies now that frustrations score positively. Numeric check: the
+  live catalog currently has zero styles with an empty `goals` array (the
+  CEO has since tagged goals on every style row, including the one that
+  originally needed the baseline), so it was already fully inert before
+  removal — see DECISIONS.md for the full numbers.
+- **Re-pulled the live catalog for real.** The original P1 pass believed
+  live Airtable access wasn't possible in this sandbox and hand-edited
+  the fixture instead; that belief was wrong (it was true only for
+  automatic loading via Vite/`vercel dev`, not for manually sourcing
+  `env.local` and calling the Airtable API directly). This pass did a
+  genuine live pull — 62 records, same count as before, 0 skipped, 0
+  unmapped fields. One new value-drift finding: goals value `"tehnique"`
+  (likely a typo for the already-real `"technique"` quiz value) now
+  appears on all 5 style rows — flagged in DECISIONS.md's Open Questions,
+  deliberately not aliased (an alias table entry would mask what looks
+  like a data-entry typo rather than get it fixed at the source).
+- **Tests updated**: the "ranks lower" assertion replaced with "ranks
+  higher"; the neutral-baseline test replaced with a synthetic-style test
+  (no live example exists anymore); added a test confirming the shared
+  match-reason format/direction can't silently revert to the old
+  "caution:" wording. All 109 tests still passing, `npm run typecheck`
+  clean.
+- **Report (corrected): top-2 styles for a user with frustrations
+  [dryness, frizz] and goals [moisture, definition]** — **"Wash and Go"
+  (102.0)** and **"Twist/Braid Out & Rod Set" (56.0)**. Wash and Go —
+  tagged for exactly this user's two goals and both frustrations — now
+  correctly ranks first, the direct opposite of the previous (wrong)
+  result. Full ranking table in DECISIONS.md.
+
+## Final Spike — Flow Reorder & Review Screen (P2 of 4)
+**Status: Done.** Scan flow only — no results-page changes (P3), no
+content/copy edits outside the photo step and the new review screen (P4
+handles the rest). See CLAUDE.md's "Scanner Flow: Photo, Quiz, Review,
+Results" section and DECISIONS.md's "Final Spike — Flow Reorder & Review
+Screen (P2 of 4)" for full detail; this is the status summary.
+
+- **Part A — Reorder.** `STEP_ORDER` is now `["intro", "photo", "quiz",
+  "review", "analyzing"]` (was `["intro", "quiz", "profile", "photo",
+  "analyzing"]`) — photo moved from after the quiz to right after the
+  intro, per the CEO's direction. The old "profile" step/file was renamed
+  "review" throughout (`ProfileStep.tsx` → `ReviewStep.tsx`, `StepId`,
+  the reducer's quiz↔review boundary special-casing, `ScanProgress`'s
+  section label). `ScanProgress.tsx`'s unit math updated: photo is now
+  unit 1 of 10, each quiz question offset by 1, review/analyzing show the
+  full bar under a new "Review your answers" label — `TOTAL_PROGRESS_UNITS`
+  itself unchanged (still `QUIZ_QUESTION_COUNT + 1`). The mid-quiz
+  interstitial's position (`INTERSTITIAL_AFTER_INDEX`, still `6`) needed
+  no change — confirmed, not assumed, via live screenshots — since it's
+  about position within the 9-question sequence, unrelated to where the
+  photo sits. sessionStorage persistence, the persistent `ScanBackground`,
+  and Back-preserves-answers were all preserved without rebuilding — the
+  one persistence special case that moved was the "clear the stale quiz
+  blob" effect, now firing on reaching "review" instead of "profile" (the
+  photo step itself needs no equivalent effect anymore, since it now sits
+  *before* the quiz, so there's no stale blob to bounce back from yet).
+- **Part B — Photo step copy.** "(optional)" dropped from the heading
+  ("A photo of your hair"); "Skip for now" stays — framing change, not a
+  capability change. New body copy given by the brief, used as specified:
+  "Full photo analysis is coming soon and will help Nari tailor style
+  recommendations. For now, your recommendations primarily come from your
+  quiz answers." Both capture paths (take a photo / choose a photo) were
+  already implemented as distinct actions from Spike A and needed no
+  change.
+- **Part C — Review screen (new).** `ReviewStep.tsx`, read-only,
+  heading "Here's what you told Nari" / subtext "Take a look and fix
+  anything that looks incorrect before we build your recommendations." —
+  no em dashes, matching the brief. Lists all 9 questions with
+  human-readable labels via `quiz/quizLabels.ts`; a `ranked` answer
+  (frustrations) is now numbered by priority order
+  ("1. Breakage & shedding   2. Constant dryness   3. ..."), a new
+  capability added to `formatAnswerDisplay` for this screen. No photo
+  shown (it feeds nothing — showing it would imply otherwise). No inline
+  editing or step-jumping — Back (already fully answer-preserving since
+  Prompt 3) is the only way to fix a wrong answer; inline editing across
+  all 9 question types was considered and explicitly deferred as the
+  single largest, lowest-payoff item in this prompt's scope — see
+  DECISIONS.md.
+- **Part D — Documentation.** CLAUDE.md's old "Scanner Flow: Profile
+  Step, Photo Honesty, Results (Spike A)" section reworked into "Scanner
+  Flow: Photo, Quiz, Review, Results," with a new "How to add or reorder
+  a scanner step" how-to; DECISIONS.md gained a new top-level section for
+  this prompt's reasoning; this PLAN.md entry is the third leg.
+- **Verification.** `npm run typecheck` clean; all 109 tests pass (106
+  unmodified + 3 in `scannerReducer.test.ts` updated for the "review"
+  rename, same assertions). Full flow driven end to end twice (once
+  taking a real photo, once skipping) across light-desktop (1280×900) and
+  dark-mobile (390×844) via a temporary local Playwright install (not a
+  project dependency, removed after) against a temporary gated Vite
+  dev-middleware serving the checked-in catalog fixture (this sandbox has
+  no `.env.local` — same workaround as every prior spike, reverted
+  immediately after) — zero console errors in any run. Scripted
+  assertions (not just visual inspection) confirmed: no "optional" text
+  anywhere on the photo step; the progress bar's exact label/unit sequence
+  at the photo step, mid-quiz, the interstitial, and the review screen;
+  the ranked-frustrations numbering; Back from review restoring quiz
+  question 9/9 with its answer still selected (checked via `data-selected`
+  in the DOM); a mid-quiz refresh restoring in-progress answers; a
+  photo-step refresh (after capturing a photo) resetting cleanly to the
+  intro with no photo restored; and a full run through to real scored
+  results in both themes/viewports, confirming this prompt's flow changes
+  didn't disturb the scoring/results handoff.
+- Next: P3 (results page) and P4 (content/copy edits — cube image, quiz
+  density wording, About page, em dash removal elsewhere, home page
+  sample result).

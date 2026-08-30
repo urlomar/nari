@@ -147,6 +147,17 @@ export interface CategoryRecommendation {
 export interface ScoredRecommendationSet {
   categories: CategoryRecommendation[];
   /**
+   * Top 2 "Style" catalog rows (Braids, Wash and Go, etc.), scored
+   * separately from product categories — see the "Styles" section below
+   * for the scoring rules (goals and frustrations both positive, same
+   * direction and weights as products).
+   * Optional only so a literal `ScoredRecommendationSet` built before this
+   * field existed (e.g. an older test fixture) still typechecks — always
+   * populated by `scoreProducts()` itself. P3 can drop the optionality
+   * once it renders this.
+   */
+  styles?: RecommendedStyle[];
+  /**
    * Sensitivities the user reported that could NOT be enforced because no
    * catalog column exists for them yet (currently always `["mineral_oil"]`
    * or `[]` — see MINERAL_OIL_FIELD below). Prompt 4 must not claim these
@@ -161,34 +172,49 @@ export const CATEGORIES = ["Shampoo", "Conditioner", "Leave-in", "Cream", "Mouss
 
 // ---------------------------------------------------------------------------
 // Weights — the priority ranking. Expected to be tuned; this is the only
-// place that should need to change to retune scoring priorities. Ordered
-// highest to lowest per the brief:
-//   1. porosity  2. curlType  3. goals  4. frustrations  5. density
-//   6. budget    7. blackOwned   8. tiebreakers (ewg, community sentiment)
+// place that should need to change to retune scoring priorities.
+//
+// Reordered per the CEO/hair expert's direction (Final Spike, Part P1 —
+// see DECISIONS.md "Scoring reorder"), highest to lowest:
+//   1. porosity  2. goals  3. frustrations  4. density
+//   5. budget    6. blackOwned   7. curlType   8. tiebreakers (ewg, community sentiment)
+// Curl type dropped from #2 to #7 (last real dimension, above only the
+// tiebreakers) because products are tagged across curl-type ranges (a 4C
+// product usually also carries 4A/4B), so curl type rarely discriminates
+// between products — a dimension that seldom differentiates shouldn't carry
+// heavy weight. Porosity stays heaviest: it determines whether a product
+// physically works on someone's hair, not just a stylistic preference.
+//
 // Each tier's MAXIMUM attainable contribution is kept comfortably below
 // the tier above it, so a lower-priority dimension can never outrank a
 // higher-priority one on its own — see the inline max-contribution notes.
+//
+// Deliberately NO "clean formulation" bonus for sulfate-free/protein-free/
+// etc. beyond what a user actually declared as a sensitivity — considered
+// and rejected (see DECISIONS.md). Some users genuinely benefit from
+// protein, silicones, etc., so "free-from" is not universally better; a
+// user who didn't flag a sensitivity gets zero bonus or penalty either way
+// on that dimension, from Stage 1 (no filter applied) all the way through
+// Stage 2 (no points awarded here).
 // ---------------------------------------------------------------------------
 
 export const SCORING_WEIGHTS = {
   /** Porosity — heaviest. Determines whether a product physically works on someone's hair. Max contribution: 100. */
   porosity: 100,
 
-  /** Curl type — close second. Any overlap between expanded answer tags and the product's hairTypes counts as a match. Max contribution: 80. */
-  curlType: 80,
-
-  /** Goals — equal weight per matched goal, up to 3 selected. Max contribution: 3 * 20 = 60. */
-  goalMatch: 20,
+  /** Goals — equal weight per matched goal, up to 3 selected. Max contribution: 3 * 26 = 78. */
+  goalMatch: 26,
 
   /**
    * Frustrations — rank-weighted per the quiz's own copy ("your #1 is
    * Nari's #1 priority"): rank 1 gets 3x this unit, rank 2 gets 2x, rank 3
-   * gets 1x. Max contribution: (3+2+1) * 8 = 48.
+   * gets 1x. Max contribution: (3+2+1) * 10 = 60. Also reused, same
+   * direction, by scoreStyle via the shared `scoreFrustrationOverlap`.
    */
-  frustrationUnit: 8,
+  frustrationUnit: 10,
 
-  /** Density — medium weight. Quiz's fine_low/fine_high/thick_low/thick_high collapse to fine/thick before comparing. Max contribution: 15. */
-  density: 15,
+  /** Density — medium weight. Quiz's fine_low/fine_high/thick_low/thick_high collapse to fine/thick before comparing. Max contribution: 40. */
+  density: 40,
 
   /** Budget — soft, never a hard filter. In-range boosts, out-of-range penalizes but stays eligible. */
   budgetInRange: 10,
@@ -202,10 +228,18 @@ export const SCORING_WEIGHTS = {
   blackOwnedNoPreference: 0,
 
   /**
+   * Curl type — now last of the real (non-tiebreaker) dimensions. Any
+   * overlap between expanded answer tags and the product's hairTypes
+   * counts as a match. Max contribution: 6 — kept below black-owned's max
+   * (8) but above the tiebreaker tier's max (4) below.
+   */
+  curlType: 6,
+
+  /**
    * Tiebreakers ONLY — deliberately tiny, so these can never outweigh any
-   * real dimension above, including black-owned's smallest nonzero value
-   * (4). EWG score: lower is safer, so a lower score earns more.
-   * Community sentiment: "Loved" > "Mixed" > (absent, no bonus).
+   * real dimension above, including curl type (6). EWG score: lower is
+   * safer, so a lower score earns more. Community sentiment: "Loved" >
+   * "Mixed" > (absent, no bonus).
    */
   ewgTiebreakPerPoint: 0.3,
   communitySentimentLoved: 1,
@@ -370,6 +404,54 @@ export interface ScoreBreakdown {
 }
 
 /**
+ * Goal overlap — equal weight per match, up to 3. Shared by
+ * `computeScoreBreakdown` (products) and `scoreStyle` (styles): both mean
+ * exactly the same thing by "goals" (what the item helps the user
+ * achieve), so this is one implementation, not two that could drift.
+ */
+function scoreGoalOverlap(itemGoals: string[], userGoals: GoalAnswer[]): { points: number; matchReasons: string[] } {
+  const matchReasons: string[] = [];
+  let points = 0;
+  for (const goal of userGoals) {
+    if (itemGoals.includes(goal)) {
+      points += SCORING_WEIGHTS.goalMatch;
+      matchReasons.push(`goal: ${goal}`);
+    }
+  }
+  return { points, matchReasons };
+}
+
+/**
+ * Frustration overlap — rank-weighted per the quiz's own copy ("your #1 is
+ * Nari's #1 priority"): rank 1 gets 3x `frustrationUnit`, rank 2 gets 2x,
+ * rank 3 gets 1x. "nothing" is skipped. POSITIVE for both products and
+ * styles — a tagged frustration means the item helps address it. (An
+ * earlier version of this file inverted the sign for styles, on the
+ * assumption a style's frustration tag meant a risk it caused rather than
+ * a problem it solved. That assumption was wrong — corrected per the
+ * CEO/domain expert, see DECISIONS.md's "Styles frustration scoring
+ * correction." Do not reintroduce a sign flip here without going back to
+ * her first.) Shared by `computeScoreBreakdown` (products) and
+ * `scoreStyle` (styles) for the same reason `scoreGoalOverlap` is: one
+ * implementation, so the two can't silently diverge again.
+ */
+function scoreFrustrationOverlap(
+  itemFrustrations: string[],
+  userFrustrations: FrustrationAnswer[]
+): { points: number; matchReasons: string[] } {
+  const matchReasons: string[] = [];
+  let points = 0;
+  userFrustrations.forEach((frustration, index) => {
+    if (frustration === "nothing") return;
+    if (!itemFrustrations.includes(frustration)) return;
+    const rankMultiplier = 3 - Math.min(index, 2); // rank 0 -> 3x, rank 1 -> 2x, rank 2+ -> 1x
+    points += SCORING_WEIGHTS.frustrationUnit * rankMultiplier;
+    matchReasons.push(`frustration #${index + 1}: ${frustration}`);
+  });
+  return { points, matchReasons };
+}
+
+/**
  * The actual scoring math, shared by `scoreProduct` (the real pipeline,
  * which only needs the total + human-readable reasons) and
  * `scoreProductBreakdown` (the /debug/scoring instrument, which needs the
@@ -398,29 +480,17 @@ function computeScoreBreakdown(
     matchReasons.push(`porosity: ${answers.porosity}`);
   }
 
-  // Curl type — any overlap between expanded tags and the product's hairTypes.
-  const curlOverlap = expandCurlType(answers.curlType).filter((tag) => product.hairTypes.includes(tag));
-  if (curlOverlap.length > 0) {
-    breakdown.curlType += SCORING_WEIGHTS.curlType;
-    matchReasons.push(`curl type: ${curlOverlap.join(", ")}`);
-  }
-
   // Goals — equal weight per match, up to 3.
-  for (const goal of answers.goals) {
-    if (product.goals.includes(goal)) {
-      breakdown.goals += SCORING_WEIGHTS.goalMatch;
-      matchReasons.push(`goal: ${goal}`);
-    }
-  }
+  const goalResult = scoreGoalOverlap(product.goals, answers.goals);
+  breakdown.goals += goalResult.points;
+  matchReasons.push(...goalResult.matchReasons);
 
-  // Frustrations — rank-weighted, "nothing" skipped.
-  answers.frustrations.forEach((frustration, index) => {
-    if (frustration === "nothing") return;
-    if (!product.frustrations.includes(frustration)) return;
-    const rankMultiplier = 3 - Math.min(index, 2); // rank 0 -> 3x, rank 1 -> 2x, rank 2+ -> 1x
-    breakdown.frustrations += SCORING_WEIGHTS.frustrationUnit * rankMultiplier;
-    matchReasons.push(`frustration #${index + 1}: ${frustration}`);
-  });
+  // Frustrations — rank-weighted, POSITIVE: a product tagged with a
+  // frustration helps solve it. Styles use the same positive direction —
+  // see scoreFrustrationOverlap's comment.
+  const frustrationResult = scoreFrustrationOverlap(product.frustrations, answers.frustrations);
+  breakdown.frustrations += frustrationResult.points;
+  matchReasons.push(...frustrationResult.matchReasons);
 
   // Density — quiz's fine/thick low/high collapse before comparing.
   const densityTag = DENSITY_COLLAPSE[answers.density];
@@ -447,6 +517,15 @@ function computeScoreBreakdown(
   if (boScore > 0) {
     breakdown.blackOwned += boScore;
     matchReasons.push("black-owned brand");
+  }
+
+  // Curl type — now a pure weight, never an eligibility gate (see
+  // requiredDimensionsFor/meetsRequiredDimensions below). Any overlap
+  // between expanded tags and the product's hairTypes counts as a match.
+  const curlOverlap = expandCurlType(answers.curlType).filter((tag) => product.hairTypes.includes(tag));
+  if (curlOverlap.length > 0) {
+    breakdown.curlType += SCORING_WEIGHTS.curlType;
+    matchReasons.push(`curl type: ${curlOverlap.join(", ")}`);
   }
 
   // Tiebreakers only.
@@ -523,12 +602,21 @@ function selectForCategory(candidates: RecommendedProduct[]): RecommendedProduct
 // Stage 4 — Relaxation fallback
 // ---------------------------------------------------------------------------
 
+// "curlType" remains a member of this type (and of CategoryRecommendation/
+// DebugCategoryDetail's relaxedConstraints array type) purely so those
+// exported shapes stay unchanged for existing consumers (ScanResults.tsx,
+// useSendResults.ts, api/_lib/resultsSchema.ts, api/send-results.ts) — a
+// UI/API concern this prompt is explicitly not touching. Functionally,
+// curl type is no longer ever added to `required` below, so it can never
+// appear in a real relaxedConstraints array anymore — see Part A of the
+// Final Spike brief ("curl type is no longer a hard requirement") and
+// DECISIONS.md.
 type RelaxableDimension = "density" | "curlType" | "porosity";
 /** Weakest constraint dropped first. Sensitivities are never in this list — Stage 1 already ran and is never revisited. */
-const RELAXATION_ORDER: RelaxableDimension[] = ["density", "curlType", "porosity"];
+const RELAXATION_ORDER: RelaxableDimension[] = ["density", "porosity"];
 
 function requiredDimensionsFor(answers: DiagnosticAnswers): Set<RelaxableDimension> {
-  const required = new Set<RelaxableDimension>(["density", "curlType"]);
+  const required = new Set<RelaxableDimension>(["density"]);
   // "unsure" already means porosity was never a requirement to begin with,
   // not merely "already relaxed" — consistent with Stage 2 never scoring it.
   if (answers.porosity !== "unsure") required.add("porosity");
@@ -537,18 +625,18 @@ function requiredDimensionsFor(answers: DiagnosticAnswers): Set<RelaxableDimensi
 
 function meetsRequiredDimensions(product: Product, answers: DiagnosticAnswers, required: Set<RelaxableDimension>): boolean {
   if (required.has("porosity") && !product.porosity.includes(answers.porosity)) return false;
-  if (required.has("curlType")) {
-    const tags = expandCurlType(answers.curlType);
-    if (!tags.some((tag) => product.hairTypes.includes(tag))) return false;
-  }
   if (required.has("density") && !product.density.includes(DENSITY_COLLAPSE[answers.density])) return false;
   return true;
 }
 
 /**
- * This is load-bearing right now, not a safety net: the catalog has no
- * products tagged 2a/2b/2c while the quiz offers those answers, so 2A/2B
- * and 2C/3A users hit relaxation on day one (see DECISIONS.md).
+ * Density is the constraint most likely to relax in practice now that curl
+ * type is a pure weight rather than a requirement — porosity relaxes only
+ * when a category's whole eligible pool is thin for that porosity value.
+ * The catalog's real 2a/2b/2c gap (no products tagged those curl types at
+ * all) no longer triggers relaxation the way it did before this pass —
+ * those users simply score lower on curl type now instead of losing
+ * eligibility (see DECISIONS.md's "Scoring reorder").
  */
 function buildCategoryRecommendation(category: string, hardFilteredCatalog: Product[], answers: DiagnosticAnswers): CategoryRecommendation {
   const scoredAll = hardFilteredCatalog.filter((p) => p.category === category).map((p) => scoreProduct(p, answers));
@@ -635,6 +723,84 @@ export function debugScoreCategory(category: string, catalog: Product[], answers
 }
 
 // ---------------------------------------------------------------------------
+// Styles — scored separately from products (Final Spike, Part C)
+//
+// Styles are catalog rows with category "Style" (Braids, Blow Out, Wash and
+// Go, etc. — 5 in the live catalog). They have no brand/price/buyLink/
+// ingredient flags, so none of Stage 1's hard filters or Stage 2's
+// porosity/density/curlType/budget/black-owned scoring applies to them —
+// they're scored on goals and frustrations only, and NOT filtered by
+// CATEGORIES' per-category loop above (CATEGORIES only lists the 6 real
+// product categories, so styles never entered that loop and don't need to
+// be excluded from it).
+// ---------------------------------------------------------------------------
+
+const STYLE_CATEGORY = "Style";
+
+export interface RecommendedStyle {
+  product: Product;
+  score: number;
+  matchReasons: string[];
+}
+
+/**
+ * Scores one style. Goals and frustrations both work exactly like
+ * scoreProduct's — same direction, same weights, same shared helpers
+ * (`scoreGoalOverlap`/`scoreFrustrationOverlap`) — because a style's tags
+ * mean the same thing a product's do: `goals` is what it helps the user
+ * achieve, `frustrations` is what it helps the user address. (An earlier
+ * version of this function inverted frustration scoring on the assumption
+ * that a style's `frustrations` tag meant a risk it caused. That was
+ * wrong — the CEO tags styles with the frustrations they SOLVE, and
+ * *omits* a tag where a style risks causing that problem instead (e.g.
+ * "Wash and Go" has no "breakage" tag precisely because it can cause
+ * breakage) — so absence encodes the caution, not presence. See
+ * DECISIONS.md's "Styles frustration scoring correction" for the full
+ * story; don't reintroduce the inversion.)
+ *
+ * No sensitivity filters (styles carry no ingredient data) and no
+ * porosity/density/curlType requirement or weight (those fields are empty
+ * on every style row). No neutral baseline for a goal-less style either —
+ * there was one when frustrations were inverted (to stop a goal-less
+ * style from being structurally guaranteed last place), but that
+ * justification no longer applies now that frustrations score positively
+ * too; see DECISIONS.md for the numbers behind removing it. Notes (the
+ * free-text "Keep in mind" field) are deliberately never read here — see
+ * DECISIONS.md for why prose isn't used to drive ranking.
+ */
+function scoreStyle(style: Product, answers: DiagnosticAnswers): RecommendedStyle {
+  const goalResult = scoreGoalOverlap(style.goals, answers.goals);
+  const frustrationResult = scoreFrustrationOverlap(style.frustrations, answers.frustrations);
+  return {
+    product: style,
+    score: goalResult.points + frustrationResult.points,
+    matchReasons: [...goalResult.matchReasons, ...frustrationResult.matchReasons],
+  };
+}
+
+/** Every style, scored and ranked (not just the top 2 the real pipeline keeps) — the pool `buildStyleRecommendations` slices. */
+function rankStyles(catalog: Product[], answers: DiagnosticAnswers): RecommendedStyle[] {
+  const scored = catalog.filter((p) => p.category === STYLE_CATEGORY).map((style) => scoreStyle(style, answers));
+  return [...scored].sort((a, b) => b.score - a.score);
+}
+
+/** Top 2 styles by score, from the full (not sensitivity-filtered) catalog — see the Styles section comment above for why. */
+function buildStyleRecommendations(catalog: Product[], answers: DiagnosticAnswers): RecommendedStyle[] {
+  return rankStyles(catalog, answers).slice(0, 2);
+}
+
+/**
+ * Debug-only: every style's score, not just the top 2 — lets a test (or a
+ * future /debug/scoring extension) inspect the full ranking, e.g. to
+ * confirm a style tagged with the user's #1 frustration actually ranks
+ * below one that isn't. Calls the same `scoreStyle` the real pipeline
+ * uses, so this can't drift from it.
+ */
+export function debugScoreStyles(catalog: Product[], answers: DiagnosticAnswers): RecommendedStyle[] {
+  return rankStyles(catalog, answers);
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -646,8 +812,11 @@ export function scoreProducts(answers: DiagnosticAnswers, catalog: Product[]): S
   const { survivors, unenforcedSensitivities } = applyHardFilters(catalog, answers.sensitivities);
 
   const categories = CATEGORIES.map((category) => buildCategoryRecommendation(category, survivors, answers));
+  // Styles score from the full, unfiltered catalog — no sensitivity data
+  // exists on style rows for Stage 1 to have meaningfully filtered anyway.
+  const styles = buildStyleRecommendations(catalog, answers);
 
-  return { categories, unenforcedSensitivities, journey: answers.journey };
+  return { categories, styles, unenforcedSensitivities, journey: answers.journey };
 }
 
 // ---------------------------------------------------------------------------

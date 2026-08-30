@@ -34,13 +34,13 @@ export function PhotoStep({
 
   return (
     <div className={s.step}>
-      <h2 className={s.heading}>A photo of your hair (optional)</h2>
+      <h2 className={s.heading}>A photo of your hair</h2>
       <p className={s.body}>
         Face the camera and pull your hair back so we can see your natural texture and shape.
       </p>
       <p className={s.hint}>
-        Photo analysis is coming soon — add a photo to try the flow, or skip straight to your results. Your photo
-        isn&rsquo;t stored or shared.
+        Full photo analysis is coming soon and will help Nari tailor style recommendations. For now, your
+        recommendations primarily come from your quiz answers.
       </p>
 
       {previewUrl ? (

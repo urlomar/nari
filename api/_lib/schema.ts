@@ -116,6 +116,11 @@ const FIELD_KINDS: Record<ProductFieldName, FieldKind> = {
 const GOAL_ALIASES: Record<string, string> = {
   "scalp health": "scalp",
   "heat or color damage": "damage",
+  // Airtable's "Length retention" (currently only on the "Twist/Natural
+  // Cornrow & Protective" Style row) is the same concept the quiz calls
+  // "growth" — added Final Spike Part D after valueDrift.goals flagged it
+  // as an unresolved mismatch. See CLAUDE.md/DECISIONS.md.
+  "length retention": "growth",
 };
 
 // Same pattern as GOAL_ALIASES, one dimension over. Verified live

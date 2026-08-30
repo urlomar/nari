@@ -10,7 +10,7 @@ import { ScanBackground } from "./components/ScanBackground";
 import { ScanProgress } from "./components/ScanProgress";
 import { IntroStep } from "./steps/IntroStep";
 import { PhotoStep } from "./steps/PhotoStep";
-import { ProfileStep } from "./steps/ProfileStep";
+import { ReviewStep } from "./steps/ReviewStep";
 import { QuizStep } from "./steps/QuizStep";
 import { AnalyzingStep } from "./steps/AnalyzingStep";
 import {
@@ -75,22 +75,25 @@ export default function ScannerRoute() {
   // The moment the user leaves the quiz, its sessionStorage snapshot is
   // stale forever (the write effect above only fires while step === "quiz",
   // so it's frozen at the last quiz question, not "the user finished all
-  // 9"). Without this, refreshing on the profile step (the step
-  // immediately after the quiz) would read that stale blob and bounce the
-  // user back into the last quiz question instead of leaving them on the
-  // profile summary — sessionStorage is only ever consulted at mount
+  // 9"). Without this, refreshing on the review step (the step immediately
+  // after the quiz) would read that stale blob and bounce the user back
+  // into the last quiz question instead of leaving them on the review
+  // screen — sessionStorage is only ever consulted at mount
   // (createInitialScannerState), so clearing it here doesn't affect normal
   // in-app Back navigation, which uses the reducer's in-memory state, and
   // self-heals if the user backs into the quiz again (the write effect
   // just fires again).
   useEffect(() => {
-    if (step === "profile") clearPersistedQuizProgress();
+    if (step === "review") clearPersistedQuizProgress();
   }, [step]);
 
   // Prefetch the catalog the moment the quiz starts, not at the results
   // page — scoring itself is milliseconds, the network fetch is the slow
   // part. The user spends minutes on 9 questions, so this warms the cache
-  // well before getRecommendations() needs it (see dataSource.ts).
+  // well before getRecommendations() needs it (see dataSource.ts). Still
+  // fires at quiz start, not photo start, even though photo now comes
+  // first (P2 of 4) — the photo step alone is a much shorter beat than the
+  // 9-question quiz, so the meaningful head start is still there.
   // Deliberately NOT precomputing scoreProducts() here — the user can still
   // go back and change answers, and invalidating a cached score isn't
   // worth it for a millisecond-cheap pure function.
@@ -168,28 +171,6 @@ export default function ScannerRoute() {
 
   if (step === "intro") {
     stepContent = <IntroStep onDone={() => dispatch({ type: "NEXT" })} />;
-  } else if (step === "quiz") {
-    stepKey = `quiz-${state.quizIndex}-${state.showInterstitial}`;
-    stepContent = (
-      <QuizStep
-        quizIndex={state.quizIndex}
-        quizAnswers={state.quizAnswers}
-        showInterstitial={state.showInterstitial}
-        onAnswer={handleQuizAnswer}
-        onAdvance={() => dispatch({ type: "ADVANCE_QUIZ" })}
-        onDismissInterstitial={() => dispatch({ type: "DISMISS_INTERSTITIAL" })}
-        onBack={() => dispatch({ type: "BACK" })}
-      />
-    );
-  } else if (step === "profile") {
-    stepContent = (
-      <ProfileStep
-        quizAnswers={state.quizAnswers}
-        onBack={() => dispatch({ type: "BACK" })}
-        onContinue={() => dispatch({ type: "NEXT" })}
-        onStartOver={handleStartOver}
-      />
-    );
   } else if (step === "photo") {
     stepContent = (
       <PhotoStep
@@ -209,6 +190,28 @@ export default function ScannerRoute() {
           setPhotoError(null);
           dispatch({ type: "SKIP_PHOTO" });
         }}
+      />
+    );
+  } else if (step === "quiz") {
+    stepKey = `quiz-${state.quizIndex}-${state.showInterstitial}`;
+    stepContent = (
+      <QuizStep
+        quizIndex={state.quizIndex}
+        quizAnswers={state.quizAnswers}
+        showInterstitial={state.showInterstitial}
+        onAnswer={handleQuizAnswer}
+        onAdvance={() => dispatch({ type: "ADVANCE_QUIZ" })}
+        onDismissInterstitial={() => dispatch({ type: "DISMISS_INTERSTITIAL" })}
+        onBack={() => dispatch({ type: "BACK" })}
+      />
+    );
+  } else if (step === "review") {
+    stepContent = (
+      <ReviewStep
+        quizAnswers={state.quizAnswers}
+        onBack={() => dispatch({ type: "BACK" })}
+        onContinue={() => dispatch({ type: "NEXT" })}
+        onStartOver={handleStartOver}
       />
     );
   } else if (step === "analyzing") {

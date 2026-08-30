@@ -3,7 +3,7 @@ import { formatAnswerDisplay } from "../quiz/quizLabels";
 import type { QuizAnswers } from "../quiz/quizTypes";
 import s from "../scanner.module.css";
 
-export interface ProfileStepProps {
+export interface ReviewStepProps {
   quizAnswers: QuizAnswers;
   onBack: () => void;
   onContinue: () => void;
@@ -11,21 +11,26 @@ export interface ProfileStepProps {
 }
 
 /**
- * Ports the spirit of Nya's "done" screen (nya-quiz-reference.jsx) — "Your
- * Nari profile / Nari's got you, sis. 🌿" — as a step between the quiz and
- * the photo, restyled in Nari's light-theme tokens. Unlike her reference,
- * the subtext doesn't promise photo analysis (see CLAUDE.md's Part C
- * honesty fix) and the photo step it leads into is explicitly optional.
+ * Read-only confirmation screen between the last quiz question and results
+ * (Final Spike, P2 of 4) — takes visual inspiration from Nya's original
+ * "Your Nari profile / Nari's got you, sis. 🌿" done-screen (see the old
+ * ProfileStep, now superseded) but with new copy and no photo shown (the
+ * photo currently feeds nothing — see PhotoStep.tsx — so surfacing it here
+ * would imply it does).
+ *
+ * Deliberately no inline editing or step-jumping: if something's wrong,
+ * the user hits Back, which already preserves every answer. Inline editing
+ * across all 9 question types was considered and explicitly deferred — see
+ * DECISIONS.md.
  */
-export function ProfileStep({ quizAnswers, onBack, onContinue, onStartOver }: ProfileStepProps) {
+export function ReviewStep({ quizAnswers, onBack, onContinue, onStartOver }: ReviewStepProps) {
   const answered = QUIZ_QUESTIONS.filter((q) => quizAnswers[q.id] !== undefined);
 
   return (
     <div className={s.step}>
-      <p className={s.eyebrow}>Your Nari profile</p>
-      <h2 className={s.heading}>Nari&rsquo;s got you, sis. 🌿</h2>
+      <h2 className={s.heading}>Here&rsquo;s what you told Nari</h2>
       <p className={s.body}>
-        Here&rsquo;s what you told us. Next, add a photo to try the flow — or skip straight to your results.
+        Take a look and fix anything that looks incorrect before we build your recommendations.
       </p>
 
       <ul className={s.summaryList}>
@@ -46,7 +51,7 @@ export function ProfileStep({ quizAnswers, onBack, onContinue, onStartOver }: Pr
             Start over
           </button>
           <button type="button" className={s.primaryButton} onClick={onContinue}>
-            Continue
+            Build my recommendations
           </button>
         </div>
       </div>

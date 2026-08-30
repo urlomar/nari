@@ -60,15 +60,15 @@ describe("createInitialScannerState — resuming from sessionStorage", () => {
   });
 });
 
-describe("scannerReducer — navigation around the quiz/profile boundary", () => {
-  it("ADVANCE_QUIZ past the last question moves to the profile step", () => {
+describe("scannerReducer — navigation around the quiz/review boundary", () => {
+  it("ADVANCE_QUIZ past the last question moves to the review step", () => {
     const state = { ...createInitialScannerState(), stepIndex: STEP_ORDER.indexOf("quiz"), quizIndex: QUIZ_QUESTION_COUNT - 1 };
     const next = scannerReducer(state, { type: "ADVANCE_QUIZ" });
-    expect(next.stepIndex).toBe(STEP_ORDER.indexOf("profile"));
+    expect(next.stepIndex).toBe(STEP_ORDER.indexOf("review"));
   });
 
-  it("BACK from the profile step returns to the quiz's last question, not stepIndex - 1 blindly", () => {
-    const state = { ...createInitialScannerState(), stepIndex: STEP_ORDER.indexOf("profile"), quizIndex: QUIZ_QUESTION_COUNT };
+  it("BACK from the review step returns to the quiz's last question, not stepIndex - 1 blindly", () => {
+    const state = { ...createInitialScannerState(), stepIndex: STEP_ORDER.indexOf("review"), quizIndex: QUIZ_QUESTION_COUNT };
     const next = scannerReducer(state, { type: "BACK" });
     expect(next.stepIndex).toBe(STEP_ORDER.indexOf("quiz"));
     expect(next.quizIndex).toBe(QUIZ_QUESTION_COUNT - 1);
@@ -77,7 +77,7 @@ describe("scannerReducer — navigation around the quiz/profile boundary", () =>
   it("RESET clears all progress back to the intro step", () => {
     const state = {
       ...createInitialScannerState(),
-      stepIndex: STEP_ORDER.indexOf("profile"),
+      stepIndex: STEP_ORDER.indexOf("review"),
       quizAnswers: { journey: "always_natural" },
     };
     const next = scannerReducer(state, { type: "RESET" });

@@ -35,8 +35,8 @@ product is a comparison problem, not a generation problem.
 ## Scoring weights
 
 **Weight ordering, and porosity weighted heaviest.**
-Priority order (highest to lowest): porosity → curl type → goals →
-ranked frustrations → density → budget → black-owned preference →
+Priority order (highest to lowest): porosity → goals → ranked
+frustrations → density → budget → black-owned preference → curl type →
 EWG/community-sentiment tiebreakers. All of it lives in one exported
 `SCORING_WEIGHTS` object in `src/lib/products/scoring.ts`.
 - **Why:** porosity is weighted heaviest because it's closest to a
@@ -50,27 +50,108 @@ EWG/community-sentiment tiebreakers. All of it lives in one exported
   a one-file, one-minute edit — change the number in `SCORING_WEIGHTS`,
   rerun `npm test`, eyeball the two profiles' printed output (the test
   file logs full picks-per-category for exactly this purpose).
+- **Reordered (Final Spike, Part A / P1 of 4).** Curl type dropped from
+  #2 (originally right below porosity) to #7 (last real dimension, above
+  only the tiebreakers) — see "Curl type demoted to a pure weight" below
+  for the full reasoning and the eligibility-side consequence. Goals,
+  frustrations, density, budget, and black-owned all moved up one slot
+  as a result; their relative order to each other is unchanged. This came
+  directly from the CEO, who is the hair expert on the team — porosity's
+  #1 spot was never in question, only curl type's position.
 
-**Porosity, curl type, and density are BOTH weighted AND initially
-required, with progressive relaxation.**
-These three aren't purely soft weights the way goals/budget/black-owned
-are — a product must overlap on all three to be eligible for a category's
+**Porosity and density are BOTH weighted AND initially required, with
+progressive relaxation. Curl type is not — see below.**
+These two aren't purely soft weights the way goals/budget/black-owned
+are — a product must overlap on both to be eligible for a category's
 picks in the first place. If that leaves a category with fewer than 2
 eligible products, the weakest requirement is dropped first — density,
-then curl type, then porosity — and the result is labeled `relaxed: true`
-with exactly which constraint(s) were dropped.
+then porosity — and the result is labeled `relaxed: true` with exactly
+which constraint(s) were dropped. (Curl type used to be a third required
+dimension, dropped first in relaxation order, ahead of porosity — see
+below for why that changed.)
 - **Why:** the alternative (pure weighting, no requirement) would mean a
-  product with zero porosity/curl-type/density overlap could still appear
-  in results as long as its goals/budget/black-owned scoring was high
+  product with zero porosity/density overlap could still appear in
+  results as long as its goals/budget/black-owned scoring was high
   enough — which contradicts porosity being described as determining
   "whether a product physically works." Requiring overlap, with honest
   relaxation as an escape hatch for a thin catalog, keeps the "why we
   picked this" story truthful instead of quietly serving a compatibility
-  mismatch.
+  mismatch. Density stays required for the same physical-fit reason,
+  just at lower priority than porosity.
 - **What would change it:** if the catalog grows enough that relaxation
-  becomes rare rather than routine (see "no 2A/2B/2C products" below),
-  it might be worth tightening this further (e.g. requiring 2+ dimensions
-  to overlap, not just "not-yet-relaxed" ones). Not needed today.
+  becomes rare rather than routine, it might be worth tightening this
+  further (e.g. requiring both dimensions to overlap, not just
+  "not-yet-relaxed" ones). Not needed today.
+
+**Curl type demoted to a pure weight — no longer a hard eligibility
+requirement (Final Spike, Part A / P1 of 4).**
+Previously curl type was both weighted #2 *and* required (like porosity
+and density): a product with zero overlap on the user's expanded curl-type
+tags was ineligible for a category's picks entirely, and if that thinned a
+category below 2 eligible products, curl type was the first requirement
+dropped. Now it's purely additive — `computeScoreBreakdown` still scores
+any overlap (worth 6 points, see `SCORING_WEIGHTS.curlType`), but
+`requiredDimensionsFor`/`meetsRequiredDimensions` never gate on it, and
+`RELAXATION_ORDER` no longer lists it (there's nothing left to relax).
+- **Why:** per the CEO's own reasoning, products are tagged across
+  curl-type *ranges* in Nya's catalog — a product tagged for 4C usually
+  also carries 4A and 4B — so curl type rarely discriminates between two
+  candidate products the way porosity or a declared goal does. A
+  dimension that seldom differentiates shouldn't carry heavy weight or
+  gatekeep eligibility; it should nudge the ranking and nothing more.
+- **Real consequence already visible in the tests:** before this change,
+  every 2A/2B or 2C/3A user hit curl-type relaxation on essentially every
+  category, because the catalog has zero products tagged those curl
+  types (see "No 2A/2B/2C products exist yet" below, unchanged as a
+  catalog gap). That relaxation is now gone — those users simply score 0
+  on the curl-type dimension instead of losing eligibility, which is a
+  materially better experience for exactly the users who were most
+  affected by the catalog gap.
+- **Deliberately NOT touched: the exported type shapes.**
+  `CategoryRecommendation["relaxedConstraints"]` and
+  `DebugCategoryDetail["relaxedConstraints"]` still type as
+  `Array<"density" | "curlType" | "porosity">` even though `"curlType"`
+  can now never actually appear in one — narrowing the type would have
+  forced edits to `ScanResults.tsx`, `useSendResults.ts`,
+  `api/_lib/resultsSchema.ts`, and `api/send-results.ts` (all of which
+  hand-declare the same three-value union independently), which this
+  prompt was explicitly scoped to not touch ("scoring logic only, no UI
+  changes — P2/P3 handle the flow and results page"). Scoring's own test
+  suite asserts the real runtime guarantee (curl type never appears)
+  directly rather than relying on the type to enforce it.
+- **Known stale side effect, not fixed here:** `/debug/scoring`'s
+  built-in `"relaxation"` profile (`ScoringDebug.tsx`) is labeled "2C/3A —
+  triggers curl-type relaxation" and its inline comment claims this was
+  verified against the fixture. That claim is no longer true — curl type
+  can't trigger relaxation anymore, so that profile likely now shows
+  `relaxed: false` everywhere. Left as-is since `ScoringDebug.tsx` is a UI
+  file outside this prompt's scope; flagged in "Open questions" below for
+  P2/P3 (or a quick standalone fix) to correct the label/profile.
+- **What would change it back:** if Nya's tagging practice changes (e.g.
+  she starts tagging products for a single specific curl type rather than
+  a range), curl type would start actually discriminating between
+  products again, and it might be worth promoting it back into the
+  weighted/required tier. Until then, this is the intended, expert-directed
+  state, not a bug.
+
+**No "clean formulation" bonus for sulfate-free/protein-free/etc. beyond
+what a user actually declared as a sensitivity — considered and rejected
+(Final Spike, Part A / P1 of 4).**
+The idea: award a small positive score bump to sulfate-free, protein-free,
+silicone-free, etc. products even for users who never flagged that
+sensitivity, on the theory that "clean" formulations are broadly
+preferable. Considered and explicitly rejected.
+- **Why:** some users genuinely benefit from protein, silicones, sulfates,
+  etc. in their formulas — "free-from" is not universally better, it's
+  situational. A user who didn't declare a sensitivity gets zero bonus or
+  penalty on that dimension anywhere in the pipeline: no Stage 1 filter
+  (already true before this pass) and no Stage 2 points either (confirmed
+  — there was never such a bonus in the code to begin with; this entry
+  documents that it was deliberately kept that way, not silently absent).
+- **What would change it:** real evidence that Nari's specific users skew
+  strongly toward wanting "clean" formulations even without declaring a
+  specific sensitivity — that would be a product/positioning decision for
+  Nya, not something to infer from the data pipeline alone.
 
 **Frustrations are rank-weighted (~3x / ~2x / ~1x by rank), not flat.**
 - **Why:** the quiz's own copy tells users "your #1 is Nari's #1
@@ -1222,8 +1303,434 @@ so nothing needed loosening.
   const — never scored, never shown, in any tab. Needs a decision (add a
   Gel tab? fold Gel into an existing category?) before it's wired in — see
   CLAUDE.md.
-- **New (data pipeline fixes pass): goals value `"length retention"` has
-  no quiz equivalent or alias**, unlike `"heat or color damage"`/`"scalp
-  health"` which already alias to `"damage"`/`"scalp"`. Currently inert (its
-  one row is a Style entry, already excluded from scoring by category) —
-  low priority unless a future Gel/Style scoring decision changes that.
+- **Resolved (Final Spike, Part D / P1 of 4): goals value `"length
+  retention"` now aliases to `"growth"`.** Added to `GOAL_ALIASES` in
+  `api/_lib/schema.ts`, same table/pattern as `"scalp health"` →
+  `"scalp"` and `"heat or color damage"` → `"damage"`. No longer inert —
+  styles are now scored (see below), and this row's goal now
+  participates in that scoring. `valueDrift.goals` confirmed clean
+  afterward (see the new schema.test.ts case). See "Styles scoring"
+  below for why this stopped being purely inert the moment styles
+  started being scored.
+
+## Final Spike — Scoring Engine Update (P1 of 4)
+
+Four prompts split the Final Spike's remaining work; this one is scoring
+logic only — no UI changes (P2 handles the flow, P3 the results page, P4
+content edits). See CLAUDE.md's "Product Scoring" section for the
+reference-doc version of what changed; this is the reasoning behind each
+call. The weight-reorder and curl-type-demotion decisions are recorded
+above, under "Scoring weights" — this section covers the rest: mineral
+oil, styles, and the goals alias.
+
+### Mineral oil filter — already live, not new to this pass
+
+The brief asked to "wire mineral oil into the existing (currently inert)
+hard filter." Checking the actual code: it already was wired, as of the
+2026-08-29 "data pipeline fixes pass" (see that section above and
+CLAUDE.md) — `getMineralOilFree` reads the real `mineralOilFree` field,
+`applyHardFilters` enforces it whenever any product in the catalog
+carries the field, and `unenforcedSensitivities` only lists
+`mineral_oil` when none do. `scoring.test.ts` already had passing tests
+for exactly this (`mineral_oil sensitivity (Mineral Oil Free column
+added 2026-08-29)`). No code change was needed for Part B — verified by
+running that existing test block, not assumed. Documented here so this
+prompt's own completion report doesn't imply Part B required new work
+when it didn't.
+
+### Styles scoring (Part C)
+
+**Styles (catalog rows with `category: "Style"` — 5 in the live catalog:
+Braids, Blow Out, Twist/Braid Out & Rod Set, Twist/Natural Cornrow &
+Protective, Wash and Go) are scored in a completely separate code path
+(`scoreStyle`/`buildStyleRecommendations`) from the 6 real product
+categories, not folded into `buildCategoryRecommendation`.**
+- **Why a separate path, not a 7th `CATEGORIES` entry:** styles have no
+  brand/price/buyLink/ingredient flags, so none of Stage 1's hard
+  filters or most of Stage 2's weights (porosity, density, curl type,
+  budget, black-owned) apply to them at all — forcing them through the
+  same pipeline as real products would mean either fabricating those
+  fields or littering `buildCategoryRecommendation` with
+  `category === "Style"` special cases. A dedicated function with its
+  own two-dimension scoring (goals, frustrations) is simpler and keeps
+  `CATEGORIES`'s existing 6-category loop untouched.
+- **Styles score from the full catalog, not the sensitivity-survivor
+  set.** `scoreProducts()` calls `applyHardFilters` for the product
+  categories, then separately calls `buildStyleRecommendations(catalog,
+  answers)` against the *original*, unfiltered `catalog` argument — a
+  style was never a candidate for exclusion in the first place (it has
+  no ingredient data), so running it through a filter built for
+  ingredient data would be meaningless, not just redundant.
+
+### Styles frustration scoring correction (P1 follow-up)
+
+**Reverted: frustrations on styles are POSITIVE, same direction and
+weight as products — not inverted.** The original P1 pass inverted
+frustration scoring for styles on the assumption that a style's
+`frustrations` tag listed problems it *causes* rather than problems it
+*solves*. That assumption was wrong, per direct correction from the
+CEO (domain expert): **she tags a style with the frustrations it
+HELPS ADDRESS, and *omits* a tag where the style risks CAUSING that
+problem instead** — e.g. "Wash and Go" carries no `"breakage"` tag
+specifically because it can cause breakage; the *absence* of a tag
+encodes the caution, not the presence of one. Scoring a tagged
+frustration negatively was therefore recommending against exactly the
+styles that actually help, and doing nothing to steer users away from
+the styles that don't carry a tag for a real risk.
+- **Fix:** `scoreStyle` and `computeScoreBreakdown` (products) now both
+  call two small shared functions, `scoreGoalOverlap` and
+  `scoreFrustrationOverlap`, extracted specifically by this correction.
+  Previously the two had separate, independently-written frustration
+  logic (one positive, one negative) that had already drifted apart once
+  — sharing the implementation makes that impossible to repeat: a future
+  edit to frustration scoring now has to touch one function, used by
+  both callers, rather than two that can silently diverge again. This is
+  a direct, structural response to a real bug (a materially wrong scoring
+  direction, shipped and reasoned-through in the previous pass), not
+  just a revert.
+- **Why the original assumption was wrong, in hindsight:** it was a
+  plausible-sounding inference (styles obviously carry style-specific
+  risks; "Wash and Go" tends to increase frizz in general hair-care
+  knowledge) that was never actually confirmed with the person who
+  enters the data. The catalog itself didn't disambiguate the two
+  readings — a `frustrations: ["dryness", "frizz"]` tag is consistent
+  with either "causes this" or "helps with this" from the data alone.
+  That ambiguity is exactly why this needed a domain-expert confirmation
+  rather than a second inference; noted here so the same mistake isn't
+  repeated for a different field on a future assumption.
+- **The "single most confusable logic" code comment describing the
+  inversion has been deleted, not just corrected** — see
+  `scoreFrustrationOverlap`'s new comment in `scoring.ts` for the
+  replacement, which explains the (now-correct, product-matching)
+  positive direction and briefly records that an inverted version
+  existed and was reverted, without walking through the wrong reasoning
+  in detail (no reason to preserve a wrong mental model in the code
+  comment a future reader learns from first).
+- **Verified by test, not just by inspection:** `scoring.test.ts`'s
+  styles describe block now asserts "Wash and Go" (tagged dryness +
+  frizz) ranks *above* "Blow Out" (tagged neither) for a user whose top
+  two frustrations are dryness and frizz — see the "Report" section
+  below for the actual numbers this produces on the (freshly re-pulled,
+  see below) real catalog.
+
+**Neutral baseline for goal-less styles — removed, with numbers.**
+The neutral baseline (`STYLE_NEUTRAL_GOAL_BASELINE`, one `goalMatch`
+unit) existed for exactly one reason: under inverted frustration
+scoring, a style with zero declared goals could only ever be penalized,
+never rewarded, guaranteeing it last place regardless of actual fit.
+That justification is gone now that frustrations score positively too —
+a goal-less style can still earn real points from frustration overlap,
+the same way a product with no goal match can still score well on other
+dimensions. Recommendation: **remove it**, which is what shipped.
+- **The numbers:** re-pulling the live catalog for this correction (see
+  below) turned out to make this doubly moot — the CEO has since added
+  goals to every style row, including "Braids/Protective Style with
+  Added Hair" (previously `goals: []`, now `goals: ["damage",
+  "tehnique"]` — see the "tehnique" typo note below). **Zero styles in
+  the live catalog currently have an empty `goals` array**, so the
+  baseline contributes exactly 0 extra points across the entire real
+  catalog today, for any answer combination — it was already fully inert
+  before being removed.
+- **Why remove rather than just leave the unused code path in place:**
+  keeping a baseline that never fires in current data is not free —
+  it's a piece of special-case reasoning a future reader has to
+  understand and re-verify is still inert every time the catalog
+  changes, for a scenario (goal-less style, non-inverted frustrations)
+  that no longer has the structural justification it was built for. If
+  a future style genuinely ships with `goals: []`, it will now simply
+  score on frustrations alone (0 goal contribution, same as a product
+  with no goal match) — an honest, unsurprising result, not a broken
+  one. Re-added `scoring.test.ts` coverage for exactly that case, using
+  a synthetic style (no live example exists to test against anymore).
+
+**Notes (the free-text field, e.g. "Would not recommend for those with
+severe dry scalp or breakage") are never read by scoring — display-only,
+per the brief. Unaffected by this correction.**
+- **Why:** the brief was explicit that keyword-matching prose is fragile
+  and risks surfacing wrong guidance on a product/style whose credibility
+  rests on expertise — a substring match on "breakage" in a note could
+  misfire in either direction (false positive on offhand mentions, false
+  negative on paraphrased warnings). Structured tags (`goals`,
+  `frustrations`) drive ranking; `notes` is P3's "Keep in mind" display
+  line and nothing else in this pass. The "Caution for" multi-select
+  idea previously floated here (see the old Open Questions entry) was
+  premised on frustrations needing reinterpretation to express risk —
+  now that presence/absence of the existing `frustrations` tag already
+  encodes that correctly (per the CEO's actual data-entry convention),
+  that suggestion is withdrawn, not just deferred.
+
+**`length retention` → `growth` alias — confirmed still correct against
+the freshly re-pulled catalog.** Unrelated to this correction pass, but
+worth noting: the alias (added in `api/_lib/schema.ts`'s `GOAL_ALIASES`)
+was verified again by re-normalizing a genuine live pull rather than
+relying on the hand-edited fixture value from the original P1 pass — the
+"Twist/Natural Cornrow & Protective" row's raw Airtable value is still
+`"length retention"`, and it still resolves to `"growth"` cleanly.
+`valueDrift.goals` on the fresh pull reports exactly one item —
+`"tehnique"` — see below, not `"length retention"`.
+
+**Catalog re-pulled live, for real this time.** The original P1 pass
+believed live Airtable access wasn't possible in this sandbox (per
+CLAUDE.md's note about dotless `env.local`/`env.example` files not being
+auto-loaded by Vite/`vercel dev`) and hand-edited the fixture instead.
+That belief was about *automatic* loading, not about whether the
+credentials work at all — `env.local`'s `AIRTABLE_TOKEN`/`AIRTABLE_BASE_ID`/
+`AIRTABLE_TABLE_NAME` are real and functional; manually sourcing the file
+and calling the Airtable REST API directly (the same pagination logic
+`api/products.ts` uses, run standalone) works fine. This pass did a
+genuine live pull: 62 records (same count as before — no rows added or
+removed), all 62 valid (0 skipped), 0 unmapped/missing fields.
+- **One new value-drift finding, not previously present: goals value
+  `"tehnique"`.** The CEO's new style tags include a goal literally
+  spelled `"tehnique"` (missing the "c") on all 5 style rows. This is
+  almost certainly a typo for `"technique"` — which is already a real
+  quiz goal value (`GOAL_VALUES` includes it) that, per CLAUDE.md, has
+  never had a catalog equivalent until now. **Deliberately not aliased
+  here**: `GOAL_ALIASES` is meant for legitimate wording differences
+  Nya/the CEO chose deliberately (`"scalp health"` → `"scalp"`, etc.),
+  not for silently correcting what looks like a misspelling — aliasing a
+  typo as if it were intentional wording risks masking the actual data
+  entry error rather than getting it fixed at the source. Flagged in
+  "Open questions" below instead; if confirmed as a typo, the fix belongs
+  in Airtable, not in another alias-table entry.
+- **Other, unrelated changes observed in the fresh pull, for
+  transparency:** a few non-style products' `hairTypes` narrowed (lost
+  `3b`/`3c`, kept `4a`/`4b`/`4c`) — ordinary catalog maintenance, outside
+  this correction's scope, not investigated further. The two style rows
+  previously missing `notes` ("Twist/Braid Out & Rod Set" and "Twist/
+  Natural Cornrow & Protective") still have none — that Open Questions
+  item is unresolved, unchanged from before.
+
+### Report: top-2 styles for a user with frustrations [dryness, frizz] and goals [moisture, definition]
+
+Per this correction's request — full ranking via `debugScoreStyles`,
+against the freshly re-pulled real catalog fixture:
+
+| Score | Style | Match reasons |
+|---|---|---|
+| 102.0 | Wash and Go | goal: moisture; goal: definition; frustration #1: dryness; frustration #2: frizz |
+| 56.0 | Twist/Braid Out & Rod Set | goal: moisture; frustration #1: dryness |
+| 56.0 | Twist/Natural Cornrow & Protective | goal: moisture; frustration #1: dryness |
+| 0.0 | Braids/Protective Style with Added Hair | (no goal or frustration overlap for this user) |
+| 0.0 | Blow Out (& Afro) | (no goal or frustration overlap for this user) |
+
+**Top 2 returned by `scoreProducts()`: "Wash and Go" (102.0) and "Twist/
+Braid Out & Rod Set" (56.0)** — the tie between the two Twist styles
+(both 56.0) breaks in the catalog's own stable order, not randomly.
+Wash and Go — tagged for exactly this user's two declared goals and both
+declared frustrations — now correctly wins outright, the direct opposite
+of the previous (wrong) inversion's result for a similar scenario. This
+is the expected, corrected behavior: a style the CEO tagged as helping
+with dryness and frizz should rank highest for a user whose top
+frustrations are dryness and frizz, not lowest.
+
+## Open questions / risks to raise with Nya (continued)
+
+- **Resolved (P1 follow-up): "Braids/Protective Style with Added Hair"
+  now has real goals in Airtable** (`["damage", "tehnique"]`, found on
+  live re-pull) — the CEO addressed this since the original P1 pass.
+  Crossed off; see "tehnique" below for the one new item this surfaced.
+- **New (P1 follow-up): goals value `"tehnique"` looks like a typo for
+  `"technique"`.** All 5 style rows carry this exact spelling. Worth a
+  quick confirmation with the CEO — if it's a typo, fixing it directly
+  in Airtable (rather than adding an alias-table entry for it) is the
+  right call, since `GOAL_ALIASES` is reserved for deliberate wording
+  differences, not misspellings. Currently inert either way — no quiz
+  answer produces `"tehnique"`, so it never matches, but the CEO likely
+  intended the already-real `"technique"` quiz value to start
+  contributing to style scoring.
+- **New (Final Spike, Part C / P1 of 4): two style rows have no `notes`**
+  ("Twist/Braid Out & Rod Set" and "Twist/Natural Cornrow &
+  Protective") — every other style/product row does. Notes are
+  display-only (P3's "Keep in mind" line), so this doesn't affect
+  scoring, but it means P3 will have nothing to show for those two rows
+  where every other row has real guidance text. Still unresolved on the
+  fresh re-pull.
+- **Withdrawn (P1 follow-up): the "structured 'Caution for' multi-select"
+  suggestion.** Previously proposed on the (wrong) premise that
+  `frustrations` needed reinterpreting to express risk. Per the CEO's
+  actual convention — presence means "helps with," absence means "risks
+  causing" — the existing `frustrations` field already expresses caution
+  correctly by omission; no new column is needed for this purpose.
+- **New (Final Spike, Part A / P1 of 4): `/debug/scoring`'s built-in
+  `"relaxation"` profile label is now stale.** `ScoringDebug.tsx` labels
+  it "2C/3A — triggers curl-type relaxation" and its comment claims this
+  was verified against the fixture — true when written, no longer true
+  now that curl type can't trigger relaxation at all (see "Curl type
+  demoted to a pure weight" above). Left unfixed here since
+  `ScoringDebug.tsx` is a UI file outside this prompt's scope; a quick
+  fix for P2/P3 (or a standalone pass) would be relabeling it or
+  replacing it with a scenario that actually demonstrates density/
+  porosity relaxation instead.
+
+## Final Spike — Flow Reorder & Review Screen (P2 of 4)
+
+Scan flow only — no results-page changes (P3), no content/copy edits
+outside the photo step and the new review screen (P4 handles the rest).
+See CLAUDE.md's "Scanner Flow: Photo, Quiz, Review, Results" section for
+the file-by-file breakdown; this is the reasoning.
+
+**Flow reorder: photo moved from after the quiz to right after the
+intro, per the CEO's direction.**
+Previous order (Spike A): intro → quiz (9 questions) → profile summary →
+photo → analyzing/results. New order: intro → photo → quiz (9 questions)
+→ review → analyzing/results.
+- **Why:** direct CEO instruction — she wants the photo to read as a
+  real, first-class part of the experience ("upload your hair, then
+  we'll ask about it") rather than a bolted-on afterthought that shows
+  up only after the user has already answered 9 questions and seen a
+  summary. Putting it first also means the summary/review screen (which
+  didn't exist as a *review* concept in Spike A — see below) can sit
+  right before results, where a confirmation beat actually belongs,
+  instead of splitting the "done" moment in the middle of the flow.
+- **What this did NOT change:** the photo still feeds nothing —
+  `api/analyze.ts` remains unwired into this flow (see CLAUDE.md's
+  "Photo step honesty fix"). Moving it earlier doesn't change what it
+  does; only when the user is asked for it.
+- **Renamed "profile" → "review" throughout** (`StepId`, the reducer's
+  step-name special-casing, the step component file
+  `ProfileStep.tsx` → `ReviewStep.tsx`, `ScanProgress`'s section label).
+  Not just a rename in isolation — the step's *purpose* changed too (see
+  below), so keeping the old "profile" name once the screen stopped
+  being a Nari-profile summary and became a pre-results confirmation
+  step would have been actively misleading to a future reader.
+- **What would change it:** if the CEO's direction on ordering changes
+  again, `steps.ts`'s new "How to add or reorder a scanner step" note
+  (CLAUDE.md) documents exactly which files a reorder touches — this was
+  written specifically because this prompt's own brief called flow
+  reordering "the riskiest prompt in the spike," and the risk is real:
+  the reducer's `ADVANCE_QUIZ`/`BACK` cases special-case the quiz↔review
+  boundary by name, so a step rename without updating those two spots
+  would silently break Back navigation out of review, not fail loudly.
+- **Interstitial position unaffected, confirmed rather than assumed.**
+  `INTERSTITIAL_AFTER_INDEX` (still `6`) is about position *within* the
+  9-question quiz sequence (after `frustrations`, before
+  `sensitivities` — the boundary between Nya's "What are we building
+  toward?" and "Last few things" phases), which didn't change when the
+  photo moved. Verified directly via the live-flow screenshots below
+  (progress bar shows "8 / 10, Last few things" at the interstitial,
+  matching the pre-existing, unchanged design) rather than assumed safe
+  because the surrounding prose says so.
+- **Progress bar unit math**: `TOTAL_PROGRESS_UNITS` stays
+  `QUIZ_QUESTION_COUNT + 1` (10) — only the *order* of units changed, not
+  the count. Photo is now unit 1 (was previously folded in after the
+  quiz's 9); each quiz question's unit is offset by 1 to account for the
+  photo already being "done." Review and analyzing both show the full
+  bar (10/10) with a new "Review your answers" label, replacing the old
+  "Your profile"/"Your photo" labels those steps used to show at that
+  position.
+
+**Review screen: read-only, inline editing considered and explicitly
+deferred.**
+The brief asked for a confirmation screen where the user sees their
+answers reflected back before recommendations are generated — but
+whether to let them *edit* an answer directly on that screen (tap a past
+answer, change it, without navigating back through the quiz) was left
+as this prompt's call to make.
+- **Decision: read-only.** If something's wrong, the user hits Back,
+  which was already fully wired to preserve every prior answer across
+  the whole quiz (Prompt 3's `scannerReducer.ts` `BACK` case) — so the
+  capability to *reach* a wrong answer and fix it already exists, just
+  not from the review screen directly.
+- **Why deferred, not just "not asked for":** inline editing across all
+  9 question types is genuinely the single largest item in this
+  prompt's scope, and it isn't a uniform feature — `single`-select
+  editing is simple (change the value, done), but `multi`/`ranked`
+  editing on the review screen would mean either re-rendering the full
+  `QuestionRenderer` inline (a meaningfully different, more complex
+  layout than the current static summary row) or building a second,
+  parallel editing UI just for this screen. Against that cost, the
+  benefit is real but narrow: it saves at most a handful of taps (Back,
+  fix, forward through however many questions separate the mistake from
+  the end) for users who both (a) notice a mistake on the review screen
+  and (b) made it more than one question back. Most of the value of
+  "let the user fix a wrong answer" is already captured by Back working
+  correctly — inline editing is a polish layer on top of a
+  fully-functional escape hatch, not the thing that makes fixing a
+  mistake possible at all.
+- **What would change it:** real usage data showing users abandon or
+  get frustrated at the review screen specifically because Back-and-
+  forward is too many taps — that would justify building inline editing
+  for at least the `single`-select questions (the cheap 6 of 9) as a
+  first pass, leaving `multi`/`ranked` (goals, frustrations,
+  sensitivities) for a later pass if still warranted.
+
+**Photo step copy: "optional" removed from the heading, but "Skip for
+now" stays — a framing change, not a capability change.**
+The CEO wants the photo to not read as skippable-by-default messaging
+right in the heading, while the actual behavior (you can still skip it)
+is unchanged.
+- **Why the distinction matters:** "optional" in the heading primes the
+  user to skip before they've even read what the step is for; removing
+  it while keeping a clearly-labeled "Skip for now" action still gives
+  the user full control, it just doesn't lead with the exit. This is a
+  framing/psychology change, not a functional one — verified nothing
+  downstream (the reducer's `SKIP_PHOTO` action, `scoring.ts`, results
+  rendering) treats a skipped photo any differently than before; the
+  photo was already fully optional in every functional sense.
+- **Copy given verbatim, honesty constraint carried forward.** The new
+  body copy ("Full photo analysis is coming soon and will help Nari
+  tailor style recommendations. For now, your recommendations primarily
+  come from your quiz answers.") was specified directly in the brief and
+  used essentially as given — the only real judgment call was *not*
+  independently re-adding Spike A's old "Your photo isn't stored or
+  shared" sentence, since the brief's copy doesn't include it and the
+  instruction was to use the given copy "adjusted only for voice
+  consistency," not to layer additional claims back in. The underlying
+  constraint from Spike A still holds and was rechecked here: don't
+  claim the photo is analyzed, stored, or used for recommendations, since
+  it's read by nothing today (`api/analyze.ts` still isn't wired into
+  this flow — see CLAUDE.md).
+
+**Verification.** `npm run typecheck` clean; all 109 pre-existing tests
+pass unmodified except the 3 in `scannerReducer.test.ts` that reference
+the renamed "review" step id (updated to match, same assertions).
+`formatAnswerDisplay`'s new ranked-numbering path is exercised
+indirectly by the full-flow screenshots below (no new unit test added
+specifically for it, since `quizLabels.ts` has no existing test file of
+its own to extend — flagged as a small gap, not a blocker, since the
+existing `toDiagnosticAnswers.test.ts` "contract" tests already cover
+every real quiz answer value flowing correctly into scoring, which is
+the higher-stakes path). Full flow driven end to end via a temporary
+local Playwright install (same not-a-project-dependency pattern as every
+prior spike) against a temporary, gated Vite dev-middleware serving the
+checked-in catalog fixture at `/api/products` (this sandbox has no
+`.env.local` — same workaround as Spikes A/B and the Final Spike,
+reverted immediately after screenshots were taken) — twice (once taking
+a real photo via the "Choose a photo" file picker, once skipping) across
+light-desktop (1280×900) and dark-mobile (390×844), zero console errors
+in any run. Specifically confirmed via screenshots and scripted
+assertions, not just visual inspection:
+- The photo step's heading contains no "optional" text anywhere on the
+  page at that step.
+- The progress bar reads "1 / 10, Your photo" on the photo step, "4 / 10,
+  First, let's place you" at quiz question 3, "8 / 10, Last few things"
+  at the interstitial, and "10 / 10, Review your answers" on the review
+  screen — confirming the unit math and phase-label sequencing described
+  above actually renders as designed, in both themes.
+- The review screen's ranked frustrations row renders as "1. Breakage &
+  shedding   2. Constant dryness   3. Uncontrollable frizz" — order
+  preserved and numbered, not just alphabetically or insertion-order
+  joined.
+- Back from the review screen returns to quiz question 9/9 with its
+  answer still selected (`data-selected` present on the correct option),
+  confirmed by reading the DOM directly, not just visually.
+- Refreshing mid-quiz (after answering 2 of 9 questions) restores the
+  in-progress quiz at the correct question. Refreshing on the photo step
+  after capturing a photo does **not** restore that photo — the flow
+  resets to the intro, since nothing had been written to sessionStorage
+  yet at that point in the new order (the quiz, the only thing that
+  writes to it, hadn't started). This is a simpler, more direct
+  guarantee than Spike A's equivalent fix needed: in the old order,
+  photo came *after* the quiz, so a dedicated "clear the stale blob on
+  reaching photo" effect was needed to prevent a stale bounce-back; in
+  the new order, photo comes *before* the quiz, so there is no stale
+  quiz blob yet to bounce back from in the first place. The
+  clear-on-reaching-review effect (needed for the same reason Spike A's
+  clear-on-reaching-profile effect was) is the one persistence special
+  case that survived the reorder, just retargeted at the new step name.
+- Full quiz → review → results run confirmed rendering real scored
+  recommendations (checklist, buy links, category tabs) in both themes
+  and both viewports — the flow-level changes in this prompt don't touch
+  scoring or the results page, and this confirms they didn't
+  inadvertently break the handoff into either.

@@ -143,6 +143,21 @@ describe("normalizeProduct — goals alias table", () => {
       expect(result.product.goals).toEqual(["scalp", "damage", "moisture"]);
     }
   });
+
+  it("rewrites 'Length retention' to 'growth' (Final Spike, Part D)", () => {
+    const result = normalizeProduct(
+      record("rec12c", {
+        "Product name": "Test",
+        Brand: "Cantu",
+        Category: "Style",
+        "Best For Goals": ["Length retention"],
+      })
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.product.goals).toEqual(["growth"]);
+    }
+  });
 });
 
 describe("normalizeProduct — frustrations alias table", () => {
@@ -224,13 +239,25 @@ describe("buildNormalizationReport — value drift (post-normalization values th
     expect(report.valueDrift.frustrations).toEqual([]);
   });
 
-  it("flags a goal value with no alias and no vocabulary match (e.g. 'length retention')", () => {
+  it("flags a goal value with no alias and no vocabulary match", () => {
+    const records: AirtableRecord[] = [
+      record("ok1", { "Product name": "A", Brand: "B", Category: "Shampoo", "Best For Goals": ["Some new goal phrase"] }),
+    ];
+    const results = records.map(normalizeProduct);
+    const report = buildNormalizationReport(records, results);
+    expect(report.valueDrift.goals).toEqual(["some new goal phrase"]);
+  });
+
+  // "length retention" moved from an unresolved drift example to an alias
+  // table entry (Final Spike, Part D) — see the goals-alias-table describe
+  // block below for the corresponding normalizeProduct test.
+  it("does not flag 'length retention' as drift now that it aliases to 'growth'", () => {
     const records: AirtableRecord[] = [
       record("ok1", { "Product name": "A", Brand: "B", Category: "Shampoo", "Best For Goals": ["Length retention"] }),
     ];
     const results = records.map(normalizeProduct);
     const report = buildNormalizationReport(records, results);
-    expect(report.valueDrift.goals).toEqual(["length retention"]);
+    expect(report.valueDrift.goals).toEqual([]);
   });
 
   it("flags an out-of-vocabulary porosity/density/hairType value", () => {

@@ -104,8 +104,10 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
     case "CLEAR_PHOTO":
       return { ...state, photo: null };
 
-    // "Skip for now" — advances past the (optional) photo step with no
-    // photo, regardless of whatever was already captured.
+    // "Skip for now" — advances past the photo step with no photo,
+    // regardless of whatever was already captured. Still skippable (per
+    // the CEO, P2 of 4) even though the step's copy no longer calls it
+    // "optional" — see PhotoStep.tsx.
     case "SKIP_PHOTO":
       return { ...state, photo: null, stepIndex: Math.min(state.stepIndex + 1, STEP_ORDER.length - 1) };
 
@@ -121,7 +123,7 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
       const nextIndex = state.quizIndex + 1;
 
       if (nextIndex >= QUIZ_QUESTION_COUNT) {
-        return { ...state, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("profile") };
+        return { ...state, quizIndex: nextIndex, stepIndex: STEP_ORDER.indexOf("review") };
       }
 
       const showInterstitial = nextIndex === INTERSTITIAL_AFTER_INDEX && !state.interstitialShown;
@@ -147,23 +149,23 @@ export function scannerReducer(state: ScannerState, action: ScannerAction): Scan
       if (STEP_ORDER[state.stepIndex] === "quiz" && state.quizIndex > 0) {
         return { ...state, quizIndex: state.quizIndex - 1 };
       }
-      // Backing up out of "profile" re-enters the quiz at its last
-      // question, not step index - 1 blindly — quizIndex was already
-      // advanced to QUIZ_QUESTION_COUNT (out of range) the moment the 9th
-      // question was answered, since that's what triggers the move to
-      // "profile". Backing up out of "photo" just needs stepIndex - 1
-      // (STEP_ORDER's default case below), which lands on "profile" —
-      // no special case needed now that profile sits between them.
-      if (STEP_ORDER[state.stepIndex] === "profile") {
+      // Backing up out of "review" re-enters the quiz at its last question,
+      // not step index - 1 blindly — quizIndex was already advanced to
+      // QUIZ_QUESTION_COUNT (out of range) the moment the 9th question was
+      // answered, since that's what triggers the move to "review". Backing
+      // up out of "quiz" at its first question just needs stepIndex - 1
+      // (STEP_ORDER's default case below), which lands on "photo" — no
+      // special case needed since photo now sits directly before quiz.
+      if (STEP_ORDER[state.stepIndex] === "review") {
         return { ...state, stepIndex: STEP_ORDER.indexOf("quiz"), quizIndex: QUIZ_QUESTION_COUNT - 1 };
       }
       return { ...state, stepIndex: Math.max(state.stepIndex - 1, 0) };
     }
 
-    // "Start over" from the profile step — clears all progress and returns
+    // "Start over" from the review step — clears all progress and returns
     // to the very beginning. The sessionStorage side of this (clearing the
     // persisted quiz blob) is handled by the caller before dispatching,
-    // same as the CLEAR-on-reaching-"photo" effect in ScannerRoute.
+    // same as the CLEAR-on-reaching-"review" effect in ScannerRoute.
     case "RESET":
       return emptyScannerState();
 

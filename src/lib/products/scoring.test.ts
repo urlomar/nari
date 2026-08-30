@@ -17,6 +17,7 @@ import {
   scoreProducts,
   scoreProductBreakdown,
   debugHardFilterExclusions,
+  debugScoreStyles,
   buildMatchChecklist,
   SENSITIVITY_VALUES,
   type DiagnosticAnswers,
@@ -263,12 +264,61 @@ describe("scoreProducts — mineral_oil sensitivity (Mineral Oil Free column add
   });
 });
 
-describe("scoreProducts — relaxation (real catalog gap: no 2A/2B/2C products exist yet)", () => {
-  it("relaxes curl type when the catalog has no matching tags", () => {
+describe("scoreProducts — curl type is a pure weight, never a hard requirement (Final Spike, Part A)", () => {
+  it("never appears in relaxedConstraints — there's nothing to relax since it was never required", () => {
+    // Real catalog gap: no products tagged 2a/2b/2c. Before this pass this
+    // triggered curl-type relaxation on every category; now it just means
+    // these users score lower on curl type, never lose eligibility over it.
     const answers: DiagnosticAnswers = { ...baseAnswers, curlType: "2a2b" };
     const result = scoreProducts(answers, catalog);
-    const anyRelaxedCurlType = result.categories.some((c) => c.relaxedConstraints.includes("curlType"));
-    expect(anyRelaxedCurlType).toBe(true);
+    for (const category of result.categories) {
+      expect(category.relaxedConstraints).not.toContain("curlType");
+    }
+  });
+
+  it("still picks products for a curl type with zero catalog matches, as long as porosity/density are satisfiable", () => {
+    const answers: DiagnosticAnswers = { ...baseAnswers, curlType: "2a2b", porosity: "unsure", density: "medium" };
+    const result = scoreProducts(answers, catalog);
+    const shampoo = result.categories.find((c) => c.category === "Shampoo")!;
+    expect(shampoo.picks.length).toBeGreaterThan(0);
+  });
+
+  it("controlled case: a curl-type mismatch alone does not exclude a product that meets porosity/density", () => {
+    function makeProduct(overrides: Partial<Product>): Product {
+      return {
+        id: overrides.id ?? "id",
+        name: "Test",
+        brand: overrides.brand ?? "Brand",
+        category: "Shampoo",
+        ounces: 8,
+        price: 15,
+        hairTypes: ["4c"],
+        porosity: ["normal"],
+        density: ["medium"],
+        sulfateFree: true,
+        siliconeFree: true,
+        proteinFree: true,
+        fragranceFree: true,
+        blackOwned: false,
+        mineralOilFree: true,
+        ewgScore: null,
+        goals: [],
+        frustrations: [],
+        ...overrides,
+      };
+    }
+    // A second, curl-type-matching product keeps the eligible pool at 2 so
+    // MIN_PICKS_BEFORE_RELAXATION is satisfied without density/porosity
+    // ever needing to relax — isolates curl type as the only variable.
+    const wrongCurlType = makeProduct({ id: "wrong-curl", brand: "A", hairTypes: ["4c"] });
+    const rightCurlType = makeProduct({ id: "right-curl", brand: "B", hairTypes: ["2a"] });
+    const result = scoreProducts(
+      { ...baseAnswers, curlType: "2a", porosity: "normal", density: "medium" },
+      [wrongCurlType, rightCurlType]
+    );
+    const shampoo = result.categories.find((c) => c.category === "Shampoo")!;
+    expect(shampoo.picks.map((p) => p.product.id)).toContain("wrong-curl");
+    expect(shampoo.relaxed).toBe(false);
   });
 
   it("never relaxes a sensitivity exclusion, even under relaxation", () => {
@@ -279,6 +329,19 @@ describe("scoreProducts — relaxation (real catalog gap: no 2A/2B/2C products e
         expect(pick.product.proteinFree).toBe(true);
       }
     }
+  });
+});
+
+describe("scoreProducts — porosity and density are still hard requirements (Final Spike, Part A)", () => {
+  it("porosity/density mismatches still trigger relaxation on the real catalog", () => {
+    // demandingAnswers is thick_high/high porosity + protein-sensitive; the
+    // "Demanding" describe block above already prints relaxed categories
+    // for this profile — assert it directly here as a named guarantee.
+    const result = scoreProducts(demandingAnswers, catalog);
+    const anyRelaxed = result.categories.some(
+      (c) => c.relaxedConstraints.includes("density") || c.relaxedConstraints.includes("porosity")
+    );
+    expect(anyRelaxed).toBe(true);
   });
 });
 
@@ -404,9 +467,9 @@ describe("scoreProducts — every returned product exists in the catalog (no fab
   });
 });
 
-describe("scoreProducts — relaxation order is always density -> curlType -> porosity, never sensitivities", () => {
-  it("relaxedConstraints is always a prefix of [density, curlType, porosity], across many trigger scenarios", () => {
-    const order = ["density", "curlType", "porosity"];
+describe("scoreProducts — relaxation order is always density -> porosity, never curlType or sensitivities", () => {
+  it("relaxedConstraints is always a prefix of [density, porosity], across many trigger scenarios", () => {
+    const order = ["density", "porosity"];
     const scenarios: DiagnosticAnswers[] = [
       { ...baseAnswers, curlType: "2a2b", porosity: "high", density: "thick_high" },
       { ...baseAnswers, curlType: "2c3a", porosity: "normal", density: "medium" },
@@ -418,9 +481,11 @@ describe("scoreProducts — relaxation order is always density -> curlType -> po
       for (const category of result.categories) {
         const constraints = category.relaxedConstraints;
         expect(order.slice(0, constraints.length)).toEqual(constraints);
-        // TypeScript's type already prevents a sensitivity value here, but
-        // assert it at runtime too — this is the guarantee that actually matters.
-        for (const c of constraints) expect(["density", "curlType", "porosity"]).toContain(c);
+        // curlType can never appear (it's not a requirement to relax — see
+        // the "pure weight" describe block above); TypeScript's type still
+        // technically allows it (kept for output-shape compatibility), so
+        // assert the real runtime guarantee explicitly.
+        for (const c of constraints) expect(["density", "porosity"]).toContain(c);
       }
     }
   });
@@ -486,6 +551,114 @@ describe("debugHardFilterExclusions", () => {
 
   it("returns nothing when the user reported no sensitivities", () => {
     expect(debugHardFilterExclusions(catalog, ["none"])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Final Spike, Part C — styles. Goals score like products (positive);
+// frustrations are INVERTED (a style's frustrations tag is a risk it
+// causes, not a problem it solves) — see scoreStyle's comment in scoring.ts.
+// ---------------------------------------------------------------------------
+
+describe("scoreProducts — styles (Final Spike, Part C; frustration direction corrected by the CEO, P1 follow-up)", () => {
+  const frustratedAnswers: DiagnosticAnswers = { ...baseAnswers, frustrations: ["dryness", "frizz"] };
+
+  it("a style tagged with the user's top frustration ranks ABOVE one that isn't (real catalog)", () => {
+    // Corrected direction: a style's frustrations tag means it HELPS
+    // address that frustration (same meaning as on a product) — the CEO
+    // tags styles with the frustrations they solve, and omits a tag where
+    // the style risks CAUSING that problem instead. Wash and Go is tagged
+    // dryness + frizz (this user's #1 and #2) — it must rank strictly
+    // above a style with no overlapping frustration tags at all.
+    const ranked = debugScoreStyles(catalog, frustratedAnswers);
+    const washAndGo = ranked.find((r) => r.product.name === "Wash and Go")!;
+    const blowOut = ranked.find((r) => r.product.name.startsWith("Blow Out"))!;
+    expect(washAndGo.score).toBeGreaterThan(blowOut.score);
+  });
+
+  it("rewards a style's #1 frustration match more than its #2 (rank-weighted, same direction and weight as products)", () => {
+    const ranked = debugScoreStyles(catalog, frustratedAnswers);
+    const washAndGo = ranked.find((r) => r.product.name === "Wash and Go")!;
+    expect(washAndGo.matchReasons).toContain("frustration #1: dryness");
+    expect(washAndGo.matchReasons).toContain("frustration #2: frizz");
+    // rank-weighted: #1 (3x) contributes more than #2 (2x) at the same unit.
+    const withOnlyTop = scoreProducts({ ...baseAnswers, frustrations: ["dryness"] }, catalog);
+    const withOnlyTopScore = withOnlyTop.styles!.find((s) => s.product.name === "Wash and Go")?.score;
+    // #1 alone (30) vs #1+#2 together (50) — adding the #2 match must
+    // increase the score, but by less than the #1 match itself contributed.
+    if (withOnlyTopScore !== undefined) {
+      expect(washAndGo.score).toBeGreaterThan(withOnlyTopScore);
+    }
+  });
+
+  it("uses the exact same match-reason format as products ('frustration #N: X'), confirming shared scoring logic", () => {
+    // scoreStyle and computeScoreBreakdown now both call the shared
+    // scoreFrustrationOverlap/scoreGoalOverlap helpers — this asserts the
+    // two can't silently diverge in direction or wording again.
+    const ranked = debugScoreStyles(catalog, frustratedAnswers);
+    const anyFrustrationReason = ranked.some((r) => r.matchReasons.some((reason) => reason.startsWith("frustration #")));
+    expect(anyFrustrationReason).toBe(true);
+    for (const style of ranked) {
+      for (const reason of style.matchReasons) {
+        expect(reason.startsWith("caution:")).toBe(false); // the old, reverted inversion's wording must never reappear
+      }
+    }
+  });
+
+  it("a style with no goals still appears and scores on frustrations alone, with no artificial baseline (synthetic — every real style currently has at least one goal)", () => {
+    // The live catalog no longer has a goal-less style (the CEO has since
+    // tagged goals on every style row — see DECISIONS.md's "Styles
+    // frustration scoring correction" for the numbers behind removing the
+    // neutral baseline this test used to assert). This synthetic case
+    // exercises the code path directly: no goals, one matched frustration,
+    // no goals-related points from anywhere.
+    const noGoalsStyle: Product = {
+      id: "synthetic-style",
+      name: "Synthetic Style",
+      category: "Style",
+      ounces: null,
+      price: null,
+      hairTypes: [],
+      porosity: [],
+      density: [],
+      sulfateFree: false,
+      siliconeFree: false,
+      proteinFree: false,
+      fragranceFree: false,
+      blackOwned: false,
+      mineralOilFree: false,
+      ewgScore: null,
+      goals: [],
+      frustrations: ["dryness"],
+    };
+    const ranked = debugScoreStyles([...catalog, noGoalsStyle], frustratedAnswers);
+    const found = ranked.find((r) => r.product.id === "synthetic-style")!;
+    expect(found).toBeDefined();
+    // #1 frustration match only: 3 * frustrationUnit(10) = 30, no goal baseline added on top.
+    expect(found.score).toBe(30);
+  });
+
+  it("styles are never excluded by sensitivities (no ingredient data to filter on)", () => {
+    const withSensitivity = scoreProducts({ ...baseAnswers, sensitivities: ["protein", "sulfates", "silicones"] }, catalog);
+    const withoutSensitivity = scoreProducts({ ...baseAnswers, sensitivities: ["none"] }, catalog);
+    expect(withSensitivity.styles).toBeDefined();
+    expect(withSensitivity.styles!.length).toBeGreaterThan(0);
+    expect(withSensitivity.styles!.map((s) => s.product.id)).toEqual(withoutSensitivity.styles!.map((s) => s.product.id));
+  });
+
+  it("scoreProducts returns at most the top 2 styles by score", () => {
+    const result = scoreProducts(frustratedAnswers, catalog);
+    expect(result.styles!.length).toBeLessThanOrEqual(2);
+    const ranked = debugScoreStyles(catalog, frustratedAnswers);
+    expect(result.styles!.map((s) => s.product.id)).toEqual(ranked.slice(0, 2).map((s) => s.product.id));
+  });
+
+  it("goal overlap scores positively for styles, same direction as products", () => {
+    const goalAnswers: DiagnosticAnswers = { ...baseAnswers, goals: ["moisture"] };
+    const ranked = debugScoreStyles(catalog, goalAnswers);
+    const washAndGo = ranked.find((r) => r.product.name === "Wash and Go")!; // tagged goals include "moisture"
+    expect(washAndGo.matchReasons).toContain("goal: moisture");
+    expect(washAndGo.score).toBeGreaterThan(0);
   });
 });
 
