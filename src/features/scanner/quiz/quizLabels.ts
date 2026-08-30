@@ -16,6 +16,18 @@ export function getOptionLabel(questionId: string, value: string): string {
   return findOption(questionId, value)?.label ?? value;
 }
 
+/**
+ * An option's short `tag` (e.g. porosity's "High porosity"), for contexts
+ * that need a compact noun phrase rather than the full conversational
+ * `label` ("Soaks up instantly but dries out fast") — falls back to
+ * `label` for questions whose options have no `tag` (Results page profile
+ * summary, P6).
+ */
+export function getOptionTag(questionId: string, value: string): string {
+  const option = findOption(questionId, value);
+  return option?.tag ?? option?.label ?? value;
+}
+
 /** Label plus its secondary line (sub/desc), if the option has one. */
 export function getOptionDisplay(questionId: string, value: string): string {
   const option = findOption(questionId, value);

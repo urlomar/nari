@@ -1216,3 +1216,60 @@ status summary.
 - Next: whoever picks up the cube photo gap needs an actual new photo
   drop (with a man included) — no further review of the existing 12-image
   pool will change the outcome.
+
+## P6 — Results Page Visual Design Pass
+**Status: Done.** Visual-only — no scoring, flow, or data-layer changes.
+See CLAUDE.md's "Results page" section and DECISIONS.md's "P6" section
+for full detail; this is the status summary.
+
+- **Profile used for mockups and verification.** A deliberately realistic
+  (not idealized) profile — 4A, high porosity, protein-sensitive,
+  thick/high density, $15 budget, prefers Black-owned — picked via a real
+  `scoreProducts()` run against the catalog fixture so it would naturally
+  produce, with nothing invented: strong matches, a relaxed category with
+  picks and one down to a single pick, two fully empty categories from a
+  real documented catalog gap, products with honest visible ✗'s, and a
+  top style pick with no notes.
+- **3 variants, one per design question**, each a genuine structural bet,
+  not a restyle: Option 1 (Profile Summary Opener — a personalized
+  headline/chip/stat card before the tabs), Option 2 (Products & Styles
+  as Peers — Styles becomes an 8th tab, always present even at 0, equal
+  footing with product categories), Option 3 (Shareable Snapshot — a
+  branded panel with condensed top picks designed to be a complete
+  artifact on its own if screenshotted before any scroll). All 3 built
+  behind a temporary in-file `?resultsVariant=` switch plus a dev-only
+  launcher route that computed real scored output and navigated with real
+  router state. Screenshotted at desktop/mobile × light/dark (12 PNGs),
+  saved to `/mockups` and sent via chat (P5's dual-delivery fix, no
+  failures this time), sent for approval before implementation.
+- **CEO chose Option 1.** Implemented into the real `ScanResultsContent`;
+  `quizLabels.ts` gained a small `getOptionTag` export (short "High
+  porosity" noun phrase vs. the quiz's full conversational `label`) that
+  the headline needs. A capitalization inconsistency in the headline
+  ("High porosity" mid-sentence next to capitalized "Routine") was caught
+  and fixed during mockup review, before it went out for the CEO's
+  approval. Backward-compat: falls back to the pre-P6 generic subtext
+  when `answers` is missing (older cached history entry), rather than a
+  bare heading. The two non-chosen variants and the mockup harness were
+  deleted outright; `StyleCardItem` (extracted from `StylesStrip` during
+  the exploration so Option 2 could reuse the exact style-card markup)
+  was kept as a clean factor regardless of which variant won.
+- **Verification.** `npm run typecheck` clean; all 113 tests pass
+  unmodified. Real page re-screenshotted post-integration, pixel-matches
+  the approved mockups. Two thin-data cases explicitly re-checked live
+  (Cream: relaxed, 1 pick; Mousse: relaxed, 0 picks) read as intentional
+  under the new summary card, not contradictory; the rest of the brief's
+  thin-data cases (single style, style with no notes, null price) are
+  exactly what the existing `ScanResults.test.tsx` suite already asserts,
+  so weren't re-litigated visually. **Lighthouse**: used P5's same-
+  environment A/B (not a single throttled run) — before 99/99/100, after
+  100/100/99, statistically identical. Noted a real caveat rather than
+  just reporting the numbers: because the results page needs router
+  state, both measurements went through a client-side redirect, which
+  likely weights the redirector's own near-instant paint more than the
+  full page's — still valid for catching a real added cost (there wasn't
+  one: no new deps/images/network calls), just a weaker signal than a
+  direct-URL A/B.
+- Next: no new items from this pass. Standing open items unchanged — the
+  `"tehnique"` alias (pending Airtable) and the cube's missing-man photo
+  gap (needs a new photo drop).

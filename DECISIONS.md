@@ -2257,3 +2257,159 @@ not single points.
   time next spike.
 - **Still open: the `"tehnique"` `GOAL_ALIASES` entry** — unchanged since
   P4 (see above), still pending Airtable confirmation.
+
+## P6 — Results Page Visual Design Pass
+
+Visual-only — no scoring, flow, or data-layer changes. Full detail below;
+see CLAUDE.md's "Results page" section for the quick-reference version.
+
+### The profile used for every mockup and every verification pass
+Rather than idealized data, all 3 variants (and the post-integration
+verification) were screenshotted against **real `scoreProducts()` output**
+for one deliberately realistic profile: 4A, high porosity, protein-
+sensitive, thick/high density, $15 budget, prefers Black-owned. Chosen
+(via a quick `vite-node` exploration script against the real catalog
+fixture, not guessed) because it naturally produces, with nothing
+invented: strong matches in most categories; a relaxed category that
+still has 3 real picks (Shampoo) and one relaxed down to a single pick
+(Cream); two fully empty categories from a real, already-documented
+catalog gap (Mousse/Oil-Sealant have zero protein-free products); several
+products with honest visible ✗'s (not Black-owned, not their porosity);
+and a top-ranked style pick with no "Keep in mind" notes. Every box the
+brief asked for, found in real data rather than constructed — a stronger
+test than a hand-picked "nice" example would have been, and it directly
+exercises several of the thin-data cases the verification checklist later
+re-checks explicitly.
+
+### Mockup process
+Same dual-delivery process introduced in P5 (save PNGs to a real
+`/mockups` folder with predictable names AND push them through the chat's
+file-send tool) — worked cleanly this time, no delivery failures. All 12
+screenshots (3 variants × desktop/mobile × light/dark) were built behind
+a temporary dev-only `?resultsVariant=1|2|3` switch inside `ScanResults.tsx`
+itself (not a separate harness component) plus a small dev-only launcher
+route (`/dev/results-mockup`) that computed real recommendations via
+`scoreProducts()` against the catalog fixture and navigated into the real
+`ScanResults` with real router state — same "real scoring + real router
+state" pattern as the P3 styles-strip pass and P6's own later Lighthouse
+verification. Both were deleted once the decision landed.
+
+### The three variants, one per design question
+- **Option 1 — Profile Summary Opener** (Q2: a summary moment at the
+  top). A new gradient-tinted card between the heading and the tabs:
+  "Your 4A, high porosity routine," a one-line summary of goals +
+  top frustration, a chip row (goals + density), and a stat line ("12
+  products matched across 5 categories · 2 styles for you"). Deliberately
+  left the products/styles hierarchy (Q1) untouched in this variant, to
+  isolate the variable being judged rather than conflating two decisions
+  in one screenshot.
+- **Option 2 — Products & Styles as Peers** (Q1: hierarchy). No summary
+  card. Styles became an 8th tab in the *same* tab bar as the 7 product
+  categories, with its own count badge and — new, deliberate departure
+  from `StylesStrip`'s existing "render nothing at 0" convention — always
+  present, even at 0 styles, with an honest 0 badge and a "No styles
+  matched yet" message, so it behaves exactly like a product-category tab
+  in every respect, not almost. That "always show it" choice was the
+  whole point of testing equal treatment; a tab that disappears at zero
+  isn't really a peer of tabs that don't.
+- **Option 3 — Shareable Snapshot** (Q3: shareability). A bordered,
+  branded panel (small `<Logo />` mark, profile line, a condensed grid of
+  one top pick per *non-empty* category only — Mousse/Oil-Sealant
+  excluded from the snapshot rather than shown as blank cells, since an
+  empty cell in a "complete artifact" reads as broken, not honest, the
+  way an explicit 0-badge tab further down the page does — plus a styles
+  count line) sitting above the full existing tabs/products/styles-strip.
+  Deliberately distinct from Option 1: Option 1's summary card has zero
+  product data in it (profile only); Option 3's snapshot panel *includes*
+  real top picks specifically so a screenshot of just the top of the page
+  — before any tab click or scroll — still shows real recommendations,
+  not just a profile blurb. Two genuinely different bets, not a
+  restyle of the same idea (per the brief's explicit warning against
+  that).
+
+All 3 preserved every functional piece named in the brief unchanged
+(category tabs and counts, match indicators, "Keep in mind" notes,
+relaxation labels, empty-category handling, email capture below results,
+"Scan again," home link) — none of the three replace or remove any of
+that, only add to or restructure around it.
+
+**CEO chose Option 1.**
+
+### Implementation
+- **`quizLabels.ts` gained `getOptionTag`**, alongside the existing
+  `getOptionLabel`. Needed because porosity/density's `label` is a full
+  conversational sentence ("Soaks up instantly but dries out fast") —
+  fine for the quiz itself, far too long for a compact headline — while
+  their `tag` field ("High porosity") is exactly the short noun phrase
+  the summary needs. Falls back to `label` for any question whose options
+  have no `tag`, so it's safe to call on any question id.
+- **The headline's capitalization needed one fix during mockup review**:
+  "Your 4A, High porosity Routine" read as inconsistently cased (a
+  lowercase tag value sitting mid-sentence next to a capitalized
+  "Routine"). Fixed by lowercasing the whole trailing clause — "Your 4A,
+  high porosity routine" — before it ever went out for the CEO's review,
+  not after.
+- **`getProfileFacts`/`totalPickCount`/`nonEmptyCategoryCount`** (now
+  permanent exports-from-module-scope in `ScanResults.tsx`, not a
+  variant-only helper) derive the summary's content from the same
+  `DiagnosticAnswers`/`ScoredRecommendationSet` every other part of the
+  page already has — no new data source, no new scoring call.
+- **Backward-compat**: an older cached history entry with no `answers`
+  (see `ScanResultsLocationState`'s existing optionality) can't build a
+  profile summary — falls back to the pre-P6 generic subtext ("Based on
+  your diagnostic, here's a routine you can try tomorrow.") rather than
+  leaving the heading bare, mirroring every other `answers`-optional
+  degrade-gracefully pattern already in this file
+  (`SendResultsCapture`, the match checklist).
+- The two non-chosen variants' code and CSS
+  (`ResultsVariant2`/`ResultsVariant3`, `STYLES_TAB_ID`, all
+  `.snapshot*` classes) were deleted outright, not commented out or left
+  behind a flag — same "delete the losing variants" convention as every
+  prior mockup pass in this project. `StyleCardItem`, extracted from
+  `StylesStrip` during the exploration (so Option 2's Styles-tab panel
+  could reuse the exact same style-card markup instead of a parallel
+  copy), was kept — it's a clean factor regardless of which variant won,
+  and `StylesStrip` still uses it.
+
+### Verification
+`npm run typecheck` clean; all 113 tests pass unmodified (nothing here
+touches scoring/reducer code, and no existing test asserted the generic
+subtext text this change conditionally replaces). Post-integration,
+re-screenshotted the real page (not the harness) against the same
+realistic profile at desktop/mobile × light/dark — pixel-matches the
+approved Option 1 mockups. Explicitly checked two thin-data cases live
+(not just via the unit suite): the Cream tab (relaxed, exactly 1 pick)
+and the Mousse tab (relaxed, 0 picks, real catalog gap) both read as
+intentional — the relaxed banner and empty-state message sit naturally
+under the profile summary rather than looking like a mismatch between "12
+products matched" and an empty panel. The remaining thin-data cases named
+in the brief (single style, style with no notes, null price) are exactly
+what the existing `ScanResults.test.tsx` suite already asserts line-by-
+line — did not re-litigate those visually since the automated coverage
+is direct and already passing.
+
+**Lighthouse**: used the P5-established same-environment A/B, not a
+single throttled run. Both "before" (pre-P6) and "after" builds were
+measured against a temporary dev-only launcher route
+(`/dev/results-verify`) that computes real `scoreProducts()` output and
+client-side-navigates into `/scan/results` with it — needed because the
+results page requires router state that a plain Lighthouse URL load
+can't supply on its own. 3 throttled runs each: before 99/99/100, after
+100/100/99 — statistically identical, no regression. **Caveat, noted
+rather than glossed over**: because the navigation into the actual
+results content happens via a client-side `navigate(..., { replace:
+true })` after initial mount, Lighthouse's single-navigation trace likely
+weighs the redirector's own (near-instant) paint more than the fully
+rendered results page's — both scores landing at/near 100 is consistent
+with that, not just with "no regression." The comparison is still valid
+for what it's meant to catch (this change adding a meaningful new
+performance cost — it didn't: no new dependencies, no new images, no new
+network calls, a modest amount of additional JSX/CSS in an already-lazy-
+loaded route chunk), just worth being honest that it's a weaker signal
+than the P5 landing-page A/B, where the full page was the thing being
+navigated to directly.
+
+### Open questions
+Nothing new. This pass didn't touch the cube, the `"tehnique"` alias, or
+any data-layer code — both open items above (cube diversity gap,
+`"tehnique"` pending Airtable confirmation) carry forward unchanged.

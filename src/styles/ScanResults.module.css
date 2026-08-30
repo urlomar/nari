@@ -527,3 +527,65 @@
     flex-wrap: wrap;
   }
 }
+
+/* --- Profile summary opener (P6) --- */
+
+.profileSummary {
+  border-radius: var(--radius-2xl);
+  padding: var(--space-lg);
+  background: color-mix(in srgb, var(--color-accent-tint-1) 8%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-accent-tint-1) 20%, var(--color-border));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.profileSummaryEyebrow {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.profileSummaryHeadline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.profileSummaryBody {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.profileChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.profileChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.profileStat {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

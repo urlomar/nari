@@ -11,7 +11,7 @@ import type {
   SensitivityAnswer,
 } from "@/lib/products/scoring";
 import { buildMatchChecklist } from "@/lib/products/scoring";
-import { getOptionLabel } from "@/features/scanner/quiz/quizLabels";
+import { getOptionLabel, getOptionTag } from "@/features/scanner/quiz/quizLabels";
 import { useSendResults, type SendResultsPayload } from "@/lib/useSendResults";
 import { track } from "@/lib/analytics";
 import { fadeUp, staggerChildren } from "@/styles/motionVariants";
@@ -190,6 +190,34 @@ function formatPrice(price: number): string {
   return Number.isInteger(price) ? `$${price}` : `$${price.toFixed(2)}`;
 }
 
+/**
+ * The profile facts shown in the summary card at the top of the results
+ * page (P6 — "Profile Summary Opener", picked by the CEO from 3 generated
+ * design-pass variants; see DECISIONS.md's P6 section). `getOptionTag`
+ * (not `getOptionLabel`) is used for porosity/density specifically because
+ * those questions' `label` is a full conversational sentence ("Soaks up
+ * instantly but dries out fast") — too long for a compact headline — while
+ * their `tag` is the short noun phrase ("High porosity") the headline
+ * actually needs.
+ */
+function getProfileFacts(answers: DiagnosticAnswers) {
+  return {
+    curlTypeLabel: getOptionLabel("curl_type", answers.curlType),
+    porosityTag: getOptionTag("porosity", answers.porosity),
+    densityTag: getOptionTag("density", answers.density),
+    goalLabels: answers.goals.map((g) => getOptionLabel("goals", g)),
+    frustration1Label: answers.frustrations[0] ? getOptionLabel("frustrations", answers.frustrations[0]) : null,
+  };
+}
+
+function totalPickCount(recommendations: ScoredRecommendationSet): number {
+  return recommendations.categories.reduce((sum, c) => sum + c.picks.length, 0);
+}
+
+function nonEmptyCategoryCount(recommendations: ScoredRecommendationSet): number {
+  return recommendations.categories.filter((c) => c.picks.length > 0).length;
+}
+
 /** The most beautiful, screenshot-worthy screen in the app. */
 export default function ScanResults() {
   const location = useLocation();
@@ -238,6 +266,7 @@ function ScanResultsContent({
   const active =
     recommendations.categories.find((c) => c.category === activeCategory) ?? recommendations.categories[0];
   const allEmpty = recommendations.categories.every((c) => c.picks.length === 0);
+  const facts = answers ? getProfileFacts(answers) : null;
 
   return (
     <div className={s.screen}>
@@ -245,8 +274,46 @@ function ScanResultsContent({
         <motion.div variants={fadeUp}>
           <p className={s.eyebrow}>Your recommendations</p>
           <h1 className={s.heading}>Built for your hair</h1>
-          <p className={s.body}>Based on your diagnostic, here&rsquo;s a routine you can try tomorrow.</p>
+          {/* Backward-compat only (see ScanResultsLocationState) — an older
+              cached history entry with no `answers` can't build the profile
+              summary below, so it falls back to the old generic subtext
+              rather than showing a bare heading. */}
+          {!facts && <p className={s.body}>Based on your diagnostic, here&rsquo;s a routine you can try tomorrow.</p>}
         </motion.div>
+
+        {/* Profile summary opener (P6) — reflects the user's own profile
+            back before the recommendations begin, so results feel
+            personal rather than a filtered list. Picked by the CEO from 3
+            generated design-pass variants exploring hierarchy (products
+            vs. styles), a summary moment, and shareability — see
+            DECISIONS.md's P6 section for the other two and full
+            reasoning. */}
+        {facts && (
+          <motion.div className={s.profileSummary} variants={fadeUp}>
+            <p className={s.profileSummaryEyebrow}>Your hair profile</p>
+            <h2 className={s.profileSummaryHeadline}>
+              Your {facts.curlTypeLabel}, {facts.porosityTag.toLowerCase()} routine
+            </h2>
+            {facts.frustration1Label && (
+              <p className={s.profileSummaryBody}>
+                Built around {joinWithAnd(facts.goalLabels)} — with {facts.frustration1Label.toLowerCase()} as your
+                #1 focus.
+              </p>
+            )}
+            <div className={s.profileChipRow}>
+              {facts.goalLabels.map((g) => (
+                <span key={g} className={s.profileChip}>
+                  {g}
+                </span>
+              ))}
+              <span className={s.profileChip}>{facts.densityTag}</span>
+            </div>
+            <p className={s.profileStat}>
+              {totalPickCount(recommendations)} products matched across {nonEmptyCategoryCount(recommendations)}{" "}
+              categories · {(recommendations.styles ?? []).length} styles for you
+            </p>
+          </motion.div>
+        )}
 
         {/* Every category came back empty — over-narrow filters, not a bug.
             A distinct, prominent banner rather than six copies of the same
@@ -444,23 +511,35 @@ function StylesStrip({ styles }: { styles: RecommendedStyle[] }) {
       <p className={s.stylesEyebrow}>Styles worth trying</p>
       <ul className={s.stylesGrid}>
         {styles.map((style) => (
-          <li key={style.product.id} className={s.styleCard}>
-            <span className={s.styleBadge}>Style</span>
-            <h3 className={s.styleName}>{style.product.name}</h3>
-            <p className={s.styleMatchLine}>{buildStyleMatchLine(style.matchReasons)}</p>
-            {/* Two styles in the live catalog have no notes — omit the
-                "Keep in mind" heading entirely rather than leaving it
-                hanging with nothing under it. Display-only: notes never
-                drive ranking or filtering (see scoring.ts's scoreStyle). */}
-            {style.product.notes && (
-              <p className={s.styleNotes}>
-                <span className={s.styleNotesLabel}>Keep in mind:</span> {style.product.notes}
-              </p>
-            )}
-          </li>
+          <StyleCardItem key={style.product.id} style={style} />
         ))}
       </ul>
     </motion.div>
+  );
+}
+
+/**
+ * One style's card markup, extracted from StylesStrip (P6) so
+ * ResultsVariant2's "Styles" tab panel can reuse the exact same card
+ * rather than a parallel copy — both need identical rendering, just in
+ * different containers.
+ */
+function StyleCardItem({ style }: { style: RecommendedStyle }) {
+  return (
+    <li className={s.styleCard}>
+      <span className={s.styleBadge}>Style</span>
+      <h3 className={s.styleName}>{style.product.name}</h3>
+      <p className={s.styleMatchLine}>{buildStyleMatchLine(style.matchReasons)}</p>
+      {/* Two styles in the live catalog have no notes — omit the
+          "Keep in mind" heading entirely rather than leaving it
+          hanging with nothing under it. Display-only: notes never
+          drive ranking or filtering (see scoring.ts's scoreStyle). */}
+      {style.product.notes && (
+        <p className={s.styleNotes}>
+          <span className={s.styleNotesLabel}>Keep in mind:</span> {style.product.notes}
+        </p>
+      )}
+    </li>
   );
 }
 

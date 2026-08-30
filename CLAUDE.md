@@ -549,17 +549,23 @@ were dropped and why `PhaseBar` wasn't ported.
   mapping, `blackOwnedPref`'s casing) — see DECISIONS.md. Still doesn't
   call `scoreProducts()` itself — `ScannerRoute.tsx` calls it, then passes
   the result to `getRecommendations()` (see "Product Data Pipeline" above).
-- **`quiz/quizLabels.ts`** (Spike A; extended P2 of 4) — `getOptionLabel`/
-  `getOptionDisplay`/`formatAnswerDisplay`, the shared value→label lookup
-  against `QUIZ_QUESTIONS`. Used by both the review step (below) and
-  `ScanResults.tsx`'s "why we picked this" humanizer, so neither has to
-  re-derive the mapping from a raw answer value back to Nya's option
-  copy. `formatAnswerDisplay` numbers a `ranked`-mode question's array
+- **`quiz/quizLabels.ts`** (Spike A; extended P2 of 4, P6) —
+  `getOptionLabel`/`getOptionDisplay`/`formatAnswerDisplay`/`getOptionTag`,
+  the shared value→label lookup against `QUIZ_QUESTIONS`. Used by both the
+  review step (below) and `ScanResults.tsx`'s "why we picked this"
+  humanizer and profile-summary headline, so neither has to re-derive the
+  mapping from a raw answer value back to Nya's option copy.
+  `formatAnswerDisplay` numbers a `ranked`-mode question's array
   (`"1. Breakage & shedding   2. Constant dryness   3. ..."`) instead of
   just joining it — added for the review screen, since a ranked answer's
   order is meaningful and a plain `·`-joined list would lose it (the only
   question this currently applies to is `frustrations`, but the check is
-  generic to any future `ranked` question).
+  generic to any future `ranked` question). `getOptionTag` (P6) returns an
+  option's short `tag` (porosity's "High porosity") instead of its full
+  conversational `label` ("Soaks up instantly but dries out fast"),
+  falling back to `label` when a question's options have no `tag` — for
+  contexts needing a compact noun phrase, like the results page's profile
+  summary headline.
 
 ### How to add or edit a quiz question
 1. Edit (or add an entry to) the `QUIZ_QUESTIONS` array in
@@ -820,6 +826,28 @@ shown even when 0); the first category is open by default.
   empty. See DECISIONS.md's "Final Spike — Results Page Styles &
   Categories (P3 of 4)" for the full reasoning and the other 2 layout
   options that weren't chosen.
+- **Profile summary opener (P6)**: a gradient-tinted card between the
+  "Built for your hair" heading and the category tabs — "Your 4A, high
+  porosity routine," a one-line summary of the user's goals and #1
+  frustration, a chip row (goals + density), and a stat line ("12
+  products matched across 5 categories · 2 styles for you"). Reflects the
+  user's own profile back before the recommendations begin, so the page
+  reads as personal rather than a filtered list. Picked by the CEO from 3
+  generated variants, each taking a genuine position on a different
+  design question (a summary moment / products-styles hierarchy /
+  shareability as a standalone artifact) rather than three restyles of
+  the same idea — see DECISIONS.md's "P6" section for the other two and
+  the full reasoning. Built from `getProfileFacts(answers)` in
+  `ScanResults.tsx`, which reads `getOptionTag` (new in `quizLabels.ts`,
+  P6) for porosity/density — the short noun-phrase `tag` ("High
+  porosity"), not the full conversational `label` ("Soaks up instantly
+  but dries out fast") the quiz itself uses, which would be far too long
+  for a headline. No new data source — same `DiagnosticAnswers`/
+  `ScoredRecommendationSet` every other part of the page already has.
+  Degrades to the pre-P6 generic subtext ("Based on your diagnostic...")
+  when `answers` is absent (an older cached history entry — see
+  `ScanResultsLocationState`), same backward-compat pattern as
+  `SendResultsCapture` and the match checklist.
 
 ## Spike B — Hardening, Tests & Scoring Transparency (Day 2 of 2)
 
