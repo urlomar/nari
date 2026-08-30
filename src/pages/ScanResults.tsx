@@ -178,6 +178,14 @@ function buildSendResultsPayload(
           matchLine: buildMatchLine(buildMatchChecklist(pick.product, answers, recommendations.unenforcedSensitivities)),
         })),
       })),
+      // Same humanized match line the on-screen styles strip shows
+      // (buildStyleMatchLine, reused as-is) and the same "Keep in mind"
+      // notes field, so the email can't drift from what's on screen.
+      styles: (recommendations.styles ?? []).map((style) => ({
+        name: style.product.name,
+        matchLine: buildStyleMatchLine(style.matchReasons),
+        notes: style.product.notes || undefined,
+      })),
     },
   };
 }
@@ -601,7 +609,8 @@ function SendResultsCapture({
     return (
       <div className={s.captureBox}>
         <p className={s.captureSuccess}>
-          We just sent your recommendations to your inbox. You&rsquo;re also on our list for launch updates.
+          We just sent your recommendations to your inbox. You&rsquo;re also on our list, so we&rsquo;ll keep you posted
+          as Nari grows.
         </p>
       </div>
     );
@@ -629,7 +638,8 @@ function SendResultsCapture({
         </button>
       </div>
       <p id="capture-help" className={s.captureHelp}>
-        We&rsquo;ll send your full routine to this email. You&rsquo;ll also be added to our list for launch updates.
+        We&rsquo;ll send your full routine to this email. You&rsquo;ll also be added to our list, so we&rsquo;ll keep
+        you posted as Nari grows.
       </p>
       {error && (
         <p role="alert" className={s.captureError}>

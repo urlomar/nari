@@ -43,10 +43,10 @@ export default function CTA() {
         </motion.p>
 
         <motion.h2 id="cta-title" ref={heading.ref} style={heading.style}>
-          Get notified when Nari launches
+          Stay in the loop
         </motion.h2>
         <motion.p ref={copy.ref} style={copy.style} className={s.copy}>
-          Join the waitlist to be first in line for launch updates, early demos, and pro curl tips.
+          Get updates on new products, styles, and features as Nari grows.
         </motion.p>
 
         <motion.form ref={form.ref} style={form.style} className={s.box} onSubmit={onSubmit}>
@@ -122,10 +122,10 @@ export default function CTA() {
             <button
               type="submit"
               className={s.button}
-              aria-label="Join the Nari waitlist"
+              aria-label="Subscribe to Nari updates"
               disabled={loading}
             >
-              {loading ? "Joining..." : "Join waitlist"}
+              {loading ? "Subscribing..." : "Subscribe"}
             </button>
           </div>
 

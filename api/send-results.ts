@@ -54,6 +54,7 @@ function formatPrice(price: number): string {
 type ResultsRequest = ReturnType<typeof SendResultsRequestSchema.parse>;
 type ResultsCategory = ResultsRequest["recommendations"]["categories"][number];
 type ResultsProduct = ResultsCategory["picks"][number];
+type ResultsStyle = NonNullable<ResultsRequest["recommendations"]["styles"]>[number];
 
 const RELAXED_LABELS: Record<string, string> = {
   density: "density",
@@ -64,7 +65,7 @@ const RELAXED_LABELS: Record<string, string> = {
 function relaxedNoteHtml(category: ResultsCategory): string {
   if (!category.relaxed || category.picks.length === 0) return "";
   const labels = category.relaxedConstraints.map((c) => RELAXED_LABELS[c] ?? c).join(", ");
-  return `<p style="margin:0 0 12px;font-size:13px;color:#9333EA;font-weight:600;">Closest match — no products tagged for your ${escapeHtml(labels)} yet.</p>`;
+  return `<p style="margin:0 0 12px;font-size:13px;color:#9333EA;font-weight:600;">Closest match: no products tagged for your ${escapeHtml(labels)} yet.</p>`;
 }
 
 function productRowHtml(product: ResultsProduct): string {
@@ -95,7 +96,7 @@ function productRowHtml(product: ResultsProduct): string {
 function categoryHtml(category: ResultsCategory): string {
   const body =
     category.picks.length === 0
-      ? `<p style="margin:0 0 12px;font-size:13px;color:#5B5566;">No matches in this category yet — we&rsquo;re adding products.</p>`
+      ? `<p style="margin:0 0 12px;font-size:13px;color:#5B5566;">No matches in this category yet. We&rsquo;re adding products.</p>`
       : `${relaxedNoteHtml(category)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${category.picks.map(productRowHtml).join("")}</table>`;
 
   return `
@@ -105,8 +106,47 @@ function categoryHtml(category: ResultsCategory): string {
     </td></tr>`;
 }
 
-function buildResultsEmailHtml(recommendations: ResultsRequest["recommendations"]): string {
+/**
+ * A style has no brand/price/buyLink (see scoring.ts's "Styles" section —
+ * it's a technique, not a purchased product), so its row is a smaller
+ * variant of productRowHtml rather than reusing it: name, its humanized
+ * match line, and its "Keep in mind" note where one exists — same
+ * present-only-when-present rule the results page's StyleCardItem uses,
+ * so an email with no note doesn't show an orphaned "Keep in mind:" label.
+ */
+function styleRowHtml(style: ResultsStyle): string {
+  const matchLine = style.matchLine
+    ? `<p style="margin:6px 0 0;font-size:12px;color:#5B5566;">${escapeHtml(style.matchLine)}</p>`
+    : "";
+  const notesLine = style.notes
+    ? `<p style="margin:6px 0 0;font-size:12px;color:#5B5566;"><strong style="color:#241C30;">Keep in mind:</strong> ${escapeHtml(style.notes)}</p>`
+    : "";
+
+  return `
+    <tr>
+      <td style="padding:14px 16px;border:1px solid #ECE7F5;border-radius:12px;display:block;margin-bottom:10px;">
+        <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#9333EA;">Style</p>
+        <p style="margin:2px 0 0;font-size:15px;font-weight:600;color:#241C30;">${escapeHtml(style.name)}</p>
+        ${matchLine}
+        ${notesLine}
+      </td>
+    </tr>
+    <tr><td style="height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>`;
+}
+
+/** Renders nothing at all — not an empty-state message — when there are no styles, same rule the results page's StylesStrip follows. */
+function stylesSectionHtml(styles: ResultsStyle[]): string {
+  if (styles.length === 0) return "";
+  return `
+    <tr><td style="padding:20px 0 8px;">
+      <p style="margin:0 0 10px;font-size:17px;font-weight:700;color:#241C30;border-bottom:2px solid #F3E8FF;padding-bottom:6px;">Styles worth trying</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${styles.map(styleRowHtml).join("")}</table>
+    </td></tr>`;
+}
+
+export function buildResultsEmailHtml(recommendations: ResultsRequest["recommendations"]): string {
   const categoriesHtml = recommendations.categories.map(categoryHtml).join("");
+  const stylesHtml = stylesSectionHtml(recommendations.styles ?? []);
 
   return `<!doctype html>
 <html>
@@ -119,17 +159,17 @@ function buildResultsEmailHtml(recommendations: ResultsRequest["recommendations"
               <td style="padding:32px 28px 8px;">
                 <p style="margin:0;font-size:20px;font-weight:700;color:#9333EA;">Nari</p>
                 <h1 style="margin:16px 0 6px;font-size:24px;font-weight:700;color:#241C30;">Your recommendations</h1>
-                <p style="margin:0;font-size:14px;color:#5B5566;line-height:1.5;">Built from your diagnostic — here&rsquo;s the full routine, every category, no trimming.</p>
+                <p style="margin:0;font-size:14px;color:#5B5566;line-height:1.5;">Built from your diagnostic: here&rsquo;s the full routine, every category, no trimming.</p>
               </td>
             </tr>
             <tr><td style="padding:0 28px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${categoriesHtml}</table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${categoriesHtml}${stylesHtml}</table>
             </td></tr>
             <tr>
               <td style="padding:24px 28px 32px;border-top:1px solid #ECE7F5;margin-top:12px;">
                 <p style="margin:16px 0 0;font-size:12px;color:#5B5566;line-height:1.5;">
-                  Your answers were used only to build these recommendations. You&rsquo;ve also been added to our list for
-                  launch updates — we&rsquo;ll let you know when Nari opens up.
+                  Your answers were used only to build these recommendations. You&rsquo;ve also been added to our list, so
+                  we&rsquo;ll keep you posted as Nari grows.
                 </p>
                 <p style="margin:16px 0 0;font-size:12px;color:#5B5566;">With love, The Nari Team</p>
               </td>
@@ -142,20 +182,20 @@ function buildResultsEmailHtml(recommendations: ResultsRequest["recommendations"
 </html>`;
 }
 
-function buildResultsEmailText(recommendations: ResultsRequest["recommendations"]): string {
-  const lines: string[] = ["Your Nari recommendations", "", "Built from your diagnostic — the full routine, every category, no trimming.", ""];
+export function buildResultsEmailText(recommendations: ResultsRequest["recommendations"]): string {
+  const lines: string[] = ["Your Nari recommendations", "", "Built from your diagnostic: the full routine, every category, no trimming.", ""];
 
   for (const category of recommendations.categories) {
     lines.push(`## ${category.category}`);
     if (category.picks.length === 0) {
-      lines.push("No matches in this category yet — we're adding products.");
+      lines.push("No matches in this category yet. We're adding products.");
     } else {
       if (category.relaxed) {
         const labels = category.relaxedConstraints.map((c) => RELAXED_LABELS[c] ?? c).join(", ");
-        lines.push(`Closest match — no products tagged for your ${labels} yet.`);
+        lines.push(`Closest match: no products tagged for your ${labels} yet.`);
       }
       for (const product of category.picks) {
-        lines.push(`- ${product.name} (${product.brand})${product.price !== null ? ` — ${formatPrice(product.price)}` : ""}`);
+        lines.push(`- ${product.name} (${product.brand})${product.price !== null ? `, ${formatPrice(product.price)}` : ""}`);
         if (product.matchLine) lines.push(`  ${product.matchLine}`);
         if (product.buyLink) lines.push(`  Buy: ${product.buyLink}`);
       }
@@ -163,8 +203,19 @@ function buildResultsEmailText(recommendations: ResultsRequest["recommendations"
     lines.push("");
   }
 
+  const styles = recommendations.styles ?? [];
+  if (styles.length > 0) {
+    lines.push("## Styles worth trying");
+    for (const style of styles) {
+      lines.push(`- ${style.name}`);
+      if (style.matchLine) lines.push(`  ${style.matchLine}`);
+      if (style.notes) lines.push(`  Keep in mind: ${style.notes}`);
+    }
+    lines.push("");
+  }
+
   lines.push(
-    "Your answers were used only to build these recommendations. You've also been added to our list for launch updates.",
+    "Your answers were used only to build these recommendations. You've also been added to our list, so we'll keep you posted as Nari grows.",
     "",
     "With love,",
     "The Nari Team"
@@ -211,7 +262,7 @@ export default async function handler(req: any, res: any) {
     res.statusCode = 429;
     res.end(
       JSON.stringify({
-        error: "You just requested your results — check your inbox, or try again in a minute.",
+        error: "You just requested your results. Check your inbox, or try again in a minute.",
       })
     );
     return;

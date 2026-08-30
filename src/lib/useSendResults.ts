@@ -15,11 +15,16 @@ export interface SendResultsCategory {
   relaxedConstraints: Array<"density" | "curlType" | "porosity">;
   picks: SendResultsProduct[];
 }
+export interface SendResultsStyle {
+  name: string;
+  matchLine: string;
+  notes?: string;
+}
 export interface SendResultsPayload {
   email: string;
   curlType: string;
   porosity: string;
-  recommendations: { categories: SendResultsCategory[] };
+  recommendations: { categories: SendResultsCategory[]; styles?: SendResultsStyle[] };
 }
 
 /** Shared /api/send-results submission logic for ScanResults.tsx's "email my results" form — mirrors useSubscribe's shape/states. */

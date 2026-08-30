@@ -39,6 +39,20 @@ const ResultsCategorySchema = z.object({
   picks: z.array(ResultsProductSchema),
 });
 
+/**
+ * A style has no brand/price/buyLink (see scoring.ts's "Styles" section —
+ * it's a technique, not a purchased product), so this is a smaller
+ * projection than ResultsProductSchema, not a variant of it. `notes` is
+ * the style's "Keep in mind" free-text field, shown on the results page
+ * only when present — same optionality here.
+ */
+const ResultsStyleSchema = z.object({
+  name: z.string().min(1),
+  /** Precomputed on the client, same convention as a product's matchLine. */
+  matchLine: z.string(),
+  notes: z.string().optional(),
+});
+
 export const SendResultsRequestSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   /** The user's own curl type / porosity answers — for the Results tracking sheet's columns, not per-product display. */
@@ -46,6 +60,8 @@ export const SendResultsRequestSchema = z.object({
   porosity: z.string(),
   recommendations: z.object({
     categories: z.array(ResultsCategorySchema).min(1),
+    /** Optional for backward compatibility with any in-flight client build that predates styles being sent. */
+    styles: z.array(ResultsStyleSchema).optional(),
   }),
 });
 export type SendResultsRequest = z.infer<typeof SendResultsRequestSchema>;
