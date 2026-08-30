@@ -43,7 +43,7 @@ const RELAXED_DIMENSION_LABELS: Record<CategoryRecommendation["relaxedConstraint
 /** Edge case #2 — a relaxed category must say what was dropped, not silently backfill. */
 function relaxedMessage(constraints: CategoryRecommendation["relaxedConstraints"]): string {
   const labels = constraints.map((c) => RELAXED_DIMENSION_LABELS[c]);
-  return `Closest match — no products tagged for your ${joinWithAnd(labels)} yet.`;
+  return `Closest match: no products tagged for your ${joinWithAnd(labels)} yet.`;
 }
 
 /**
@@ -201,13 +201,39 @@ function formatPrice(price: number): string {
  * actually needs.
  */
 function getProfileFacts(answers: DiagnosticAnswers) {
+  const frustration1 = answers.frustrations[0];
   return {
     curlTypeLabel: getOptionLabel("curl_type", answers.curlType),
     porosityTag: getOptionTag("porosity", answers.porosity),
     densityTag: getOptionTag("density", answers.density),
     goalLabels: answers.goals.map((g) => getOptionLabel("goals", g)),
-    frustration1Label: answers.frustrations[0] ? getOptionLabel("frustrations", answers.frustrations[0]) : null,
+    // "nothing" is the frustrations question's exclusiveValue for "no
+    // frustrations to report" — a real, present answer, not a missing one,
+    // but it has no product-facing frustration to name, so it's treated
+    // the same as "ranked none" here (null) rather than literally
+    // rendering "Honestly doing okay!" as a frustration.
+    frustration1Label: frustration1 && frustration1 !== "nothing" ? getOptionLabel("frustrations", frustration1) : null,
   };
+}
+
+/**
+ * Profile summary body copy (final copy pass): distinct verbs for goals
+ * ("support") vs. the top frustration ("help with") so the sentence itself
+ * carries the goal/problem distinction, rather than relying on an em dash
+ * to do it — "with dryness as your #1 focus" previously read ambiguously,
+ * as if dryness were a goal rather than the thing being solved. Goals are
+ * capped at 2 even when 3 are selected (the third adds length, not
+ * meaning); the frustration clause is dropped entirely, not left dangling,
+ * when the user has none to report (see getProfileFacts above).
+ */
+function buildProfileSummaryLine(facts: ReturnType<typeof getProfileFacts>): string {
+  const displayGoals = facts.goalLabels.slice(0, 2).map((g) => g.toLowerCase());
+  const goalWord = displayGoals.length > 1 ? "goals" : "goal";
+  const goalsPart = `your ${joinWithAnd(displayGoals)} ${goalWord}`;
+  if (!facts.frustration1Label) {
+    return `Chosen to support ${goalsPart}.`;
+  }
+  return `Chosen to support ${goalsPart} and help with ${facts.frustration1Label.toLowerCase()}.`;
 }
 
 function totalPickCount(recommendations: ScoredRecommendationSet): number {
@@ -229,7 +255,7 @@ export default function ScanResults() {
     return (
       <div className={s.notFoundScreen}>
         <div className={s.card}>
-          <p className={s.body}>We couldn&rsquo;t find your scan results — let&rsquo;s start a new scan.</p>
+          <p className={s.body}>We couldn&rsquo;t find your scan results, so let&rsquo;s start a new scan.</p>
           <div className={s.footerActions}>
             <button type="button" className={s.primaryButton} onClick={() => navigate("/scan", { replace: true })}>
               Start a scan
@@ -294,12 +320,7 @@ function ScanResultsContent({
             <h2 className={s.profileSummaryHeadline}>
               Your {facts.curlTypeLabel}, {facts.porosityTag.toLowerCase()} routine
             </h2>
-            {facts.frustration1Label && (
-              <p className={s.profileSummaryBody}>
-                Built around {joinWithAnd(facts.goalLabels)} — with {facts.frustration1Label.toLowerCase()} as your
-                #1 focus.
-              </p>
-            )}
+            <p className={s.profileSummaryBody}>{buildProfileSummaryLine(facts)}</p>
             <div className={s.profileChipRow}>
               {facts.goalLabels.map((g) => (
                 <span key={g} className={s.profileChip}>
@@ -322,7 +343,7 @@ function ScanResultsContent({
           <motion.div className={s.emptyAllBanner} role="alert" variants={fadeUp}>
             <p>
               Your filters are very specific, so we don&rsquo;t have a match yet in any category. Try loosening your
-              sensitivities or budget — or scan again with different answers.
+              sensitivities or budget, or scan again with different answers.
             </p>
             <button type="button" className={s.secondaryButton} onClick={onScanAgain}>
               Scan again
@@ -377,7 +398,7 @@ function ScanResultsContent({
 
             {/* Edge case #1 — keep the tab, don't hide it, just say so honestly. */}
             {active.picks.length === 0 ? (
-              <p className={s.emptyCategory}>No matches in this category yet — we&rsquo;re adding products.</p>
+              <p className={s.emptyCategory}>No matches in this category yet. We&rsquo;re adding products.</p>
             ) : (
               <ul className={s.productGrid}>
                 {active.picks.map((pick) => (
@@ -398,7 +419,7 @@ function ScanResultsContent({
         <StylesStrip styles={recommendations.styles ?? []} />
 
         <motion.p className={s.privacyLine} variants={fadeUp}>
-          Your answers are used only to build these recommendations — never stored or shared.
+          Your answers are used only to build these recommendations and are never stored or shared.
         </motion.p>
 
         {/* Edge case #5 — offered after results, never gating them. */}
@@ -580,7 +601,7 @@ function SendResultsCapture({
     return (
       <div className={s.captureBox}>
         <p className={s.captureSuccess}>
-          Check your inbox — we just sent your recommendations. You&rsquo;re also on our list for launch updates.
+          We just sent your recommendations to your inbox. You&rsquo;re also on our list for launch updates.
         </p>
       </div>
     );

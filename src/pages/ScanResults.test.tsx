@@ -233,3 +233,56 @@ describe("ScanResults — styles strip (Final Spike, P3 of 4, Part C)", () => {
     expect(screen.queryByText(/styles worth trying/i)).not.toBeInTheDocument();
   });
 });
+
+describe("ScanResults — profile summary line (final copy pass)", () => {
+  it("names the goal and the top frustration with distinct verbs, matching the spec example", () => {
+    renderResults({
+      recommendations,
+      answers: { ...answers, goals: ["definition"], frustrations: ["dryness"] },
+    });
+    expect(
+      screen.getByText("Chosen to support your curl definition goal and help with constant dryness.")
+    ).toBeInTheDocument();
+  });
+
+  it("caps displayed goals at 2 (of 3 selected) and pluralizes ‘goals’", () => {
+    renderResults({
+      recommendations,
+      answers: { ...answers, goals: ["moisture", "definition", "frizz"], frustrations: ["dryness"] },
+    });
+    // The exact-string match above already proves the third goal (frizz
+    // control) isn't in the sentence; it still legitimately appears in the
+    // (uncapped) profile chip row below, so no negative assertion here.
+    expect(
+      screen.getByText(
+        "Chosen to support your deep moisture and curl definition goals and help with constant dryness."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("drops the frustration clause entirely (not dangling) when the user picked ‘nothing’", () => {
+    renderResults({
+      recommendations,
+      answers: { ...answers, goals: ["moisture"], frustrations: ["nothing"] },
+    });
+    expect(screen.getByText("Chosen to support your deep moisture goal.")).toBeInTheDocument();
+    expect(screen.queryByText(/honestly doing okay/i)).not.toBeInTheDocument();
+  });
+
+  it("drops the frustration clause when nothing was ranked at all", () => {
+    renderResults({
+      recommendations,
+      answers: { ...answers, goals: ["moisture"], frustrations: [] },
+    });
+    expect(screen.getByText("Chosen to support your deep moisture goal.")).toBeInTheDocument();
+  });
+});
+
+describe("ScanResults — privacy line copy", () => {
+  it("uses 'and are never' instead of an em dash", () => {
+    renderResults({ recommendations, answers });
+    expect(
+      screen.getByText("Your answers are used only to build these recommendations and are never stored or shared.")
+    ).toBeInTheDocument();
+  });
+});
